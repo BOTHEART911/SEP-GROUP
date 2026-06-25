@@ -1,0 +1,26 @@
+{
+  "name": "SEP GROUP",
+  "short_name": "SEP GROUP",
+  "description": "Gestión comercial, inscripciones y procesos — SEP Colombia Group SAS",
+  "lang": "es-CO",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#263143",
+  "theme_color": "#263143",
+  "icons": [
+    {
+      "src": "https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
