@@ -511,7 +511,7 @@ function abrirModalComercial_(r){
   $('#f-whatsapp').value  = r ? r.whatsapp  : '';
   $('#f-telefono').value  = r ? r.telefono  : '';
   $('#f-correo').value    = r ? r.correo    : '';
-  $('#f-fecha-asesoria').value = r && r.fechaAsesoria && /^\d{4}-\d{2}-\d{2}$/.test(r.fechaAsesoria) ? r.fechaAsesoria : '';
+  $('#f-fecha-asesoria').value = r && r.fechaAsesoriaRaw ? r.fechaAsesoriaRaw : '';
 
   actualizarVisibilidadEstado_();
   actualizarVisibilidadFecha_();
