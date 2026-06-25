@@ -10,7 +10,7 @@
 const API_BASE = 'https://script.google.com/macros/s/AKfycbyrb7dXsicBPJwEkkMJJfojtkPhfKeBxiFKqMHac348M94apbwLsRaz0bhpL0sX8HoTSQ/exec';
 
 const $  = (s, c = document) => c.querySelector(s);
-const $$ = (s, c = document) => Array.from(c.querySelectorAll(s)); 
+const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
 
 /* ================== LOADER ================== */
 const loader = $('#loader');
