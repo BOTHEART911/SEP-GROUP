@@ -1,148 +1,311 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8"/>
-  <title>SEP GROUP</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>SEP GROUP — Preview</title><style>/* ============================================================
+ * SEP GROUP — ESTILOS
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * Software propietario. Modificarlo anula la garantía de funcionamiento.
+ * FASE 1 — Comercial (Parte 1)
+ * ------------------------------------------------------------
+ * Sistema de diseño premium: tema claro, tarjetas blancas con
+ * acento institucional, tiles con título + descripción, welcome
+ * bar con degradado, micro-animaciones. Paleta SEP: azul #263143
+ * + verde oliva #d6da09.
+ * ============================================================ */
 
-  <link rel="icon" href="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png">
-  <link rel="apple-touch-icon" href="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png">
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#263143"/>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
-  <!-- Librerías (mismas que RAMIREZ GROUP / sec-hacienda) -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+:root {
+  /* Paleta institucional SEP */
+  --primary:        #263143;   /* azul apagado oscuro */
+  --primary-2:      #1b2430;
+  --primary-3:      #131a24;
+  --primary-light:  #38465c;
+  --primary-soft:   rgba(38, 49, 67, 0.08);
 
-  <link rel="stylesheet" href="styles.css">
-</head>
+  --accent:         #d6da09;   /* verde oliva */
+  --accent-2:       #bcc007;
+  --accent-light:   #eef07a;
+  --accent-soft:    rgba(214, 218, 9, 0.14);
+
+  /* Roles */
+  --rol-dev:        #7c3aed;
+  --rol-super:      #2563eb;
+  --rol-contador:   #0891b2;
+  --rol-comercial:  #c2792a;
+
+  /* Semánticos */
+  --ok:    #16a34a;
+  --error: #dc2626;
+  --warn:  #f59e0b;
+  --info:  #2563eb;
+
+  /* Neutros — claro y limpio */
+  --bg-base:   #f4f6f9;
+  --bg-soft:   #e9edf3;
+  --bg-card:   #ffffff;
+  --text-main: #16202e;
+  --text-soft: #44546b;
+  --text-muted:#8893a4;
+
+  --border:        rgba(38, 49, 67, 0.12);
+  --border-strong: rgba(38, 49, 67, 0.22);
+  --scrim:         rgba(19, 26, 36, 0.55);
+
+  --sh-sm: 0 1px 3px rgba(19, 26, 36, 0.10);
+  --sh-md: 0 4px 16px rgba(19, 26, 36, 0.12);
+  --sh-lg: 0 12px 32px rgba(19, 26, 36, 0.18);
+  --sh-xl: 0 24px 48px rgba(19, 26, 36, 0.22);
+
+  --font-body:    'IBM Plex Sans', system-ui, sans-serif;
+  --font-display: 'Sora', system-ui, sans-serif;
+
+  --r-sm: 8px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-pill: 999px;
+  --container-max: 1080px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Reset / base ───────────────────────────────────────── */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; min-height: 100%;
+  font-family: var(--font-body); color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 0% 0%, var(--accent-soft), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(38,49,67,0.10), transparent 42%),
+    var(--bg-base);
+}
+button { font-family: inherit; cursor: pointer; border: none; }
+img { max-width: 100%; }
+.hidden { display: none !important; }
+.muted { color: var(--text-muted); font-size: 0.85rem; }
+.center { text-align: center; }
+.mt-sm { margin-top: 8px; } .mt-md { margin-top: 16px; } .mt-lg { margin-top: 24px; }
+
+/* ── Vistas ─────────────────────────────────────────────── */
+.view { display: none; animation: viewIn 0.34s cubic-bezier(0.32, 1, 0.56, 1); padding-bottom: calc(20px + var(--safe-bottom)); }
+.view.active { display: block; }
+@keyframes viewIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+.container { max-width: var(--container-max); margin: 0 auto; padding: 16px; }
+
+/* ── Loader iOS ─────────────────────────────────────────── */
+.loader {
+  position: fixed; inset: 0; z-index: 12000;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--scrim); backdrop-filter: blur(3px);
+  transition: opacity .2s;
+}
+.loader.hidden { opacity: 0; pointer-events: none; display: flex !important; }
+.spinner { position: relative; width: 56px; height: 56px; }
+.spinner i {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 14px; margin: -7px 0 0 -2px;
+  background: var(--accent); border-radius: 2px; opacity: .15; animation: spinFade 1s linear infinite;
+}
+.spinner i:nth-child(1){transform:rotate(0deg) translateY(-18px);animation-delay:-.92s}
+.spinner i:nth-child(2){transform:rotate(30deg) translateY(-18px);animation-delay:-.83s}
+.spinner i:nth-child(3){transform:rotate(60deg) translateY(-18px);animation-delay:-.75s}
+.spinner i:nth-child(4){transform:rotate(90deg) translateY(-18px);animation-delay:-.67s}
+.spinner i:nth-child(5){transform:rotate(120deg) translateY(-18px);animation-delay:-.58s}
+.spinner i:nth-child(6){transform:rotate(150deg) translateY(-18px);animation-delay:-.50s}
+.spinner i:nth-child(7){transform:rotate(180deg) translateY(-18px);animation-delay:-.42s}
+.spinner i:nth-child(8){transform:rotate(210deg) translateY(-18px);animation-delay:-.33s}
+.spinner i:nth-child(9){transform:rotate(240deg) translateY(-18px);animation-delay:-.25s}
+.spinner i:nth-child(10){transform:rotate(270deg) translateY(-18px);animation-delay:-.17s}
+.spinner i:nth-child(11){transform:rotate(300deg) translateY(-18px);animation-delay:-.08s}
+.spinner i:nth-child(12){transform:rotate(330deg) translateY(-18px);animation-delay:0s}
+@keyframes spinFade { 0% { opacity: 1; } 100% { opacity: .15; } }
+
+/* ── Botones ────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px; border-radius: var(--r-md);
+  font-weight: 700; font-size: 0.95rem; font-family: var(--font-body); letter-spacing: .2px;
+  border: 1.5px solid transparent;
+  transition: transform .1s, box-shadow .18s, background .18s, color .18s;
+}
+.btn:active { transform: scale(0.97); }
+.btn img, .btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+.btn-block { width: 100%; }
+.btn-lg { padding: 14px 24px; font-size: 1rem; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+  color: #fff; box-shadow: 0 4px 14px rgba(38,49,67,.32);
+}
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(38,49,67,.42); }
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
+  color: var(--primary); box-shadow: 0 4px 14px rgba(214,218,9,.34);
+}
+.btn-ghost { background: var(--bg-card); color: var(--text-soft); border-color: var(--border-strong); }
+.btn-ghost:hover { background: var(--bg-soft); color: var(--primary); border-color: var(--primary); }
+
+/* ── Login ──────────────────────────────────────────────── */
+.login-wrap { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.login-card {
+  background: var(--bg-card); border-radius: var(--r-xl); box-shadow: var(--sh-xl);
+  padding: 32px 28px; width: 100%; max-width: 430px; text-align: center;
+  position: relative; overflow: hidden;
+}
+.login-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+  background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+}
+.login-logo {
+  width: 104px; height: 104px; border-radius: 50%; margin: 4px auto 16px;
+  object-fit: contain; padding: 14px; background: var(--primary);
+  box-shadow: var(--sh-md); border: 3px solid var(--bg-card);
+}
+.login-title { font-family: var(--font-display); font-size: 1.7rem; font-weight: 800; color: var(--primary); letter-spacing: -.02em; margin: 8px 0 4px; }
+.login-sub { font-size: 0.86rem; color: var(--text-muted); margin-bottom: 18px; font-weight: 600; }
+
+.login-tabs { display: flex; gap: 6px; background: var(--bg-soft); padding: 4px; border-radius: var(--r-pill); margin: 18px 0 16px; }
+.login-tab { flex: 1; padding: 10px; border-radius: var(--r-pill); font-weight: 700; font-size: 0.85rem; color: var(--text-soft); background: transparent; transition: all .18s; }
+.login-tab.active { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(38,49,67,.22); }
+
+.pin-pad { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
+.pin-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--bg-soft); border: 2px solid var(--border-strong); transition: all .15s; }
+.pin-dot.filled { background: var(--accent); border-color: var(--accent-2); transform: scale(1.12); }
+.pin-keypad { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 16px auto 0; max-width: 280px; }
+.pin-key {
+  aspect-ratio: 1.4; border-radius: var(--r-md); background: var(--bg-card);
+  border: 1.5px solid var(--border); font-family: var(--font-display); font-size: 1.5rem;
+  font-weight: 700; color: var(--primary); transition: all .12s;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pin-key:hover { background: var(--primary-soft); }
+.pin-key:active { background: var(--primary); color: #fff; transform: scale(.94); }
+.pin-key.action { font-size: 1rem; background: transparent; border-color: transparent; color: var(--text-muted); }
+
+label { display: block; text-align: left; margin: 8px 2px 6px; font-weight: 700; font-size: .88rem; color: var(--text-soft); }
+input, textarea, select {
+  width: 100%; padding: 13px 14px; font-size: 1rem; font-family: var(--font-body);
+  border-radius: var(--r-md); border: 1.5px solid var(--border-strong);
+  background: var(--bg-card); color: var(--text-main); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-shadow: 0 0 0 4px var(--accent-soft); }
+.input-wrap { position: relative; }
+.eye-btn { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); background: transparent; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+.eye-btn img { width: 22px; height: 22px; }
+
+.brand { display: block; margin: 18px auto 4px; border-radius: var(--r-md); max-width: 240px; }
+.app-version-line { text-align: center; margin-top: 14px; font-size: .72rem; color: var(--text-muted); opacity: .7; }
+.install-card .brand { width: 210px; }
+
+/* ── Inicio: welcome bar ────────────────────────────────── */
+.welcome-bar {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+  color: #fff; border-radius: var(--r-lg); padding: 18px 20px; margin: 16px 0;
+  display: flex; align-items: center; gap: 14px; box-shadow: var(--sh-md);
+  position: relative; overflow: hidden;
+}
+.welcome-bar::after {
+  content: ''; position: absolute; top: -42%; right: -10%; width: 220px; height: 220px;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 70%); opacity: .22; pointer-events: none;
+}
+.welcome-bar__avatar {
+  width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+  border: 2.5px solid var(--accent); background: rgba(255,255,255,.16); flex-shrink: 0; z-index: 1;
+}
+.welcome-bar__info { flex: 1; min-width: 0; z-index: 1; }
+.welcome-bar__hello { font-size: .78rem; font-weight: 600; opacity: .82; }
+.welcome-bar__name { font-family: var(--font-display); font-weight: 800; font-size: 1.16rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.welcome-bar__rol { display: inline-block; background: var(--accent); color: var(--primary); padding: 2px 11px; border-radius: var(--r-pill); font-size: .66rem; font-weight: 800; letter-spacing: .6px; margin-top: 5px; text-transform: uppercase; }
+.welcome-bar__logout { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.15); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; z-index: 1; transition: background .15s; }
+.welcome-bar__logout:hover { background: rgba(220,38,38,.55); }
+
+.section-label { font-family: var(--font-display); font-weight: 800; color: var(--primary); margin: 22px 0 2px; font-size: 1.15rem; }
+
+/* ── Inicio: tiles de vista (icono + título + descripción) ── */
+.menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 14px; }
+@media (min-width: 600px) { .menu-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .menu-grid { grid-template-columns: repeat(4, 1fr); } }
+.menu-tile {
+  background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-lg);
+  padding: 22px 14px 18px; text-align: center; display: flex; flex-direction: column;
+  align-items: center; gap: 10px; box-shadow: var(--sh-sm); position: relative; overflow: hidden;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.menu-tile::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .2s; }
+.menu-tile:hover { transform: translateY(-3px); box-shadow: var(--sh-md); border-color: var(--primary); }
+.menu-tile:hover::before { transform: scaleX(1); }
+.menu-tile img { width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(38,49,67,.20)); }
+.menu-tile__title { font-family: var(--font-display); font-weight: 700; font-size: 0.98rem; color: var(--primary); }
+.menu-tile__desc { font-size: 0.74rem; color: var(--text-muted); font-weight: 500; line-height: 1.32; }
+.menu-tile.soon { opacity: .62; }
+.menu-tile__badge { position: absolute; top: 10px; right: 10px; background: var(--accent); color: var(--primary); font-size: .62rem; font-weight: 800; padding: 2px 8px; border-radius: var(--r-pill); letter-spacing: .4px; }
+
+/* Separador institucional bajo los botones */
+.sep-divider { border: 0; height: 2px; margin: 22px 0 14px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: .8; }
+.below-divider { text-align: center; color: var(--text-muted); }
+
+/* ── Banner de créditos (autoría) ───────────────────────── */
+.credit-banner {
+  margin: 18px auto 2px; max-width: 320px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 14px; border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+  color: #fff; font-size: .72rem; font-weight: 600; line-height: 1.3;
+  box-shadow: var(--sh-sm);
+}
+.credit-banner b { color: var(--accent); font-weight: 800; }
+.credit-banner .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+/* ── SweetAlert acento SEP ──────────────────────────────── */
+.swal2-styled.swal2-confirm { background: var(--accent) !important; color: var(--primary) !important; font-weight: 800 !important; }
+.swal2-styled.swal2-cancel  { background: var(--primary-light) !important; }
+.swal2-title { font-family: var(--font-display) !important; color: var(--primary) !important; }
+
+body{padding:24px} .preview-grid{display:grid;gap:28px;grid-template-columns:1fr;max-width:1080px;margin:0 auto}
+@media(min-width:900px){.preview-grid{grid-template-columns:430px 1fr;align-items:start}}
+.preview-tag{font-family:var(--font-display);font-weight:800;color:var(--primary);margin:0 0 10px}</style></head>
 <body>
-
-  <!-- Loader iOS -->
-  <div id="loader" class="loader hidden" aria-live="polite" aria-busy="true">
-    <div class="spinner-ios" role="status" aria-label="Cargando">
-      <i></i><i></i><i></i><i></i><i></i><i></i>
-      <i></i><i></i><i></i><i></i><i></i><i></i>
+<div class="preview-grid">
+  <div>
+    <p class="preview-tag">Vista Login</p>
+    <div class="login-card">
+      <div class="login-card-spacer"></div>
+      <img class="login-logo" src="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png" alt="SEP"/>
+      <h1 class="login-title">Bienvenido</h1>
+      <p class="login-sub">SEP Colombia Group · Plataforma interna</p>
+      <div class="login-tabs"><button class="login-tab active">PIN rápido</button><button class="login-tab">Documento</button></div>
+      <div class="pin-pad"><div class="pin-dot filled"></div><div class="pin-dot filled"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
+      <div class="pin-keypad">
+        <button class="pin-key">1</button><button class="pin-key">2</button><button class="pin-key">3</button><button class="pin-key">4</button><button class="pin-key">5</button><button class="pin-key">6</button><button class="pin-key">7</button><button class="pin-key">8</button><button class="pin-key">9</button>
+        <button class="pin-key action">Borrar</button><button class="pin-key">0</button><button class="pin-key action">⌫</button>
+      </div>
+      <div class="credit-banner"><span class="dot"></span> <span>© <b>Oscar Polanía</b> · Experto en Soluciones Digitales · +57&nbsp;310&nbsp;323&nbsp;0712</span></div>
+      <p class="app-version-line">Versión 1.0.0</p>
     </div>
   </div>
-
-  <div class="container">
-
-    <!-- ===================== VISTA INSTALAR ===================== -->
-    <section id="view-instalar" class="view">
-      <div class="card narrow center-card">
-        <img class="logo-sep" alt="SEP GROUP"
-             src="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png" />
-        <h2 class="title-accent">SEP GROUP</h2>
-        <p class="strong">Plataforma de gestión exclusiva para personal autorizado de SEP Colombia.</p>
-        <p class="muted"><b>Si NO ves el botón Instalar,</b> inicia sesión de Google en tu navegador.</p>
-        <div class="btn-row center">
-          <button id="btn-instalar" class="btn-primary" style="display:none;">Instalar la App</button>
+  <div>
+    <p class="preview-tag">Vista Inicio</p>
+    <div class="container" style="padding:0">
+      <div class="welcome-bar">
+        <img class="welcome-bar__avatar" src="https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp"/>
+        <div class="welcome-bar__info">
+          <div class="welcome-bar__hello">Bienvenido</div>
+          <div class="welcome-bar__name">Oscar Polanía</div>
+          <span class="welcome-bar__rol">Desarrollador</span>
         </div>
-        <p class="muted"><b>Si ya instalaste la App,</b> refresca la página o búscala en tu escritorio / pantalla de inicio.</p>
+        <button class="welcome-bar__logout"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
       </div>
-    </section>
-
-    <!-- ===================== VISTA LOGIN ===================== -->
-    <section id="view-login" class="view active">
-      <div class="card narrow">
-        <img class="logo-sep" alt="SEP GROUP"
-             src="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png" />
-        <h1 class="title-accent center">SEP GROUP</h1>
-        <p class="helper center"><b>Acceso exclusivo para el equipo autorizado de SEP Colombia.</b></p>
-
-        <div class="login-tabs">
-          <button type="button" class="login-tab" data-tab="doc">Documento</button>
-          <button type="button" class="login-tab active" data-tab="pin">PIN rápido</button>
-        </div>
-
-        <!-- TAB DOCUMENTO -->
-        <div id="tab-doc" class="hidden">
-          <label>Documento</label>
-          <div class="input-wrap">
-            <input id="login-doc" type="password" inputmode="numeric" autocomplete="off" placeholder="Sin puntos ni espacios" />
-            <button type="button" id="toggle-doc" aria-label="Mostrar documento" class="eye-btn">
-              <img id="toggle-doc-img" alt="Mostrar"
-                   src="https://res.cloudinary.com/dqqeavica/image/upload/v1764084782/Mostrar_yymceh.png" />
-            </button>
-          </div>
-          <div class="btn-row" style="margin-top:12px;">
-            <button class="btn-primary" id="btn-login">Iniciar Sesión</button>
-          </div>
-        </div>
-
-        <!-- TAB PIN RÁPIDO -->
-        <div id="tab-pin">
-          <div class="pin-pad">
-            <div class="pin-dot" data-pos="0"></div>
-            <div class="pin-dot" data-pos="1"></div>
-            <div class="pin-dot" data-pos="2"></div>
-            <div class="pin-dot" data-pos="3"></div>
-          </div>
-          <div class="pin-keypad">
-            <button type="button" class="pin-key" data-key="1">1</button>
-            <button type="button" class="pin-key" data-key="2">2</button>
-            <button type="button" class="pin-key" data-key="3">3</button>
-            <button type="button" class="pin-key" data-key="4">4</button>
-            <button type="button" class="pin-key" data-key="5">5</button>
-            <button type="button" class="pin-key" data-key="6">6</button>
-            <button type="button" class="pin-key" data-key="7">7</button>
-            <button type="button" class="pin-key" data-key="8">8</button>
-            <button type="button" class="pin-key" data-key="9">9</button>
-            <button type="button" class="pin-key action" data-key="clear">Borrar</button>
-            <button type="button" class="pin-key" data-key="0">0</button>
-            <button type="button" class="pin-key action" data-key="back">⌫</button>
-          </div>
-        </div>
-
-        <p class="center muted copyright">© <b>Oscar Polanía</b> · Experto en Soluciones Digitales</p>
-        <p id="app-version" class="center muted version-line"></p>
-      </div>
-    </section>
-
-    <!-- ===================== VISTA INICIO ===================== -->
-    <section id="view-inicio" class="view">
-      <div class="card narrow">
-
-        <div class="inicio-header">
-          <div class="user-chip">
-            <img id="inicio-foto" class="user-avatar" alt="Foto"
-                 src="https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp" />
-            <div>
-              <h2 id="inicio-nombre" class="user-name"></h2>
-              <span id="inicio-rol" class="role-badge"></span>
-            </div>
-          </div>
-          <button class="chip danger" id="btn-logout">Salir</button>
-        </div>
-
-        <!-- Botones de vistas -->
-        <div class="vistas-grid">
-          <button id="btn-comercial" class="btn-primary btn-icon-label">
-            <img src="https://res.cloudinary.com/dqqeavica/image/upload/v1776287585/target_rmpes0.webp" alt="Comercial" />
-            COMERCIAL
-          </button>
-          <!-- (En las próximas fases: CONFIGURACIÓN, MI BOT, PAGOS…) -->
-        </div>
-
-        <!-- Separador bajo los botones (solicitado) -->
-        <hr class="sep-divider" />
-
-        <!-- Zona inferior bajo el separador (la definimos en próximas fases) -->
-        <div id="inicio-bajo-separador" class="below-divider">
-          <p class="muted center" style="margin:0;">SEP Colombia Group SAS</p>
-        </div>
-
-        <p class="center muted copyright">© <b>Oscar Polanía</b> · Experto en Soluciones Digitales</p>
-      </div>
-    </section>
-
+      <h2 class="section-label">Módulos</h2>
+      <p class="muted">Selecciona el módulo en el que vas a trabajar</p>
+      <div class="menu-grid"><button class="menu-tile"><img src="https://res.cloudinary.com/dqqeavica/image/upload/v1776287585/target_rmpes0.webp" alt="Comercial"/><div class="menu-tile__title">Comercial</div><div class="menu-tile__desc">Leads, seguimiento y dashboard</div></button>
+<button class="menu-tile soon"><img src="https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp" alt="Usuarios"/><div class="menu-tile__title">Usuarios</div><div class="menu-tile__desc">Gestionar el equipo</div><span class="menu-tile__badge">PRONTO</span></button>
+<button class="menu-tile soon"><img src="https://res.cloudinary.com/dqqeavica/image/upload/v1778860851/base_de_datos_cty8xc.webp" alt="Configuración"/><div class="menu-tile__title">Configuración</div><div class="menu-tile__desc">Ajustes del sistema</div><span class="menu-tile__badge">PRONTO</span></button>
+<button class="menu-tile soon"><img src="https://res.cloudinary.com/dqqeavica/image/upload/v1776016986/chat_sueco4.webp" alt="Mi Bot"/><div class="menu-tile__title">Mi Bot</div><div class="menu-tile__desc">WhatsApp y plantillas</div><span class="menu-tile__badge">PRONTO</span></button></div>
+      <hr class="sep-divider"/>
+      <div class="below-divider"><p class="muted" style="margin:0">SEP Colombia Group SAS</p></div>
+      <div class="credit-banner"><span class="dot"></span> <span>© <b>Oscar Polanía</b> · Experto en Soluciones Digitales · +57&nbsp;310&nbsp;323&nbsp;0712</span></div>
+      <p class="app-version-line">Versión 1.0.0</p>
+    </div>
   </div>
-
-  <script src="app.js"></script>
-</body>
-</html>
+</div>
+</body></html>
