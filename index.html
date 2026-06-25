@@ -266,6 +266,34 @@
   </div>
 
 
+
+  <!-- ============================================================
+       VISTA CONFIGURACIÓN (Parte 3.1)
+       ============================================================ -->
+  <section id="view-config" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Configuración</h1>
+    </header>
+    <div class="container">
+      <div class="cfg-tabs" id="cfg-tabs">
+        <button class="cfg-tab active" data-cfgtab="general">General</button>
+        <button class="cfg-tab" data-cfgtab="programas">Programas</button>
+        <button class="cfg-tab" data-cfgtab="promos">Promos</button>
+        <button class="cfg-tab" data-cfgtab="plantillas">Plantillas</button>
+        <button class="cfg-tab" data-cfgtab="avanzado" id="cfg-tab-avanzado" style="display:none;">Avanzado</button>
+      </div>
+      <div id="cfg-general" class="cfg-panel"></div>
+      <div id="cfg-programas" class="cfg-panel hidden"></div>
+      <div id="cfg-promos" class="cfg-panel hidden"></div>
+      <div id="cfg-plantillas" class="cfg-panel hidden"></div>
+      <div id="cfg-avanzado" class="cfg-panel hidden"></div>
+    </div>
+  </section>
+
+
   <script src="version.js"></script>
   <script src="app.js"></script>
 </body>
