@@ -405,6 +405,10 @@ function cardHtml_(r){
       ${r.fuente?`<span>${fuenteIcon_(r.fuente)} ${esc_(r.fuente)}</span>`:''}
       ${r.asesor?`<span>👤 ${esc_(r.asesor)}</span>`:''}
     </div>
+    ${r.fechaHoraAgendada?`<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <span class="com-card__agenda">🗓️ ${esc_(r.fechaHoraAgendada)}</span>
+      ${r.meetLink?`<a class="btn-meet" href="${esc_(r.meetLink)}" target="_blank" rel="noopener">▶ Entrar a Meet</a>`:''}
+    </div>`:''}
     <div class="com-card__actions">
       <button class="act-btn act-ver" data-act="ver"><img src="${verIc}">Ver</button>
       <button class="act-btn act-editar" data-act="editar">✏️ Editar</button>
@@ -434,7 +438,14 @@ $('#com-dashboard-btn')?.addEventListener('click', ()=>{
 async function verComercial_(id){
   try{
     const r = await apiGet('verComercial', { id });
+    COM.detalleActual = r;
+    const puedeEliminar = currentUser && (currentUser.isSuper || currentUser.isDev);
     const d = (l,v)=>`<div class="d-item"><label>${l}</label><div class="d-val">${esc_(v)||'—'}</div></div>`;
+    const traza = (r.trazabilidad||[]).map(t=>{
+      const i = String(t).indexOf(',');
+      const est = i>0 ? t.slice(0,i) : t; const fec = i>0 ? t.slice(i+1).trim() : '';
+      return `<li><b>${esc_(est)}</b>${fec?` · ${esc_(fec)}`:''}</li>`;
+    }).join('');
     $('#com-detalle').innerHTML = `
       <div class="detalle-card">
         <div class="detalle-hero">
@@ -448,9 +459,20 @@ async function verComercial_(id){
           ${d('Departamento', r.departamento)} ${d('Municipio', r.municipio)}
           ${d('Fuente', r.fuente)} ${d('Asesor', r.asesor)}
           ${d('Programa', r.programa)} ${d('Promo', r.promo)}
-          ${d('Fecha asesoría', r.fechaAsesoria)} ${d('Registró', r.usuario)}
+          ${d('Clave de acceso', r.claveAcceso)} ${d('Asesoría agendada', r.fechaHoraAgendada)}
+          ${d('Fecha realizada', r.fechaAsesoria)} ${d('Registró', r.usuario)}
         </div>
+        ${r.meetLink?`<div style="padding:0 22px 8px;"><a class="btn-meet" href="${esc_(r.meetLink)}" target="_blank" rel="noopener">▶ Entrar a la reunión Meet</a></div>`:''}
+        <div class="detalle-acciones">
+          <button class="act-btn act-editar" id="det-editar">✏️ Editar</button>
+          <button class="act-btn act-chat" id="det-chat">💬 Chat</button>
+          ${puedeEliminar?`<button class="act-btn act-eliminar" id="det-eliminar">🗑 Eliminar</button>`:''}
+        </div>
+        ${traza?`<div class="traza-box"><h4>📜 Trazabilidad</h4><ul class="traza-list">${traza}</ul></div>`:''}
       </div>`;
+    $('#det-editar')?.addEventListener('click', ()=> abrirModalComercial_(r));
+    $('#det-chat')?.addEventListener('click', ()=> Swal.fire({icon:'info', title:'Chat', text:'El chat por lead llega en la próxima parte (Firebase en tiempo real).'}));
+    $('#det-eliminar')?.addEventListener('click', ()=> eliminarComercial_(r).then(()=> showView('comercial')));
     showView('comercial-detalle');
   }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
 }
@@ -512,10 +534,12 @@ function abrirModalComercial_(r){
   $('#f-whatsapp').value  = r ? r.whatsapp  : '';
   $('#f-telefono').value  = r ? r.telefono  : '';
   $('#f-correo').value    = r ? r.correo    : '';
-  $('#f-fecha-asesoria').value = r && r.fechaAsesoriaRaw ? r.fechaAsesoriaRaw : '';
+  const fhRaw = r && r.fechaHoraAgendadaRaw ? r.fechaHoraAgendadaRaw : '';
+  $('#f-fecha-hora-agendada').value = fhRaw;
+  $('#f-agenda-text').textContent = (r && r.fechaHoraAgendada) ? r.fechaHoraAgendada : 'Seleccionar fecha y hora';
 
   actualizarVisibilidadEstado_();
-  actualizarVisibilidadFecha_();
+  actualizarVisibilidadAgenda_();
   $('#modal-comercial').classList.remove('hidden');
 }
 function cerrarModalComercial_(){ $('#modal-comercial').classList.add('hidden'); }
@@ -530,18 +554,14 @@ function actualizarVisibilidadEstado_(){
   const hayAsesor = !!$('#f-asesor').value;
   $('#fld-estado').style.display = hayAsesor ? '' : 'none';
 }
-function actualizarVisibilidadFecha_(){
+function actualizarVisibilidadAgenda_(){
   const est = $('#f-estado').value;
-  const mostrar = est === 'ASESORIA_REALIZADA';
-  $('#fld-fecha-asesoria').style.display = mostrar ? '' : 'none';
-  if (mostrar && !$('#f-fecha-asesoria').value){
-    $('#f-fecha-asesoria').value = new Date().toISOString().slice(0,10);
-  }
+  $('#fld-agenda').style.display = est === 'ASESORIA_AGENDADA' ? '' : 'none';
 }
 
 $('#f-departamento')?.addEventListener('change', e => poblarMunicipios_(e.target.value, ''));
 $('#f-asesor')?.addEventListener('change', actualizarVisibilidadEstado_);
-$('#f-estado')?.addEventListener('change', actualizarVisibilidadFecha_);
+$('#f-estado')?.addEventListener('change', actualizarVisibilidadAgenda_);
 ['f-nombres','f-apellidos'].forEach(id=> $('#'+id)?.addEventListener('input', e=>{ e.target.value = e.target.value.toUpperCase(); }));
 ['f-whatsapp','f-telefono'].forEach(id=> $('#'+id)?.addEventListener('input', e=>{ e.target.value = onlyDigits(e.target.value).slice(0,10); }));
 
@@ -555,11 +575,12 @@ async function guardarComercial_(){
     departamento: $('#f-departamento').value, municipio: $('#f-municipio').value,
     fuente: $('#f-fuente').value, asesor: $('#f-asesor').value,
     estado: $('#f-asesor').value ? $('#f-estado').value : 'NUEVO_LEAD',
-    fechaAsesoria: $('#f-fecha-asesoria').value,
+    fechaHoraAgendada: $('#f-fecha-hora-agendada').value,
     programa: $('#f-programa').value, promo: $('#f-promo').value
   };
   // Validación rápida en cliente
   if (!body.nombres.trim() || !body.apellidos.trim()) return Swal.fire({icon:'warning', title:'Nombres y apellidos obligatorios'});
+  if (body.estado === 'ASESORIA_AGENDADA' && !body.fechaHoraAgendada) return Swal.fire({icon:'warning', title:'Selecciona la fecha y hora de la asesoría'});
   if (onlyDigits(body.whatsapp).length !== 10) return Swal.fire({icon:'warning', title:'WhatsApp debe tener 10 dígitos'});
   if (body.telefono && onlyDigits(body.telefono).length !== 10) return Swal.fire({icon:'warning', title:'Teléfono debe tener 10 dígitos'});
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.correo.trim())) return Swal.fire({icon:'warning', title:'Correo no válido'});
@@ -585,7 +606,7 @@ async function abrirConfig_(){
   try{
     CFG.data = await apiGet('getConfigFull', { usuarioId: currentUser.id });
     $('#cfg-tab-avanzado').style.display = CFG.data.esDev ? '' : 'none';
-    renderCfgGeneral_(); renderCfgProgramas_(); renderCfgPromos_(); renderCfgPlantillas_(); renderCfgAvanzado_();
+    renderCfgGeneral_(); renderCfgProgramas_(); renderCfgPromos_(); renderCfgAgenda_(); renderCfgPlantillas_(); renderCfgAvanzado_();
     activarCfgTab_('general');
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo cargar', text:String(e.message||e)}); }
 }
@@ -594,7 +615,7 @@ async function abrirConfig_(){
 $$('.cfg-tab').forEach(t => t.addEventListener('click', ()=> activarCfgTab_(t.dataset.cfgtab)));
 function activarCfgTab_(name){
   $$('.cfg-tab').forEach(t => t.classList.toggle('active', t.dataset.cfgtab === name));
-  ['general','programas','promos','plantillas','avanzado'].forEach(p =>
+  ['general','programas','promos','agenda','plantillas','avanzado'].forEach(p =>
     $('#cfg-'+p).classList.toggle('hidden', p !== name));
 }
 
@@ -833,5 +854,179 @@ function renderCfgAvanzado_(){
       Object.assign(CFG.data.avanzado, cambios);
       Swal.fire({icon:'success', title:'Guardado', timer:900, showConfirmButton:false});
     }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+  });
+}
+
+/* ============================================================
+ * SELECTOR FECHA/HORA ESTILO iOS (ruedas; año fijo al actual)
+ * ============================================================ */
+const IOSP = { onOk:null, year:new Date().getFullYear() };
+const IOSP_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const IOSP_HORAS = []; for (let h=6; h<=20; h++) IOSP_HORAS.push(h); // bloques exactos 6 AM–8 PM
+const IOSP_H = 42;
+function iospHoraLabel_(h){ const ap = h>=12?'PM':'AM'; let hh=h%12; if(hh===0)hh=12; return hh+':00 '+ap; }
+function iospDiasMes_(mesIdx, year){ return new Date(year, mesIdx+1, 0).getDate(); }
+
+function buildCol_(colEl, items, initIdx){
+  colEl.innerHTML = '<div class="iosp-pad"></div>' +
+    items.map((t,i)=>`<div class="iosp-item" data-i="${i}">${t}</div>`).join('') +
+    '<div class="iosp-pad"></div>';
+  colEl.scrollTop = Math.max(0, initIdx)*IOSP_H;
+  marcarSel_(colEl);
+  let to=null;
+  colEl.onscroll = ()=>{ marcarSel_(colEl); if(to)clearTimeout(to); to=setTimeout(()=>{ const i=selCol_(colEl); colEl.scrollTo({top:i*IOSP_H, behavior:'smooth'}); }, 90); };
+}
+function selCol_(colEl){ return Math.max(0, Math.round(colEl.scrollTop / IOSP_H)); }
+function marcarSel_(colEl){ const i=selCol_(colEl); colEl.querySelectorAll('.iosp-item').forEach(el=> el.classList.toggle('sel', +el.dataset.i===i)); }
+
+function abrirRuedaFecha_(valorISO, onOk, opts){
+  IOSP.onOk = onOk;
+  IOSP.soloFecha = !!(opts && opts.soloFecha);
+  IOSP.year = new Date().getFullYear();
+  $('#iosp-year').textContent = IOSP.year;
+  $('#iosp-hora').style.display = IOSP.soloFecha ? 'none' : '';
+
+  let dRef = valorISO ? new Date(valorISO) : new Date();
+  if (isNaN(dRef.getTime())) dRef = new Date();
+  let mesIdx = dRef.getMonth();
+  let dia = dRef.getDate();
+  let hora = dRef.getHours(); if (hora < 6) hora = 9; if (hora > 20) hora = 20;
+  const horaIdx = Math.max(0, IOSP_HORAS.indexOf(hora) >= 0 ? IOSP_HORAS.indexOf(hora) : 3);
+
+  const diasArr = Array.from({length: iospDiasMes_(mesIdx, IOSP.year)}, (_,i)=>String(i+1));
+  buildCol_($('#iosp-dia'), diasArr, dia-1);
+  buildCol_($('#iosp-mes'), IOSP_MESES.map(m=>m.charAt(0).toUpperCase()+m.slice(1)), mesIdx);
+  buildCol_($('#iosp-hora'), IOSP_HORAS.map(iospHoraLabel_), horaIdx);
+
+  // Si cambia el mes, ajusta la cantidad de días
+  $('#iosp-mes').addEventListener('scroll', ()=>{
+    const mi = selCol_($('#iosp-mes'));
+    const nDias = iospDiasMes_(mi, IOSP.year);
+    if ($('#iosp-dia').querySelectorAll('.iosp-item').length !== nDias){
+      const cur = Math.min(selCol_($('#iosp-dia')), nDias-1);
+      buildCol_($('#iosp-dia'), Array.from({length:nDias},(_,i)=>String(i+1)), cur);
+    }
+  }, { passive:true });
+
+  $('#ios-picker').classList.remove('hidden');
+}
+
+$('#iosp-cancel')?.addEventListener('click', ()=> $('#ios-picker').classList.add('hidden'));
+$('#iosp-ok')?.addEventListener('click', ()=>{
+  const mi = selCol_($('#iosp-mes'));
+  const nDias = iospDiasMes_(mi, IOSP.year);
+  const dia = Math.min(selCol_($('#iosp-dia'))+1, nDias);
+  const pad = n => String(n).padStart(2,'0');
+  $('#ios-picker').classList.add('hidden');
+  if (IOSP.soloFecha){
+    const iso = `${IOSP.year}-${pad(mi+1)}-${pad(dia)}`;
+    if (IOSP.onOk) IOSP.onOk(iso, `${dia} de ${IOSP_MESES[mi]} de ${IOSP.year}`);
+    return;
+  }
+  const hora = IOSP_HORAS[Math.min(selCol_($('#iosp-hora')), IOSP_HORAS.length-1)];
+  const iso = `${IOSP.year}-${pad(mi+1)}-${pad(dia)}T${pad(hora)}:00`;
+  const texto = `${dia} de ${IOSP_MESES[mi]} de ${IOSP.year} · ${iospHoraLabel_(hora)}`;
+  if (IOSP.onOk) IOSP.onOk(iso, texto);
+});
+
+/* Botón de agenda en el modal Comercial */
+$('#f-agenda-btn')?.addEventListener('click', ()=>{
+  abrirRuedaFecha_($('#f-fecha-hora-agendada').value, (iso, texto)=>{
+    $('#f-fecha-hora-agendada').value = iso;
+    $('#f-agenda-text').textContent = texto;
+  });
+});
+
+/* ============================================================
+ * CONFIGURACIÓN — AGENDA (disponibilidad)
+ * ============================================================ */
+const AG_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const AG_DIAS  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+function labelFechaISO_(iso){ const [y,m,d]=iso.split('-').map(Number); const dt=new Date(y,m-1,d); return `${AG_DIAS[dt.getDay()]} ${d} de ${AG_MESES[m-1]}`; }
+function chipsBloques_(sel){ const s=new Set(sel||[]); let o=''; for(let h=6;h<=20;h++){const k=String(h).padStart(2,'0')+':00'; o+=`<span class="bchip ${s.has(k)?'on':''}" data-h="${k}">${iospHoraLabel_(h)}</span>`;} return o; }
+
+function renderCfgAgenda_(){
+  const a = CFG.data.agenda || { modo:'unificado', bloquesUnificados:[], dias:[] };
+  CFG.agenda = JSON.parse(JSON.stringify(a));
+  const cont = $('#cfg-agenda');
+  cont.innerHTML = `
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">⚙️ Modo de horarios</h3>
+      <div class="seg-toggle" id="agenda-modo">
+        <button type="button" class="seg ${a.modo==='unificado'?'on':''}" data-modo="unificado">Mismos horarios todos los días</button>
+        <button type="button" class="seg ${a.modo==='por_dia'?'on':''}" data-modo="por_dia">Horarios por día</button>
+      </div>
+      <div id="agenda-unif" class="${a.modo==='unificado'?'':'hidden'}">
+        <p class="cfg-card__sub" style="margin-top:14px">Bloques de 1 hora (se aplican a todos los días disponibles):</p>
+        <div class="bloques-chips" id="bloques-unif">${chipsBloques_(a.bloquesUnificados)}</div>
+      </div>
+    </div>
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">📅 Días disponibles</h3>
+      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías. Cada bloque admite un solo estudiante.</p>
+      <button type="button" class="btn btn-accent" id="agenda-add">+ Agregar día</button>
+      <div class="agenda-dias" id="agenda-dias"></div>
+    </div>
+    <div class="cfg-actions"><button class="btn btn-primary" id="agenda-save">Guardar disponibilidad</button></div>`;
+  renderDiasAgenda_();
+
+  // Toggle de bloques (delegado)
+  cont.addEventListener('click', (e)=>{
+    const chip = e.target.closest('.bchip'); if (chip){ chip.classList.toggle('on'); }
+  });
+  // Modo
+  $('#agenda-modo').addEventListener('click', (e)=>{
+    const b = e.target.closest('.seg'); if (!b) return;
+    sincronizarAgenda_();
+    CFG.agenda.modo = b.dataset.modo;
+    $$('#agenda-modo .seg').forEach(s=> s.classList.toggle('on', s===b));
+    $('#agenda-unif').classList.toggle('hidden', CFG.agenda.modo!=='unificado');
+    renderDiasAgenda_();
+  });
+  // Agregar día
+  $('#agenda-add').addEventListener('click', ()=>{
+    abrirRuedaFecha_('', (iso)=>{
+      sincronizarAgenda_();
+      if (!CFG.agenda.dias.some(d=>d.fecha===iso)) CFG.agenda.dias.push({fecha:iso, bloques:[]});
+      renderDiasAgenda_();
+    }, { soloFecha:true });
+  });
+  // Quitar día (delegado)
+  $('#agenda-dias').addEventListener('click', (e)=>{
+    const del = e.target.closest('[data-del]'); if (!del) return;
+    sincronizarAgenda_();
+    CFG.agenda.dias = CFG.agenda.dias.filter(d=>d.fecha!==del.dataset.del);
+    renderDiasAgenda_();
+  });
+  // Guardar
+  $('#agenda-save').addEventListener('click', async ()=>{
+    sincronizarAgenda_();
+    if (!CFG.agenda.dias.length) return Swal.fire({icon:'warning', title:'Agrega al menos un día'});
+    try{
+      CFG.data.agenda = await apiPost('saveAgenda', { usuarioId: currentUser.id, agenda: CFG.agenda });
+      Swal.fire({icon:'success', title:'Disponibilidad guardada', timer:1000, showConfirmButton:false});
+    }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+  });
+}
+
+function renderDiasAgenda_(){
+  const a = CFG.agenda; const porDia = a.modo==='por_dia';
+  $('#agenda-dias').innerHTML = (a.dias||[]).slice().sort((x,y)=>x.fecha.localeCompare(y.fecha)).map(d=>`
+    <div class="agenda-dia" data-fecha="${d.fecha}">
+      <div class="agenda-dia__head"><b>${labelFechaISO_(d.fecha)}</b><button type="button" class="mini-btn danger" data-del="${d.fecha}">Quitar</button></div>
+      ${porDia?`<div class="bloques-chips" style="margin-top:10px">${chipsBloques_(d.bloques)}</div>`:''}
+    </div>`).join('') || '<p class="cfg-hint">Aún no agregas días.</p>';
+}
+
+/* Lee el DOM y actualiza CFG.agenda (para no perder selección al re-renderizar) */
+function sincronizarAgenda_(){
+  const a = CFG.agenda;
+  const seg = $('#agenda-modo .seg.on'); if (seg) a.modo = seg.dataset.modo;
+  const unif = $('#bloques-unif');
+  if (unif) a.bloquesUnificados = [...unif.querySelectorAll('.bchip.on')].map(c=>c.dataset.h);
+  $$('#agenda-dias .agenda-dia').forEach(card=>{
+    const dia = a.dias.find(d=>d.fecha===card.dataset.fecha); if (!dia) return;
+    const chips = card.querySelectorAll('.bchip.on');
+    if (chips.length || a.modo==='por_dia') dia.bloques = [...chips].map(c=>c.dataset.h);
   });
 }
