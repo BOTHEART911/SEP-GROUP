@@ -273,7 +273,7 @@ const TILES = [
     roles:['DESARROLLADOR','SUPERUSUARIO'], listo:false },
   { key:'config', titulo:'Configuración', desc:'Ajustes del sistema',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1778860851/base_de_datos_cty8xc.webp',
-    roles:['DESARROLLADOR','SUPERUSUARIO'], listo:false },
+    roles:['DESARROLLADOR','SUPERUSUARIO'], listo:true },
   { key:'bot', titulo:'Mi Bot', desc:'WhatsApp y plantillas',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1776016986/chat_sueco4.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO'], listo:false }
@@ -303,6 +303,7 @@ function irAInicio_(u){
         return;
       }
       if (t.key === 'comercial'){ abrirComercial_(); }
+      else if (t.key === 'config'){ abrirConfig_(); }
     });
     grid.appendChild(tile);
   });
@@ -572,4 +573,265 @@ async function guardarComercial_(){
     await recargarComercial_();
     Swal.fire({icon:'success', title: COM.editId?'Actualizado':'Registrado', timer:1100, showConfirmButton:false});
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo guardar', text:String(e.message||e)}); }
+}
+
+/* ============================================================
+ * MÓDULO CONFIGURACIÓN (Parte 3.1)
+ * ============================================================ */
+let CFG = { data:null };
+
+async function abrirConfig_(){
+  showView('config');
+  try{
+    CFG.data = await apiGet('getConfigFull', { usuarioId: currentUser.id });
+    $('#cfg-tab-avanzado').style.display = CFG.data.esDev ? '' : 'none';
+    renderCfgGeneral_(); renderCfgProgramas_(); renderCfgPromos_(); renderCfgPlantillas_(); renderCfgAvanzado_();
+    activarCfgTab_('general');
+  }catch(e){ Swal.fire({icon:'error', title:'No se pudo cargar', text:String(e.message||e)}); }
+}
+
+/* Tabs */
+$$('.cfg-tab').forEach(t => t.addEventListener('click', ()=> activarCfgTab_(t.dataset.cfgtab)));
+function activarCfgTab_(name){
+  $$('.cfg-tab').forEach(t => t.classList.toggle('active', t.dataset.cfgtab === name));
+  ['general','programas','promos','plantillas','avanzado'].forEach(p =>
+    $('#cfg-'+p).classList.toggle('hidden', p !== name));
+}
+
+function field_(id, label, val, type, hint){
+  return `<div class="cfg-field ${type==='full'?'full':''}">
+    <label>${label}</label>
+    <input id="${id}" type="${type==='full'?'text':type}" value="${esc_(val)}" />
+    ${hint?`<div class="cfg-hint">${hint}</div>`:''}</div>`;
+}
+
+/* ── GENERAL ── */
+function renderCfgGeneral_(){
+  const g = CFG.data.general;
+  $('#cfg-general').innerHTML = `
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">🏷️ Identidad</h3>
+      <div class="cfg-grid">
+        ${field_('cf-APP_NOMBRE','Nombre de la app', g.APP_NOMBRE, 'text')}
+        ${field_('cf-LOGO_URL','Logo (URL)', g.LOGO_URL, 'text')}
+        <div class="cfg-field"><label>Color primario</label><input id="cf-COLOR_PRIMARY" type="color" value="${esc_(g.COLOR_PRIMARY||'#263143')}"></div>
+        <div class="cfg-field"><label>Color acento</label><input id="cf-COLOR_ACCENT" type="color" value="${esc_(g.COLOR_ACCENT||'#d6da09')}"></div>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">✉️ Correo</h3>
+      <div class="cfg-grid">
+        ${field_('cf-EMAIL_REMITENTE','Correo remitente', g.EMAIL_REMITENTE, 'text')}
+        ${field_('cf-EMAIL_REMITENTE_NOMBRE','Nombre remitente', g.EMAIL_REMITENTE_NOMBRE, 'text')}
+        <div class="cfg-field full cfg-banner-field">
+          <label>🖼️ Banner de los correos (URL de imagen)</label>
+          <input id="cf-EMAIL_BANNER_URL" type="text" value="${esc_(g.EMAIL_BANNER_URL)}" placeholder="https://res.cloudinary.com/.../banner.png" />
+          <div class="cfg-hint">Aquí pegas la imagen del banner cuando la tengas. Encabezará todos los correos HTML automáticamente.</div>
+        </div>
+        ${field_('cf-EMAIL_FINANCIERO','Correo financiero (comprobantes)', g.EMAIL_FINANCIERO, 'full')}
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">📅 Agenda y reunión</h3>
+      <div class="cfg-grid">
+        ${field_('cf-LINK_AGENDA','Link de agenda (Perfil Apto)', g.LINK_AGENDA, 'full')}
+        ${field_('cf-LINK_MEET_RESPALDO','Link Meet de respaldo', g.LINK_MEET_RESPALDO, 'full', 'Se usa si la creación automática del evento de Calendar falla.')}
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">⏰ Acceso del rol COMERCIAL</h3>
+      <div class="cfg-grid">
+        <div class="cfg-field"><label>Desde</label><input id="cf-COMERCIAL_ACCESO_INICIO" type="time" value="${esc_(g.COMERCIAL_ACCESO_INICIO||'07:00')}"></div>
+        <div class="cfg-field"><label>Hasta</label><input id="cf-COMERCIAL_ACCESO_FIN" type="time" value="${esc_(g.COMERCIAL_ACCESO_FIN||'19:00')}"></div>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">🏦 Datos bancarios (mensaje de pago)</h3>
+      <div class="cfg-grid">
+        ${field_('cf-BANCO_NOMBRE','Banco', g.BANCO_NOMBRE, 'text')}
+        ${field_('cf-BANCO_CUENTA','Cuenta', g.BANCO_CUENTA, 'text')}
+        ${field_('cf-BANCO_TITULAR','Titular', g.BANCO_TITULAR, 'text')}
+        ${field_('cf-BANCO_NIT','NIT', g.BANCO_NIT, 'text')}
+      </div>
+    </div>
+
+    <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-general">Guardar cambios</button></div>`;
+
+  $('#cf-save-general').addEventListener('click', async ()=>{
+    const claves = ['APP_NOMBRE','LOGO_URL','COLOR_PRIMARY','COLOR_ACCENT','EMAIL_REMITENTE','EMAIL_REMITENTE_NOMBRE',
+      'EMAIL_BANNER_URL','EMAIL_FINANCIERO','LINK_AGENDA','LINK_MEET_RESPALDO','COMERCIAL_ACCESO_INICIO','COMERCIAL_ACCESO_FIN',
+      'BANCO_NOMBRE','BANCO_CUENTA','BANCO_TITULAR','BANCO_NIT'];
+    const cambios = {}; claves.forEach(k => cambios[k] = $('#cf-'+k).value);
+    await guardarConfig_(cambios);
+  });
+}
+
+async function guardarConfig_(cambios){
+  try{
+    await apiPost('saveConfig', { usuarioId: currentUser.id, cambios });
+    Object.assign(CFG.data.general, cambios);
+    Swal.fire({icon:'success', title:'Guardado', timer:900, showConfirmButton:false});
+  }catch(e){ Swal.fire({icon:'error', title:'No se pudo guardar', text:String(e.message||e)}); }
+}
+
+/* ── PROGRAMAS ── */
+function fmtCOP_(n){ return '$ ' + (Number(n)||0).toLocaleString('es-CO'); }
+function renderCfgProgramas_(){
+  const cont = $('#cfg-programas');
+  cont.innerHTML = CFG.data.programas.map((p,i)=>`
+    <div class="cfg-card" id="prog-card-${i}">
+      <div class="prog-row"><img src="${esc_(p.iconoUrl)}"><b>${esc_(p.nombre)}</b></div>
+      <div class="cfg-grid">
+        <div class="cfg-field"><label>Precio (COP)</label><input id="pr-precio-${i}" type="text" inputmode="numeric" value="${p.precio||''}"></div>
+        <div class="cfg-field"><label>Brochure (PDF)</label>
+          <div class="brochure-line">
+            ${p.brochureUrl?`<a class="file-btn" href="${esc_(p.brochureUrl)}" target="_blank">👁️ Ver actual</a>`:'<span class="cfg-hint">Sin brochure</span>'}
+            <label class="file-btn">${p.brochureUrl?'♻️ Reemplazar':'⬆️ Subir PDF'}<input type="file" accept="application/pdf" style="display:none" id="pr-file-${i}"></label>
+            <span class="brochure-ok" id="pr-ok-${i}"></span>
+          </div>
+        </div>
+        <div class="cfg-field full"><label>Condiciones</label><textarea id="pr-cond-${i}" rows="3">${esc_(p.condiciones)}</textarea></div>
+      </div>
+      <div class="cfg-actions"><button class="btn btn-primary" id="pr-save-${i}">Guardar</button></div>
+    </div>`).join('');
+
+  CFG.data.programas.forEach((p,i)=>{
+    $('#pr-precio-'+i).addEventListener('input', e=>{ e.target.value = onlyDigits(e.target.value); });
+    $('#pr-save-'+i).addEventListener('click', async ()=>{
+      try{
+        const res = await apiPost('savePrograma', { usuarioId: currentUser.id, id:p.id,
+          precio: onlyDigits($('#pr-precio-'+i).value), condiciones: $('#pr-cond-'+i).value });
+        CFG.data.programas = res;
+        Swal.fire({icon:'success', title:'Programa guardado', timer:900, showConfirmButton:false});
+      }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+    });
+    $('#pr-file-'+i).addEventListener('change', async (ev)=>{
+      const file = ev.target.files[0]; if (!file) return;
+      if (file.type !== 'application/pdf'){ Swal.fire({icon:'warning', title:'Debe ser PDF'}); return; }
+      try{
+        $('#pr-ok-'+i).textContent = 'Subiendo…';
+        const base64 = await fileBase64_(file);
+        const res = await apiPost('uploadBrochure', { usuarioId: currentUser.id, id:p.id, filename:file.name, base64 });
+        p.brochureUrl = res.url;
+        $('#pr-ok-'+i).textContent = '✓ Subido';
+        renderCfgProgramas_();
+        Swal.fire({icon:'success', title:'Brochure actualizado', timer:1000, showConfirmButton:false});
+      }catch(e){ $('#pr-ok-'+i).textContent=''; Swal.fire({icon:'error', title:'No se pudo subir', text:String(e.message||e)}); }
+    });
+  });
+}
+function fileBase64_(file){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=> res(String(r.result).split(',')[1]);
+    r.onerror = ()=> rej(new Error('No se pudo leer el archivo'));
+    r.readAsDataURL(file);
+  });
+}
+
+/* ── PROMOS ── */
+function renderCfgPromos_(){
+  const cont = $('#cfg-promos');
+  const progName = id => (CFG.data.programas.find(p=>p.id===id)||{}).nombre || id;
+  const opts = CFG.data.programas.map(p=>`<option value="${p.id}">${esc_(p.nombre)}</option>`).join('');
+  cont.innerHTML = `
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">➕ Agregar promo</h3>
+      <div class="cfg-grid">
+        <div class="cfg-field"><label>Programa</label><select id="np-prog">${opts}</select></div>
+        <div class="cfg-field"><label>Nombre promo</label><input id="np-nom" type="text" placeholder="Verano / Referido / Exparticipante"></div>
+        <div class="cfg-field"><label>Descuento (%)</label><input id="np-pct" type="number" min="0" max="100" value="10"></div>
+      </div>
+      <div class="cfg-actions"><button class="btn btn-accent" id="np-add">Agregar</button></div>
+    </div>
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">🏷️ Promos actuales</h3>
+      <div id="promos-list">${
+        CFG.data.promos.length ? CFG.data.promos.map(pr=>`
+          <div class="promo-item">
+            <div><b>${esc_(pr.nombre)}</b><div class="promo-prog">${esc_(progName(pr.programaId))}</div></div>
+            <span class="pct">${pr.descuento}%</span>
+            <button class="mini-btn danger" data-del="${pr.id}">Eliminar</button>
+          </div>`).join('') : '<p class="cfg-hint">Aún no hay promos.</p>'
+      }</div>
+    </div>`;
+
+  $('#np-add').addEventListener('click', async ()=>{
+    const body = { usuarioId: currentUser.id, programaId:$('#np-prog').value, nombre:$('#np-nom').value, descuento:$('#np-pct').value };
+    if (!body.nombre.trim()) return Swal.fire({icon:'warning', title:'Nombre requerido'});
+    try{ CFG.data.promos = await apiPost('savePromo', body); renderCfgPromos_(); Swal.fire({icon:'success', title:'Promo agregada', timer:900, showConfirmButton:false}); }
+    catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+  });
+  $$('#promos-list [data-del]').forEach(b => b.addEventListener('click', async ()=>{
+    const ok = await Swal.fire({icon:'warning', title:'Eliminar promo', showCancelButton:true, confirmButtonText:'Eliminar', confirmButtonColor:'#dc2626'});
+    if (!ok.isConfirmed) return;
+    try{ CFG.data.promos = await apiPost('deletePromo', { usuarioId: currentUser.id, id:b.dataset.del }); renderCfgPromos_(); }
+    catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+  }));
+}
+
+/* ── PLANTILLAS ── */
+const PLT_VARS = ['{nombre}','{apellidos}','{programa}','{promo}','{descuento}','{valor}','{link_agenda}','{link_meet}','{fecha_asesoria}','{asesor}','{clave_acceso}'];
+function renderCfgPlantillas_(){
+  const cont = $('#cfg-plantillas');
+  cont.innerHTML = CFG.data.plantillas.map((p,i)=>{
+    const conAsunto = p.canal === 'EMAIL' || p.canal === 'AMBOS';
+    return `<div class="cfg-card plt-card" id="plt-${i}">
+      <h3 class="cfg-card__title">${esc_(p.descripcion||p.clave)} <span class="plt-canal">${esc_(p.canal)}</span></h3>
+      ${conAsunto?`<div class="cfg-field"><label>Asunto (correo)</label><input id="plt-asunto-${i}" type="text" value="${esc_(p.asunto)}"></div>`:''}
+      <div class="var-chips">${PLT_VARS.map(v=>`<span class="var-chip" data-var="${v}" data-target="plt-cuerpo-${i}">${v}</span>`).join('')}</div>
+      <textarea id="plt-cuerpo-${i}">${esc_(p.cuerpo)}</textarea>
+      <div class="cfg-actions"><button class="btn btn-primary" id="plt-save-${i}">Guardar plantilla</button></div>
+    </div>`;
+  }).join('');
+
+  $$('#cfg-plantillas .var-chip').forEach(chip => chip.addEventListener('click', ()=>{
+    const ta = $('#'+chip.dataset.target); const v = chip.dataset.var;
+    const s = ta.selectionStart||ta.value.length;
+    ta.value = ta.value.slice(0,s) + v + ta.value.slice(ta.selectionEnd||s);
+    ta.focus();
+  }));
+  CFG.data.plantillas.forEach((p,i)=>{
+    $('#plt-save-'+i).addEventListener('click', async ()=>{
+      try{
+        const body = { usuarioId: currentUser.id, clave:p.clave, cuerpo:$('#plt-cuerpo-'+i).value };
+        const aEl = $('#plt-asunto-'+i); if (aEl) body.asunto = aEl.value;
+        CFG.data.plantillas = await apiPost('savePlantilla', body);
+        Swal.fire({icon:'success', title:'Plantilla guardada', timer:900, showConfirmButton:false});
+      }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+    });
+  });
+}
+
+/* ── AVANZADO (solo DESARROLLADOR) ── */
+function renderCfgAvanzado_(){
+  const cont = $('#cfg-avanzado');
+  if (!CFG.data.esDev || !CFG.data.avanzado){ cont.innerHTML = '<p class="cfg-hint">Sección exclusiva del DESARROLLADOR.</p>'; return; }
+  const a = CFG.data.avanzado;
+  cont.innerHTML = `
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">🔐 BuilderBot / API (solo DESARROLLADOR)</h3>
+      <p class="cfg-card__sub">Estas claves no son visibles para otros roles.</p>
+      <div class="cfg-grid">
+        ${field_('cf-BB_API_URL','BB_API_URL', a.BB_API_URL, 'full')}
+        ${field_('cf-BB_API_KEY','BB_API_KEY', a.BB_API_KEY, 'full')}
+        ${field_('cf-BB_ENDPOINT_BASE','BB_ENDPOINT_BASE', a.BB_ENDPOINT_BASE, 'full')}
+        ${field_('cf-BB_BOT_ID','BB_BOT_ID', a.BB_BOT_ID, 'text')}
+        ${field_('cf-BB_PROJECT_ID','BB_PROJECT_ID', a.BB_PROJECT_ID, 'text')}
+        ${field_('cf-BB_MANAGER_API','BB_MANAGER_API', a.BB_MANAGER_API, 'full')}
+      </div>
+      <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-avanzado">Guardar</button></div>
+    </div>`;
+  $('#cf-save-avanzado').addEventListener('click', async ()=>{
+    const keys = ['BB_API_URL','BB_API_KEY','BB_ENDPOINT_BASE','BB_BOT_ID','BB_PROJECT_ID','BB_MANAGER_API'];
+    const cambios = {}; keys.forEach(k => cambios[k] = $('#cf-'+k).value);
+    try{ await apiPost('saveConfig', { usuarioId: currentUser.id, cambios });
+      Object.assign(CFG.data.avanzado, cambios);
+      Swal.fire({icon:'success', title:'Guardado', timer:900, showConfirmButton:false});
+    }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+  });
 }
