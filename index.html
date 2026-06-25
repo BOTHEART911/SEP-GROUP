@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>SEP GROUP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <link rel="icon" href="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png">
+  <link rel="apple-touch-icon" href="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#263143"/>
+
+  <!-- Librerías (mismas que RAMIREZ GROUP / sec-hacienda) -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Loader iOS -->
+  <div id="loader" class="loader hidden" aria-live="polite" aria-busy="true">
+    <div class="spinner-ios" role="status" aria-label="Cargando">
+      <i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- ===================== VISTA INSTALAR ===================== -->
+    <section id="view-instalar" class="view">
+      <div class="card narrow center-card">
+        <img class="logo-sep" alt="SEP GROUP"
+             src="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png" />
+        <h2 class="title-accent">SEP GROUP</h2>
+        <p class="strong">Plataforma de gestión exclusiva para personal autorizado de SEP Colombia.</p>
+        <p class="muted"><b>Si NO ves el botón Instalar,</b> inicia sesión de Google en tu navegador.</p>
+        <div class="btn-row center">
+          <button id="btn-instalar" class="btn-primary" style="display:none;">Instalar la App</button>
+        </div>
+        <p class="muted"><b>Si ya instalaste la App,</b> refresca la página o búscala en tu escritorio / pantalla de inicio.</p>
+      </div>
+    </section>
+
+    <!-- ===================== VISTA LOGIN ===================== -->
+    <section id="view-login" class="view active">
+      <div class="card narrow">
+        <img class="logo-sep" alt="SEP GROUP"
+             src="https://res.cloudinary.com/dqqeavica/image/upload/v1782222934/sep_logo_bs28tc.png" />
+        <h1 class="title-accent center">SEP GROUP</h1>
+        <p class="helper center"><b>Acceso exclusivo para el equipo autorizado de SEP Colombia.</b></p>
+
+        <div class="login-tabs">
+          <button type="button" class="login-tab" data-tab="doc">Documento</button>
+          <button type="button" class="login-tab active" data-tab="pin">PIN rápido</button>
+        </div>
+
+        <!-- TAB DOCUMENTO -->
+        <div id="tab-doc" class="hidden">
+          <label>Documento</label>
+          <div class="input-wrap">
+            <input id="login-doc" type="password" inputmode="numeric" autocomplete="off" placeholder="Sin puntos ni espacios" />
+            <button type="button" id="toggle-doc" aria-label="Mostrar documento" class="eye-btn">
+              <img id="toggle-doc-img" alt="Mostrar"
+                   src="https://res.cloudinary.com/dqqeavica/image/upload/v1764084782/Mostrar_yymceh.png" />
+            </button>
+          </div>
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn-primary" id="btn-login">Iniciar Sesión</button>
+          </div>
+        </div>
+
+        <!-- TAB PIN RÁPIDO -->
+        <div id="tab-pin">
+          <div class="pin-pad">
+            <div class="pin-dot" data-pos="0"></div>
+            <div class="pin-dot" data-pos="1"></div>
+            <div class="pin-dot" data-pos="2"></div>
+            <div class="pin-dot" data-pos="3"></div>
+          </div>
+          <div class="pin-keypad">
+            <button type="button" class="pin-key" data-key="1">1</button>
+            <button type="button" class="pin-key" data-key="2">2</button>
+            <button type="button" class="pin-key" data-key="3">3</button>
+            <button type="button" class="pin-key" data-key="4">4</button>
+            <button type="button" class="pin-key" data-key="5">5</button>
+            <button type="button" class="pin-key" data-key="6">6</button>
+            <button type="button" class="pin-key" data-key="7">7</button>
+            <button type="button" class="pin-key" data-key="8">8</button>
+            <button type="button" class="pin-key" data-key="9">9</button>
+            <button type="button" class="pin-key action" data-key="clear">Borrar</button>
+            <button type="button" class="pin-key" data-key="0">0</button>
+            <button type="button" class="pin-key action" data-key="back">⌫</button>
+          </div>
+        </div>
+
+        <p class="center muted copyright">© <b>Oscar Polanía</b> · Experto en Soluciones Digitales</p>
+        <p id="app-version" class="center muted version-line"></p>
+      </div>
+    </section>
+
+    <!-- ===================== VISTA INICIO ===================== -->
+    <section id="view-inicio" class="view">
+      <div class="card narrow">
+
+        <div class="inicio-header">
+          <div class="user-chip">
+            <img id="inicio-foto" class="user-avatar" alt="Foto"
+                 src="https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp" />
+            <div>
+              <h2 id="inicio-nombre" class="user-name"></h2>
+              <span id="inicio-rol" class="role-badge"></span>
+            </div>
+          </div>
+          <button class="chip danger" id="btn-logout">Salir</button>
+        </div>
+
+        <!-- Botones de vistas -->
+        <div class="vistas-grid">
+          <button id="btn-comercial" class="btn-primary btn-icon-label">
+            <img src="https://res.cloudinary.com/dqqeavica/image/upload/v1776287585/target_rmpes0.webp" alt="Comercial" />
+            COMERCIAL
+          </button>
+          <!-- (En las próximas fases: CONFIGURACIÓN, MI BOT, PAGOS…) -->
+        </div>
+
+        <!-- Separador bajo los botones (solicitado) -->
+        <hr class="sep-divider" />
+
+        <!-- Zona inferior bajo el separador (la definimos en próximas fases) -->
+        <div id="inicio-bajo-separador" class="below-divider">
+          <p class="muted center" style="margin:0;">SEP Colombia Group SAS</p>
+        </div>
+
+        <p class="center muted copyright">© <b>Oscar Polanía</b> · Experto en Soluciones Digitales</p>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
