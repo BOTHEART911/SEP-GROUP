@@ -250,8 +250,14 @@
             <label>Estado</label><select id="f-estado"></select>
           </div>
 
-          <div class="fld fld-full" id="fld-fecha-asesoria" style="display:none;">
-            <label>Fecha de la asesoría</label><input id="f-fecha-asesoria" type="date" />
+          <div class="fld fld-full" id="fld-agenda" style="display:none;">
+            <label>Fecha y hora de la asesoría</label>
+            <button type="button" id="f-agenda-btn" class="agenda-pick">
+              <span id="f-agenda-text">Seleccionar fecha y hora</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </button>
+            <input id="f-fecha-hora-agendada" type="hidden" />
+            <div class="cfg-hint">Se crea el evento en Google Calendar con Meet y se notifica al estudiante y al asesor.</div>
           </div>
 
           <div class="fld"><label>Programa</label><select id="f-programa"></select></div>
@@ -282,16 +288,39 @@
         <button class="cfg-tab active" data-cfgtab="general">General</button>
         <button class="cfg-tab" data-cfgtab="programas">Programas</button>
         <button class="cfg-tab" data-cfgtab="promos">Promos</button>
+        <button class="cfg-tab" data-cfgtab="agenda">Agenda</button>
         <button class="cfg-tab" data-cfgtab="plantillas">Plantillas</button>
         <button class="cfg-tab" data-cfgtab="avanzado" id="cfg-tab-avanzado" style="display:none;">Avanzado</button>
       </div>
       <div id="cfg-general" class="cfg-panel"></div>
       <div id="cfg-programas" class="cfg-panel hidden"></div>
       <div id="cfg-promos" class="cfg-panel hidden"></div>
+      <div id="cfg-agenda" class="cfg-panel hidden"></div>
       <div id="cfg-plantillas" class="cfg-panel hidden"></div>
       <div id="cfg-avanzado" class="cfg-panel hidden"></div>
     </div>
   </section>
+
+
+
+  <!-- ============================================================
+       SELECTOR DE FECHA/HORA ESTILO iOS (ruedas, año fijo)
+       ============================================================ -->
+  <div id="ios-picker" class="iosp-overlay hidden">
+    <div class="iosp-card">
+      <div class="iosp-head">
+        <button type="button" id="iosp-cancel" class="iosp-btn">Cancelar</button>
+        <span id="iosp-year" class="iosp-year">2026</span>
+        <button type="button" id="iosp-ok" class="iosp-btn ok">Listo</button>
+      </div>
+      <div class="iosp-wheels">
+        <div class="iosp-highlight"></div>
+        <div class="iosp-col" id="iosp-dia"></div>
+        <div class="iosp-col" id="iosp-mes"></div>
+        <div class="iosp-col" id="iosp-hora"></div>
+      </div>
+    </div>
+  </div>
 
 
   <script src="version.js"></script>
