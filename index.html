@@ -1,4 +1,20 @@
 <!DOCTYPE html>
+<!--
+  ============================================================
+  SEP GROUP — ÍNDICE / SHELL DE LA PWA
+  SEP Colombia Group SAS
+  ------------------------------------------------------------
+  © Oscar Polanía — Experto en Soluciones Digitales
+  Contacto: +57 310 323 0712
+  ------------------------------------------------------------
+  Software propietario. Cualquier modificación de este archivo
+  por terceros anula automáticamente la garantía de
+  funcionamiento. Diseñado y desarrollado íntegramente por
+  Oscar Polanía.
+  ------------------------------------------------------------
+  FASE ACTUAL: Fase 8 — Dashboard
+  ============================================================
+-->
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -298,6 +314,76 @@
       <div id="cfg-agenda" class="cfg-panel hidden"></div>
       <div id="cfg-plantillas" class="cfg-panel hidden"></div>
       <div id="cfg-avanzado" class="cfg-panel hidden"></div>
+    </div>
+  </section>
+
+
+
+  <!-- ============================================================
+       VISTA DASHBOARD (Fase 8)
+       ============================================================ -->
+  <section id="view-dashboard" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Dashboard</h1>
+      <button class="app-header__icon" data-go="comercial" title="Ir a Comercial">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+    </header>
+
+    <div class="container dsh">
+      <div class="dsh-filters">
+        <div class="dsh-seg" id="dsh-seg-rango">
+          <button data-r="mes_actual" class="on">Este mes</button>
+          <button data-r="acumulado">Acumulado</button>
+        </div>
+        <select class="dsh-select" id="dsh-asesor"><option value="">Todo el equipo</option></select>
+        <button class="dsh-refresh" id="dsh-refresh" title="Actualizar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span>Actualizar</span>
+        </button>
+      </div>
+
+      <div class="dsh-sub" id="dsh-sub">—</div>
+
+      <!-- KPIs -->
+      <div class="dsh-kpis" id="dsh-kpis"></div>
+
+      <!-- Fila 1 -->
+      <div class="dsh-grid">
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Leads por programa</h3>
+          <div class="dsh-donut-wrap"><div class="dsh-donut-box"><canvas id="dsh-ch-prog"></canvas><div class="dsh-donut-center" id="dsh-ctr-prog"></div></div><div class="dsh-legend" id="dsh-lg-prog"></div></div></div>
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Rendimiento por asesor</h3><div id="dsh-rend"></div></div>
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Leads por fuente</h3>
+          <div class="dsh-donut-wrap"><div class="dsh-donut-box"><canvas id="dsh-ch-fuente"></canvas><div class="dsh-donut-center" id="dsh-ctr-fuente"></div></div><div class="dsh-legend" id="dsh-lg-fuente"></div></div></div>
+      </div>
+
+      <!-- Fila 2 -->
+      <div class="dsh-grid">
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Estado de los leads</h3><div class="dsh-hbars" id="dsh-estados"></div></div>
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Inscripciones por programa</h3><div class="dsh-canvas-box"><canvas id="dsh-ch-insc"></canvas></div></div>
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Ventas por programa</h3><div id="dsh-ventas"></div></div>
+      </div>
+
+      <!-- Fila 3 -->
+      <div class="dsh-grid">
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Alertas del día</h3><div class="dsh-alert-list" id="dsh-alertas"></div></div>
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Meta del mes</h3>
+          <div class="dsh-meta-top">
+            <div class="dsh-meta-cell"><b id="dsh-m-obj">0</b><span>Objetivo</span></div>
+            <div class="dsh-meta-cell"><b id="dsh-m-ins">0</b><span>Inscritas</span></div>
+            <div class="dsh-meta-cell pct"><b id="dsh-m-pct">0%</b><span>Cumplimiento</span></div>
+          </div>
+          <div class="dsh-meta-track"><div class="dsh-meta-fill" id="dsh-m-fill"></div></div>
+          <div class="dsh-meta-scale"><span>0%</span><span>50%</span><span>100%</span></div>
+        </div>
+        <div class="dsh-card"><h3 class="dsh-card__h"><span class="dsh-dot"></span>Inscripciones por mes (<span id="dsh-anio">—</span>)</h3><div class="dsh-canvas-box"><canvas id="dsh-ch-mes"></canvas></div></div>
+      </div>
+
+      <img class="brand-banner" alt="Copyright" src="https://res.cloudinary.com/dqqeavica/image/upload/v1780057086/copyright_vs5qrx.gif" />
+      <p class="app-version-line">—</p>
     </div>
   </section>
 
