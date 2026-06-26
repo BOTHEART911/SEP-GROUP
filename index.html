@@ -12,7 +12,9 @@
   funcionamiento. Diseñado y desarrollado íntegramente por
   Oscar Polanía.
   ------------------------------------------------------------
-  FASE ACTUAL: Fase 8 — Dashboard
+  FASE ACTUAL: Fase 9 — Usuarios
+    Vista view-usuarios (lista del equipo + modal CRUD + foto en
+    Drive). Tile 'usuarios' activo para DESARROLLADOR/SUPERUSUARIO.
   ============================================================
 -->
 <html lang="es">
@@ -388,6 +390,82 @@
   </section>
 
 
+
+  <!-- ============================================================
+       VISTA USUARIOS (Fase 9) — CRUD del equipo
+       ============================================================ -->
+  <section id="view-usuarios" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Usuarios</h1>
+    </header>
+
+    <div class="container">
+      <div class="com-toolbar">
+        <div class="search-bar">
+          <svg class="search-bar__ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="usr-search" type="search" placeholder="Buscar por nombre, documento o correo…" autocomplete="off" />
+        </div>
+        <button id="usr-add" class="btn btn-accent">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuevo
+        </button>
+      </div>
+
+      <div id="usr-cards" class="usr-cards"></div>
+      <div id="usr-empty" class="usr-empty hidden">
+        <p style="font-weight:700;color:var(--text-soft);">Sin usuarios para mostrar</p>
+        <p class="muted">Pulsa <b>Nuevo</b> para registrar un integrante del equipo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       MODAL USUARIO (Fase 9) — crear / editar
+       ============================================================ -->
+  <div id="modal-usuario" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="usr-modal-title">Nuevo usuario</h2>
+        <button id="usr-modal-close" class="modal-x" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <input id="u-id" type="hidden" />
+
+        <div class="usr-foto-block">
+          <img id="u-foto-prev" class="usr-foto-prev" src="" alt="Foto" />
+          <div class="usr-foto-actions">
+            <button type="button" id="u-foto-btn" class="btn btn-ghost btn-sm">Subir foto</button>
+            <input id="u-foto-file" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+            <span id="u-foto-ok" class="cfg-hint"></span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="fld fld-full"><label>Nombre completo *</label><input id="u-nombre" type="text" placeholder="Ej: María Fernanda López" /></div>
+
+          <div class="fld"><label>Documento *</label><input id="u-documento" type="text" inputmode="numeric" placeholder="Solo números" /></div>
+          <div class="fld"><label>Teléfono</label><input id="u-telefono" type="tel" inputmode="numeric" placeholder="3001234567" /></div>
+
+          <div class="fld fld-full"><label>Correo *</label><input id="u-email" type="email" placeholder="correo@sepcolombiagroup.com" /></div>
+
+          <div class="fld"><label>Rol *</label><select id="u-rol"></select></div>
+          <div class="fld"><label>PIN rápido * (4 dígitos)</label><input id="u-pin" type="text" inputmode="numeric" maxlength="4" placeholder="0000" /></div>
+
+          <div class="fld"><label>Estado</label>
+            <select id="u-activo"><option value="TRUE">Activo</option><option value="FALSE">Inactivo</option></select>
+          </div>
+        </div>
+        <div id="usr-dev-note" class="cfg-hint hidden" style="color:var(--rol-dev);font-weight:700;">El DESARROLLADOR no es editable.</div>
+      </div>
+      <div class="modal-foot">
+        <button id="usr-cancel" class="btn btn-ghost">Cancelar</button>
+        <button id="usr-save" class="btn btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============================================================
        SELECTOR DE FECHA/HORA ESTILO iOS (ruedas, año fijo)
