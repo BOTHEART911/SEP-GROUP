@@ -2,7 +2,10 @@
  * SEP GROUP — APP FRONTEND (PWA)
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
  * Software propietario. Modificarlo anula la garantía de funcionamiento.
- * FASE ACTUAL: Fase 5 — Ajustes (texto de Configuración→Agenda: cupos compartidos)
+ * FASE ACTUAL: Fase 7 — Chat interno por lead (Firebase RTDB en tiempo real)
+ *   Hilo de colaboración del equipo por cada lead (NO participa el
+ *   estudiante). Custom token "staff" + suscripción a /chats/{id}/mensajes.
+ *   SEP-AGENDA queda intacta. Ver sección "CHAT INTERNO POR LEAD".
  * ============================================================ */
 
 /* ================== CONFIGURACIÓN ================== */
@@ -422,9 +425,7 @@ function bindCard_(r){
   const card = $('#card-'+r.id); if (!card) return;
   card.querySelector('[data-act="ver"]')?.addEventListener('click', ()=> verComercial_(r.id));
   card.querySelector('[data-act="editar"]')?.addEventListener('click', ()=> abrirModalComercial_(r));
-  card.querySelector('[data-act="chat"]')?.addEventListener('click', ()=> {
-    Swal.fire({icon:'info', title:'Chat', text:'El chat por lead llega en la próxima parte (Firebase en tiempo real).'});
-  });
+  card.querySelector('[data-act="chat"]')?.addEventListener('click', ()=> abrirChat_(r));
   card.querySelector('[data-act="eliminar"]')?.addEventListener('click', ()=> eliminarComercial_(r));
 }
 
@@ -482,7 +483,7 @@ async function verComercial_(id){
         ${traza?`<div class="traza-box"><h4>📜 Trazabilidad</h4><ul class="traza-list">${traza}</ul></div>`:''}
       </div>`;
     $('#det-editar')?.addEventListener('click', ()=> abrirModalComercial_(r));
-    $('#det-chat')?.addEventListener('click', ()=> Swal.fire({icon:'info', title:'Chat', text:'El chat por lead llega en la próxima parte (Firebase en tiempo real).'}));
+    $('#det-chat')?.addEventListener('click', ()=> abrirChat_(r));
     $('#det-eliminar')?.addEventListener('click', ()=> eliminarComercial_(r).then(()=> showView('comercial')));
     showView('comercial-detalle');
   }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
@@ -500,6 +501,183 @@ async function eliminarComercial_(r){
     Swal.fire({icon:'success', title:'Eliminado', timer:1000, showConfirmButton:false});
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo eliminar', text:String(e.message||e)}); }
 }
+
+/* ============================================================
+ *  CHAT INTERNO POR LEAD (Fase 7 — Firebase RTDB en tiempo real)
+ * ------------------------------------------------------------
+ *  Hilo de colaboración del equipo por cada lead. El backend es la
+ *  fuente de verdad (hoja CHAT) y publica el espejo en RTDB. El
+ *  cliente LEE en tiempo real con un custom token "staff" y ENVÍA
+ *  vía endpoint (enviarMensajeChat). El estudiante NO participa.
+ * ============================================================ */
+const CHAT = {
+  app:null, authed:false, token:null, exp:0,
+  ref:null, leadId:null, leadNombre:'', yoUid:null, realtime:false
+};
+
+/* Inicializa Firebase y autentica con custom token (renueva si expira). */
+async function chatInit_(){
+  const now = Math.floor(Date.now()/1000);
+  if (CHAT.authed && CHAT.token && (CHAT.exp - now) > 300 && CHAT.realtime) return;
+
+  const t = await apiPost('tokenChat', { usuarioId: currentUser?.id });
+  CHAT.token = t.token; CHAT.exp = t.exp; CHAT.yoUid = t.uid;
+
+  if (typeof firebase === 'undefined') throw new Error('SDK de Firebase no disponible');
+  if (!t.firebase || !t.firebase.apiKey) throw new Error('Falta FIREBASE_API_KEY en Configuración del backend');
+
+  if (!CHAT.app){
+    CHAT.app = firebase.initializeApp({
+      apiKey:      t.firebase.apiKey,
+      authDomain:  t.firebase.authDomain,
+      databaseURL: t.firebase.databaseURL,
+      projectId:   t.firebase.projectId
+    });
+  }
+  await firebase.auth().signInWithCustomToken(t.token);
+  CHAT.authed = true; CHAT.realtime = true;
+}
+
+/* Abre el chat para un lead (recibe el objeto del lead o su id). */
+async function abrirChat_(lead){
+  if (!currentUser){ Swal.fire({icon:'warning', title:'Inicia sesión'}); return; }
+  const leadId = typeof lead === 'string' ? lead : lead.id;
+  const nombre = typeof lead === 'string' ? leadId
+               : ((lead.nombres||'')+' '+(lead.apellidos||'')).trim();
+  CHAT.leadId = leadId; CHAT.leadNombre = nombre || leadId;
+
+  $('#chat-lead-name').textContent = CHAT.leadNombre;
+  $('#chat-msgs').innerHTML = `<div class="chat-empty">Cargando conversación…</div>`;
+  chatStatus_('');
+  chatAbrirUI_();
+
+  try{
+    // 1) Semilla instantánea y confiable desde la hoja CHAT.
+    const hist = await apiPost('historialChat', { usuarioId: currentUser.id, leadId });
+    CHAT.yoUid = (hist.yo && hist.yo.uid) || CHAT.yoUid;
+    chatRender_(hist.mensajes || []);
+
+    // 2) Tiempo real por RTDB (sin polling). Si falla, seguimos con la semilla.
+    try{
+      await chatInit_();
+      chatSuscribir_(leadId);
+    }catch(rt){
+      CHAT.realtime = false;
+      chatStatus_('Sin tiempo real (se actualiza al enviar). ' + (rt && rt.message ? rt.message : ''));
+    }
+  }catch(e){
+    $('#chat-msgs').innerHTML = `<div class="chat-empty">No se pudo cargar el chat.</div>`;
+    chatStatus_(String(e && e.message || e));
+  }
+}
+
+/* Suscripción en vivo a /chats/{leadId}/mensajes. */
+function chatSuscribir_(leadId){
+  chatDesuscribir_();
+  try{
+    CHAT.ref = firebase.database().ref('/chats/'+leadId+'/mensajes');
+    CHAT.ref.on('value', (snap)=>{
+      const val = snap.val() || {};
+      const arr = Object.keys(val).map(k => val[k])
+        .sort((a,b)=> (a.ts||0)-(b.ts||0) || String(a.id||'').localeCompare(String(b.id||'')));
+      chatRender_(arr);
+      chatStatus_('');
+    }, (err)=> chatStatus_('Conexión en vivo interrumpida: ' + (err && err.message || err)));
+  }catch(e){ CHAT.realtime = false; }
+}
+function chatDesuscribir_(){
+  if (CHAT.ref){ try{ CHAT.ref.off(); }catch(_){} CHAT.ref = null; }
+}
+
+/* Pinta la lista de mensajes (burbujas; las propias a la derecha). */
+function chatRender_(msgs){
+  const box = $('#chat-msgs'); if (!box) return;
+  if (!msgs || !msgs.length){
+    box.innerHTML = `<div class="chat-empty">Aún no hay mensajes. ¡Inicia la conversación del equipo!</div>`;
+    return;
+  }
+  const rolClase = { DESARROLLADOR:'dev', SUPERUSUARIO:'super', CONTADOR:'conta', COMERCIAL:'com' };
+  box.innerHTML = msgs.map(m=>{
+    const mio = m.uid && CHAT.yoUid && m.uid === CHAT.yoUid;
+    const rc = rolClase[String(m.rol||'').toUpperCase()] || 'com';
+    const hora = chatHora_(m.ts);
+    return `<div class="chat-row ${mio?'mio':'otro'}">
+      <div class="chat-bubble">
+        ${mio?'':`<span class="chat-autor rol-${rc}">${esc_(m.autor||'—')}</span>`}
+        <span class="chat-texto">${chatTexto_(m.texto)}</span>
+        <span class="chat-hora">${esc_(hora)}</span>
+      </div>
+    </div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+/* Envía un mensaje (el backend persiste y publica; el listener repinta). */
+async function chatEnviar_(){
+  const inp = $('#chat-input'); if (!inp) return;
+  const txt = (inp.value||'').trim();
+  if (!txt || !CHAT.leadId) return;
+  inp.value=''; chatAutoGrow_();
+  try{
+    await apiPost('enviarMensajeChat', { usuarioId: currentUser.id, leadId: CHAT.leadId, texto: txt });
+    // Si no hay tiempo real, recargamos el historial para reflejar el envío.
+    if (!CHAT.realtime){
+      const hist = await apiPost('historialChat', { usuarioId: currentUser.id, leadId: CHAT.leadId });
+      chatRender_(hist.mensajes || []);
+    }
+  }catch(e){
+    inp.value = txt;
+    Swal.fire({icon:'error', title:'No se envió', text:String(e && e.message || e)});
+  }
+}
+
+/* ── UI helpers ── */
+function chatAbrirUI_(){
+  const ov = $('#sep-chat'); if (!ov) return;
+  ov.classList.remove('hidden'); ov.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+  setTimeout(()=> $('#chat-input')?.focus(), 50);
+}
+function chatCerrarUI_(){
+  const ov = $('#sep-chat'); if (!ov) return;
+  ov.classList.add('hidden'); ov.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+  chatDesuscribir_();
+  CHAT.leadId = null;
+}
+function chatStatus_(txt){
+  const el = $('#chat-status'); if (!el) return;
+  if (txt){ el.textContent = txt; el.classList.remove('hidden'); }
+  else { el.textContent=''; el.classList.add('hidden'); }
+}
+function chatHora_(ts){
+  const d = ts ? new Date(Number(ts)) : null;
+  if (!d || isNaN(d.getTime())) return '';
+  let h = d.getHours(); const m = String(d.getMinutes()).padStart(2,'0');
+  const ap = h>=12?'PM':'AM'; h = h%12; if (h===0) h=12;
+  return h+':'+m+' '+ap;
+}
+function chatTexto_(s){
+  // escapa y respeta saltos de línea y *negrita*
+  return esc_(s).replace(/\*(.+?)\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+}
+function chatAutoGrow_(){
+  const inp = $('#chat-input'); if (!inp) return;
+  inp.style.height='auto';
+  inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+}
+
+/* ── Eventos del overlay (se cablean una sola vez) ── */
+$('#chat-close')?.addEventListener('click', chatCerrarUI_);
+$('#sep-chat')?.addEventListener('click', (e)=>{ if (e.target.id==='sep-chat') chatCerrarUI_(); });
+$('#chat-send')?.addEventListener('click', chatEnviar_);
+$('#chat-input')?.addEventListener('input', chatAutoGrow_);
+$('#chat-input')?.addEventListener('keydown', (e)=>{
+  if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); chatEnviar_(); }
+});
+document.addEventListener('keydown', (e)=>{
+  if (e.key==='Escape' && !$('#sep-chat')?.classList.contains('hidden')) chatCerrarUI_();
+});
 
 /* ============================================================
  *  MODAL — Agregar / Editar
