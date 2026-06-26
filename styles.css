@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 10 — Mi Bot
+ * FASE ACTUAL: Fase 11 — Plantillas unificadas en Configuración
  * Sistema de diseño premium: tema claro, tarjetas blancas con
  * acento institucional, tiles con título + descripción, welcome
  * bar con degradado, micro-animaciones. Paleta SEP: azul #263143
@@ -397,12 +397,6 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .promo-prog { font-size: .74rem; color: var(--text-muted); }
 .mini-btn { padding: 6px 12px; border-radius: var(--r-md); font-weight: 700; font-size: .78rem; border: 1.5px solid var(--border); background: var(--bg-card); color: var(--text-soft); }
 .mini-btn.danger { border-color: var(--error); color: var(--error); background: var(--bg-card); }
-
-.plt-card .var-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-.var-chip { padding: 4px 10px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--primary); font-size: .72rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border); }
-.var-chip:hover { background: var(--accent); }
-.plt-card textarea { min-height: 130px; resize: vertical; font-size: .9rem; line-height: 1.5; }
-.plt-canal { font-size: .68rem; font-weight: 800; letter-spacing: .4px; padding: 2px 9px; border-radius: var(--r-pill); background: var(--accent); color: var(--primary); }
 
 /* ============================================================
    SELECTOR FECHA/HORA ESTILO iOS
@@ -797,23 +791,22 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .mt-sm { margin-top: 10px; }
 
 /* Variables clicables en el editor de plantillas */
-.bot-vars { display: flex; flex-wrap: wrap; gap: 6px; }
-.bot-var-chip { font-size: .76rem; font-weight: 700; color: var(--primary); background: var(--bg-soft); border: 1.5px solid var(--border-strong); border-radius: var(--r-pill); padding: 4px 10px; cursor: pointer; transition: all .14s; }
-.bot-var-chip:hover { background: var(--accent); border-color: var(--accent); color: var(--primary); }
+.plt-vars { display: flex; flex-wrap: wrap; gap: 6px; }
+.plt-var-chip { font-size: .76rem; font-weight: 700; color: var(--primary); background: var(--bg-soft); border: 1.5px solid var(--border-strong); border-radius: var(--r-pill); padding: 4px 10px; cursor: pointer; transition: all .14s; }
+.plt-var-chip:hover { background: var(--accent); border-color: var(--accent); color: var(--primary); }
 
-/* Tarjetas de plantilla */
-.bot-pl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
-.bot-pl-card { position: relative; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); padding: 14px 14px 12px; transition: box-shadow .15s, transform .15s; }
-.bot-pl-card:hover { box-shadow: var(--sh-md); transform: translateY(-2px); }
-.bot-pl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.bot-pl-clave { font-family: var(--font-display); font-weight: 600; color: var(--primary); font-size: .95rem; word-break: break-word; }
-.bot-pl-canal { font-size: .66rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: #fff; background: var(--rol-super); padding: 3px 8px; border-radius: var(--r-pill); white-space: nowrap; }
-.bot-pl-canal.email { background: var(--rol-contador); }
-.bot-pl-canal.ambos { background: var(--primary); }
-.bot-pl-desc { font-size: .8rem; color: var(--text-soft); min-height: 1.1em; }
-.bot-pl-body { font-size: .78rem; color: var(--text-soft); margin-top: 8px; max-height: 3.6em; overflow: hidden; white-space: pre-wrap; opacity: .85; border-top: 1px dashed var(--border); padding-top: 8px; }
-.bot-pl-actions { display: flex; gap: 8px; margin-top: 10px; }
-.bot-pl-sys { font-size: .64rem; font-weight: 800; text-transform: uppercase; color: var(--rol-comercial); border: 1.5px solid rgba(194,121,42,.4); border-radius: var(--r-pill); padding: 2px 8px; }
-.bot-pl-btn { flex: 1; padding: 8px; border-radius: var(--r-md); border: 1.5px solid var(--border-strong); background: var(--bg-card); color: var(--text-soft); font-weight: 700; font-size: .8rem; transition: all .14s; }
-.bot-pl-btn:hover { color: var(--primary); border-color: var(--primary); background: var(--bg-soft); }
-.bot-pl-btn.danger:hover { color: #fff; background: var(--error); border-color: var(--error); }
+/* Tarjetas de plantilla (Configuración › Plantillas) */
+.plt-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.plt-card { position: relative; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); padding: 14px 14px 12px; transition: box-shadow .15s, transform .15s; }
+.plt-card:hover { box-shadow: var(--sh-md); transform: translateY(-2px); }
+.plt-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.plt-clave { font-family: var(--font-display); font-weight: 600; color: var(--primary); font-size: .95rem; word-break: break-word; }
+.plt-canal { font-size: .66rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: #fff; background: var(--rol-super); padding: 3px 8px; border-radius: var(--r-pill); white-space: nowrap; }
+.plt-canal.email { background: var(--rol-contador); }
+.plt-canal.ambos { background: var(--primary); }
+.plt-desc { font-size: .8rem; color: var(--text-soft); min-height: 1.1em; }
+.plt-body { font-size: .78rem; color: var(--text-soft); margin-top: 8px; max-height: 3.6em; overflow: hidden; white-space: pre-wrap; opacity: .85; border-top: 1px dashed var(--border); padding-top: 8px; }
+.plt-actions { display: flex; gap: 8px; margin-top: 10px; }
+.plt-sys { font-size: .64rem; font-weight: 800; text-transform: uppercase; color: var(--rol-comercial); border: 1.5px solid rgba(194,121,42,.4); border-radius: var(--r-pill); padding: 2px 8px; }
+.plt-btn { flex: 1; padding: 8px; border-radius: var(--r-md); border: 1.5px solid var(--border-strong); background: var(--bg-card); color: var(--text-soft); font-weight: 700; font-size: .8rem; transition: all .14s; }
+.plt-btn:hover { color: var(--primary); border-color: var(--primary); background: var(--bg-soft); }
