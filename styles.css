@@ -483,7 +483,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
    CHAT INTERNO POR LEAD (Fase 7 — RTDB en tiempo real)
    ============================================================ */
 .chat-overlay{
-  position: fixed; inset: 0; z-index: 11500;
+  position: fixed; inset: 0; z-index: 12600; /* por encima del loader (12000): el spinner nunca tapa el chat */
   display: flex; align-items: flex-end; justify-content: center;
   background: var(--scrim); backdrop-filter: blur(4px);
   padding: 0;
@@ -531,27 +531,25 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
   margin: auto; max-width: 80%; text-align: center;
   color: var(--text-muted); font-size: 14px; line-height: 1.5;
 }
-.chat-row{ display: flex; }
-.chat-row.mio{ justify-content: flex-end; }
-.chat-row.otro{ justify-content: flex-start; }
+.chat-row{ display: flex; flex-direction: column; max-width: 84%; gap: 3px; }
+.chat-row.mio{ align-self: flex-end;   align-items: flex-end; }
+.chat-row.otro{ align-self: flex-start; align-items: flex-start; }
 .chat-bubble{
-  max-width: 78%;
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 8px 12px 5px;
+  padding: 9px 13px;
   border-radius: 16px;
   box-shadow: var(--sh-sm);
-  font-size: 14px; line-height: 1.4; word-break: break-word;
+  font-size: 14px; line-height: 1.45; word-break: break-word;
 }
 .chat-row.otro .chat-bubble{ background: var(--bg-card); color: var(--text-main); border-bottom-left-radius: 5px; }
 .chat-row.mio  .chat-bubble{ background: var(--primary); color: #fff; border-bottom-right-radius: 5px; }
-.chat-autor{ font-size: 11.5px; font-weight: 700; }
+.chat-autor{ font-size: 11.5px; font-weight: 700; padding: 0 4px; }
+.chat-row.mio .chat-autor{ text-align: right; }
 .chat-autor.rol-dev{ color: var(--rol-dev); }
 .chat-autor.rol-super{ color: var(--rol-super); }
 .chat-autor.rol-conta{ color: var(--rol-contador); }
 .chat-autor.rol-com{ color: var(--rol-comercial); }
 .chat-texto b{ font-weight: 700; }
-.chat-hora{ align-self: flex-end; font-size: 10.5px; opacity: .65; margin-top: 1px; }
-.chat-row.mio .chat-hora{ color: rgba(255,255,255,.85); }
+.chat-hora{ font-size: 10.5px; color: var(--text-muted); padding: 0 4px; }
 
 .chat-status{
   padding: 7px 16px; font-size: 12px; text-align: center;
