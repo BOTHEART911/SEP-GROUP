@@ -285,9 +285,6 @@ const TILES = [
   { key:'comercial', titulo:'Comercial', desc:'Leads, seguimiento y dashboard',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1782391218/comercial_vlu9py.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL'], listo:true, view:'comercial' },
-  { key:'dashboard', titulo:'Dashboard', desc:'Indicadores, metas y alertas',
-    icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1782391218/comercial_vlu9py.webp',
-    roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL'], listo:true, view:'dashboard' },
   { key:'usuarios', titulo:'Usuarios', desc:'Gestionar el equipo',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO'], listo:false },
@@ -323,7 +320,6 @@ function irAInicio_(u){
         return;
       }
       if (t.key === 'comercial'){ abrirComercial_(); }
-      else if (t.key === 'dashboard'){ abrirDashboard_(); }
       else if (t.key === 'config'){ abrirConfig_(); }
     });
     grid.appendChild(tile);
