@@ -11,12 +11,13 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 8 — Dashboard
- *   Vista view-dashboard alimentada por el endpoint 'dashboard'
- *   (apiDashboard_) en un solo viaje. KPIs con count-up, donas,
- *   barras y línea con Chart.js, tablas, alertas, meta con glow y
- *   filtros (mes/acumulado + asesor) con refresco silencioso.
- *   Fase 7: chat interno por lead (polling). SEP-AGENDA intacta.
+ * FASE ACTUAL: Fase 9 — Usuarios
+ *   Vista view-usuarios: lista del equipo + modal CRUD (crear/
+ *   editar/eliminar) con foto subida a Drive. Tile 'usuarios'
+ *   activo para DESARROLLADOR/SUPERUSUARIO. Endpoints:
+ *   listUsuarios · saveUsuario · eliminarUsuario · uploadFotoUsuario.
+ *   Protección dura del rol DESARROLLADOR (no editable/eliminable).
+ *   Fase 8: dashboard. Fase 7: chat interno por lead. SEP-AGENDA intacta.
  * ============================================================
  */
 
@@ -287,7 +288,7 @@ const TILES = [
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL'], listo:true, view:'comercial' },
   { key:'usuarios', titulo:'Usuarios', desc:'Gestionar el equipo',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp',
-    roles:['DESARROLLADOR','SUPERUSUARIO'], listo:false },
+    roles:['DESARROLLADOR','SUPERUSUARIO'], listo:true, view:'usuarios' },
   { key:'config', titulo:'Configuración', desc:'Ajustes del sistema',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1778860851/base_de_datos_cty8xc.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO'], listo:true },
@@ -321,6 +322,7 @@ function irAInicio_(u){
       }
       if (t.key === 'comercial'){ abrirComercial_(); }
       else if (t.key === 'config'){ abrirConfig_(); }
+      else if (t.key === 'usuarios'){ abrirUsuarios_(); }
     });
     grid.appendChild(tile);
   });
@@ -1420,5 +1422,214 @@ function sincronizarAgenda_(){
     const dia = a.dias.find(d=>d.fecha===card.dataset.fecha); if (!dia) return;
     const chips = card.querySelectorAll('.bchip.on');
     if (chips.length || a.modo==='por_dia') dia.bloques = [...chips].map(c=>c.dataset.h);
+  });
+}
+
+/* ============================================================
+ * MÓDULO USUARIOS (Fase 9) — CRUD del equipo
+ * ============================================================
+ * Lista del equipo + modal crear/editar/eliminar con foto en
+ * Drive. Solo SUPERUSUARIO/DESARROLLADOR. El DESARROLLADOR no es
+ * editable ni eliminable (también reforzado en backend). El rol
+ * DESARROLLADOR solo puede asignarlo otro DESARROLLADOR.
+ * ============================================================ */
+const USR_FOTO_FALLBACK = 'https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp';
+const USR_ROL_COLOR = {
+  DESARROLLADOR: 'var(--rol-dev)',
+  SUPERUSUARIO:  'var(--rol-super)',
+  CONTADOR:      'var(--rol-contador)',
+  COMERCIAL:     'var(--rol-comercial)'
+};
+const USR_ROL_CORTO = { DESARROLLADOR:'DEV', SUPERUSUARIO:'SUPER', CONTADOR:'CONTADOR', COMERCIAL:'COMERCIAL' };
+
+let USR = { all: [], filtro: '', pendingFoto: '', _wired: false };
+
+async function abrirUsuarios_(){
+  const rol = String(currentUser?.rol || '').toUpperCase();
+  if (rol !== 'DESARROLLADOR' && rol !== 'SUPERUSUARIO'){
+    Swal.fire({ icon:'warning', title:'Sin permiso', text:'Solo SUPERUSUARIO o DESARROLLADOR pueden gestionar usuarios.' });
+    return;
+  }
+  usrWire_();
+  showView('usuarios');
+  await usrLoad_();
+}
+
+async function usrLoad_(silent){
+  try{
+    USR.all = await apiGet('listUsuarios', { usuarioId: currentUser.id }, { silent: !!silent });
+  }catch(e){
+    Swal.fire({ icon:'error', title:'No se pudo cargar', text:String(e.message||e) });
+    USR.all = [];
+  }
+  usrRenderList_();
+}
+
+function usrFiltrados_(){
+  const q = USR.filtro.trim().toLowerCase();
+  if (!q) return USR.all;
+  return USR.all.filter(u =>
+    String(u.nombre).toLowerCase().includes(q) ||
+    String(u.documento).toLowerCase().includes(q) ||
+    String(u.email).toLowerCase().includes(q)
+  );
+}
+
+function usrRenderList_(){
+  const cont = $('#usr-cards');
+  const empty = $('#usr-empty');
+  const list = usrFiltrados_();
+  if (!list.length){ cont.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  cont.innerHTML = list.map(u => {
+    const color = USR_ROL_COLOR[u.rol] || 'var(--text-soft)';
+    const foto  = esc_(u.fotoUrl || USR_FOTO_FALLBACK);
+    const meta  = [u.documento, u.email].filter(Boolean).map(esc_).join(' · ');
+    const acciones = u.esDev
+      ? `<span class="usr-lock" title="Protegido"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
+      : `<button class="usr-iconbtn" data-edit="${esc_(u.id)}" title="Editar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+         <button class="usr-iconbtn danger" data-del="${esc_(u.id)}" title="Eliminar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
+    return `
+      <div class="usr-card ${u.activo ? '' : 'is-inactive'}" style="--rolc:${color};">
+        <img class="usr-avatar" src="${foto}" alt="${esc_(u.nombre)}" loading="lazy" onerror="this.src='${USR_FOTO_FALLBACK}'" />
+        <div class="usr-info">
+          <div class="usr-name">${esc_(u.nombre)}</div>
+          <div class="usr-meta">${meta || '—'}</div>
+          <div class="usr-chips">
+            <span class="usr-chip-rol" style="background:${color};">${esc_(USR_ROL_CORTO[u.rol] || u.rol)}</span>
+            <span class="usr-chip-estado ${u.activo ? 'on' : ''}">${u.activo ? 'Activo' : 'Inactivo'}</span>
+          </div>
+        </div>
+        <div class="usr-actions">${acciones}</div>
+      </div>`;
+  }).join('');
+}
+
+function usrOpcionesRol_(){
+  const soyDev = String(currentUser?.rol || '').toUpperCase() === 'DESARROLLADOR';
+  const base = ['SUPERUSUARIO','CONTADOR','COMERCIAL'];
+  if (soyDev) base.unshift('DESARROLLADOR');
+  return base.map(r => `<option value="${r}">${esc_(r)}</option>`).join('');
+}
+
+function usrAbrirModal_(u){
+  USR.pendingFoto = '';
+  const esEdicion = !!u;
+  $('#usr-modal-title').textContent = esEdicion ? 'Editar usuario' : 'Nuevo usuario';
+  $('#u-rol').innerHTML = usrOpcionesRol_();
+
+  $('#u-id').value        = esEdicion ? u.id : '';
+  $('#u-nombre').value    = esEdicion ? (u.nombre || '') : '';
+  $('#u-documento').value = esEdicion ? (u.documento || '') : '';
+  $('#u-telefono').value  = esEdicion ? (u.telefono || '') : '';
+  $('#u-email').value     = esEdicion ? (u.email || '') : '';
+  $('#u-pin').value       = esEdicion ? (u.pin && /^\d{4}$/.test(u.pin) ? u.pin : '') : '';
+  $('#u-rol').value       = esEdicion ? (u.rol || 'COMERCIAL') : 'COMERCIAL';
+  $('#u-activo').value    = esEdicion ? (u.activo ? 'TRUE' : 'FALSE') : 'TRUE';
+  $('#u-foto-prev').src   = esEdicion ? (u.fotoUrl || USR_FOTO_FALLBACK) : USR_FOTO_FALLBACK;
+  $('#u-foto-ok').textContent = '';
+  $('#u-foto-file').value = '';
+
+  $('#modal-usuario').classList.remove('hidden');
+}
+function usrCerrarModal_(){ $('#modal-usuario').classList.add('hidden'); }
+
+async function usrGuardar_(){
+  const id   = $('#u-id').value.trim();
+  const pin  = $('#u-pin').value.trim();
+  const doc  = onlyDigits($('#u-documento').value);
+  const body = {
+    usuarioId: currentUser.id,
+    id:        id || undefined,
+    nombre:    $('#u-nombre').value.trim(),
+    documento: doc,
+    telefono:  onlyDigits($('#u-telefono').value),
+    email:     $('#u-email').value.trim(),
+    pin:       pin,
+    rol:       $('#u-rol').value,
+    activo:    $('#u-activo').value
+  };
+  if (USR.pendingFoto) body.fotoUrl = USR.pendingFoto;
+
+  // Validación rápida en cliente (el servidor es la verdad)
+  if (!body.nombre){ Swal.fire({icon:'warning', title:'Falta el nombre'}); return; }
+  if (!doc){ Swal.fire({icon:'warning', title:'Falta el documento'}); return; }
+  if (!/^\d{4}$/.test(pin)){ Swal.fire({icon:'warning', title:'PIN inválido', text:'Deben ser 4 dígitos.'}); return; }
+
+  try{
+    await apiPost('saveUsuario', body);
+    usrCerrarModal_();
+    await usrLoad_(true);
+    Swal.fire({ icon:'success', title: id ? 'Usuario actualizado' : 'Usuario creado', timer:1000, showConfirmButton:false });
+  }catch(e){
+    Swal.fire({ icon:'error', title:'No se pudo guardar', text:String(e.message||e) });
+  }
+}
+
+async function usrEliminar_(u){
+  const r = await Swal.fire({
+    icon:'warning', title:'¿Eliminar usuario?',
+    html:`Se eliminará <b>${esc_(u.nombre)}</b> de forma permanente.`,
+    showCancelButton:true, confirmButtonText:'Eliminar', cancelButtonText:'Cancelar',
+    confirmButtonColor:'#dc3545'
+  });
+  if (!r.isConfirmed) return;
+  try{
+    await apiPost('eliminarUsuario', { usuarioId: currentUser.id, id: u.id });
+    await usrLoad_(true);
+    Swal.fire({ icon:'success', title:'Usuario eliminado', timer:1000, showConfirmButton:false });
+  }catch(e){
+    Swal.fire({ icon:'error', title:'No se pudo eliminar', text:String(e.message||e) });
+  }
+}
+
+async function usrSubirFoto_(file){
+  if (!file) return;
+  if (!/^image\/(png|jpe?g|webp)$/.test(file.type)){
+    Swal.fire({ icon:'warning', title:'Formato no válido', text:'Usa PNG, JPG o WEBP.' });
+    return;
+  }
+  try{
+    $('#u-foto-ok').textContent = 'Subiendo…';
+    const base64 = await fileBase64_(file);
+    const editId = $('#u-id').value.trim();
+    // En edición pasamos id (reemplaza y limpia la anterior en Drive).
+    // En alta no hay id: solo subimos y adjuntamos la URL al guardar.
+    const payload = { usuarioId: currentUser.id, filename: file.name, base64 };
+    if (editId) payload.id = editId;
+    const res = await apiPost('uploadFotoUsuario', payload);
+    USR.pendingFoto = res.url;
+    $('#u-foto-prev').src = res.url;
+    $('#u-foto-ok').textContent = '✓ Lista';
+  }catch(e){
+    $('#u-foto-ok').textContent = '';
+    Swal.fire({ icon:'error', title:'No se pudo subir', text:String(e.message||e) });
+  }
+}
+
+function usrWire_(){
+  if (USR._wired) return;
+  USR._wired = true;
+
+  $('#usr-search')?.addEventListener('input', (e)=>{ USR.filtro = e.target.value || ''; usrRenderList_(); });
+  $('#usr-add')?.addEventListener('click', ()=> usrAbrirModal_(null));
+
+  $('#usr-modal-close')?.addEventListener('click', usrCerrarModal_);
+  $('#usr-cancel')?.addEventListener('click', usrCerrarModal_);
+  $('#usr-save')?.addEventListener('click', usrGuardar_);
+  $('#modal-usuario')?.addEventListener('click', (e)=>{ if (e.target.id === 'modal-usuario') usrCerrarModal_(); });
+
+  $('#u-foto-btn')?.addEventListener('click', ()=> $('#u-foto-file').click());
+  $('#u-foto-file')?.addEventListener('change', (e)=> usrSubirFoto_(e.target.files[0]));
+  $('#u-pin')?.addEventListener('input', (e)=>{ e.target.value = onlyDigits(e.target.value).slice(0,4); });
+  $('#u-documento')?.addEventListener('input', (e)=>{ e.target.value = onlyDigits(e.target.value); });
+
+  // Delegación para editar / eliminar en las tarjetas
+  $('#usr-cards')?.addEventListener('click', (e)=>{
+    const ed = e.target.closest('[data-edit]');
+    const dl = e.target.closest('[data-del]');
+    if (ed){ const u = USR.all.find(x => String(x.id) === ed.getAttribute('data-edit')); if (u) usrAbrirModal_(u); }
+    else if (dl){ const u = USR.all.find(x => String(x.id) === dl.getAttribute('data-del')); if (u) usrEliminar_(u); }
   });
 }
