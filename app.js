@@ -11,13 +11,13 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 11 — Plantillas unificadas en Configuración
- *   Configuración › Plantillas es la ÚNICA gestión: lista dinámica de
- *   tarjetas + modal de EDICIÓN (canal WhatsApp/Correo, asunto solo
- *   correo, chips de variables, preview), SIN crear ni eliminar (eso es
- *   del código). Mi Bot (view-bot) queda SOLO con Conexión (estado, QR,
- *   reiniciar, silenciar, eliminar sesión, bloquear/limpiar contacto).
- *   Sin difusión masiva. Tile 'bot' activo para DEV/SUPERUSUARIO.
+ * FASE ACTUAL: Fase 12 — Monitoreo del bot + Alertas por correo
+ *   Configuración › General gana la sección "Alertas del bot": correos
+ *   destinatarios (1 obligatorio + 2 opcionales, con validación), URL de
+ *   la app para el enlace del correo y silencio nocturno opcional. El
+ *   chequeo horario y el envío viven en el backend (Bot.gs).
+ *   Fase 11: plantillas unificadas en Configuración (lista dinámica +
+ *   modal de EDICIÓN; Mi Bot quedó solo con Conexión).
  *   Fase 9: usuarios. Fase 8: dashboard. Fase 7: chat. SEP-AGENDA intacta.
  * ============================================================
  */
@@ -1076,6 +1076,26 @@ function renderCfgGeneral_(){
       </div>
     </div>
 
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">🔔 Alertas del bot (WhatsApp)</h3>
+      <p class="cfg-card__sub">Si el bot se desconecta, el sistema lo verifica cada hora y avisa por correo (y manda otro correo cuando vuelve a conectarse). Indica a qué correos llega la alerta.</p>
+      <div class="cfg-grid">
+        ${field_('cf-ALERTA_BOT_EMAIL_1','Correo 1 (obligatorio)', g.ALERTA_BOT_EMAIL_1, 'full')}
+        ${field_('cf-ALERTA_BOT_EMAIL_2','Correo 2 (opcional)', g.ALERTA_BOT_EMAIL_2, 'full')}
+        ${field_('cf-ALERTA_BOT_EMAIL_3','Correo 3 (opcional)', g.ALERTA_BOT_EMAIL_3, 'full')}
+        ${field_('cf-APP_URL','URL de la app (enlace del correo)', g.APP_URL, 'full', 'Dirección pública de la PWA. Si la dejas vacía, se usa la de GitHub Pages.')}
+      </div>
+      <div class="cfg-grid" style="margin-top:10px;">
+        <div class="cfg-field"><label>Silencio nocturno</label>
+          <select id="cf-ALERTA_BOT_SILENCIO_NOCTURNO"><option value="FALSE">Desactivado</option><option value="TRUE">Activado</option></select>
+        </div>
+        <div class="cfg-field"><label>Desde</label><input id="cf-ALERTA_BOT_SILENCIO_INICIO" type="time" value="${esc_(g.ALERTA_BOT_SILENCIO_INICIO||'22:00')}"></div>
+        <div class="cfg-field"><label>Hasta</label><input id="cf-ALERTA_BOT_SILENCIO_FIN" type="time" value="${esc_(g.ALERTA_BOT_SILENCIO_FIN||'06:00')}"></div>
+      </div>
+      <div class="cfg-hint">Durante el silencio nocturno no se envían correos (la caída igual se registra y se avisa al terminar la ventana).${g.ALERTA_BOT_ULTIMA_ALERTA?` Última alerta enviada: <b>${esc_(g.ALERTA_BOT_ULTIMA_ALERTA)}</b>.`:''}</div>
+      <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-alertas">Guardar alertas</button></div>
+    </div>
+
     <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-general">Guardar cambios</button></div>`;
 
   $('#cf-save-general').addEventListener('click', async ()=>{
@@ -1085,7 +1105,29 @@ function renderCfgGeneral_(){
     const cambios = {}; claves.forEach(k => cambios[k] = $('#cf-'+k).value);
     await guardarConfig_(cambios);
   });
+
+  // ── Alertas del bot (Fase 12) ──
+  $('#cf-ALERTA_BOT_SILENCIO_NOCTURNO').value = (String(g.ALERTA_BOT_SILENCIO_NOCTURNO||'').toUpperCase()==='TRUE') ? 'TRUE' : 'FALSE';
+  $('#cf-save-alertas').addEventListener('click', async ()=>{
+    const e1 = $('#cf-ALERTA_BOT_EMAIL_1').value.trim();
+    const e2 = $('#cf-ALERTA_BOT_EMAIL_2').value.trim();
+    const e3 = $('#cf-ALERTA_BOT_EMAIL_3').value.trim();
+    if (!e1){ Swal.fire({icon:'warning', title:'Falta el correo 1', text:'El primer correo es obligatorio.'}); return; }
+    for (const [val,lbl] of [[e1,'Correo 1'],[e2,'Correo 2'],[e3,'Correo 3']]){
+      if (val && !emailValido_(val)){ Swal.fire({icon:'warning', title:lbl+' inválido', text:'Revisa el formato del correo.'}); return; }
+    }
+    const cambios = {
+      ALERTA_BOT_EMAIL_1: e1, ALERTA_BOT_EMAIL_2: e2, ALERTA_BOT_EMAIL_3: e3,
+      APP_URL: $('#cf-APP_URL').value.trim(),
+      ALERTA_BOT_SILENCIO_NOCTURNO: $('#cf-ALERTA_BOT_SILENCIO_NOCTURNO').value,
+      ALERTA_BOT_SILENCIO_INICIO: $('#cf-ALERTA_BOT_SILENCIO_INICIO').value,
+      ALERTA_BOT_SILENCIO_FIN: $('#cf-ALERTA_BOT_SILENCIO_FIN').value
+    };
+    await guardarConfig_(cambios);
+  });
 }
+
+function emailValido_(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||'').trim()); }
 
 async function guardarConfig_(cambios){
   try{
