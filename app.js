@@ -11,12 +11,13 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 10 — Mi Bot
- *   Vista view-bot con dos pestañas: Conexión (control del bot de
- *   WhatsApp vía BuilderBot: estado, QR para vincular, reiniciar,
- *   silenciar, eliminar sesión, bloquear/limpiar contacto) y
- *   Plantillas (CRUD; las del sistema no se eliminan). Sin difusión
- *   masiva. Tile 'bot' activo para DEV/SUPERUSUARIO.
+ * FASE ACTUAL: Fase 11 — Plantillas unificadas en Configuración
+ *   Configuración › Plantillas es la ÚNICA gestión: lista dinámica de
+ *   tarjetas + modal de EDICIÓN (canal WhatsApp/Correo, asunto solo
+ *   correo, chips de variables, preview), SIN crear ni eliminar (eso es
+ *   del código). Mi Bot (view-bot) queda SOLO con Conexión (estado, QR,
+ *   reiniciar, silenciar, eliminar sesión, bloquear/limpiar contacto).
+ *   Sin difusión masiva. Tile 'bot' activo para DEV/SUPERUSUARIO.
  *   Fase 9: usuarios. Fase 8: dashboard. Fase 7: chat. SEP-AGENDA intacta.
  * ============================================================
  */
@@ -1190,37 +1191,107 @@ function renderCfgPromos_(){
   }));
 }
 
-/* ── PLANTILLAS ── */
-const PLT_VARS = ['{nombre}','{apellidos}','{programa}','{promo}','{descuento}','{valor}','{link_agenda}','{link_meet}','{fecha_asesoria}','{asesor}','{clave_acceso}'];
+/* ── PLANTILLAS (Fase 11) — ÚNICA gestión: lista dinámica + modal de EDICIÓN ──
+   Solo se EDITA contenido/canal de claves existentes. No hay "Nueva"
+   ni "Eliminar" (las plantillas nacen del código). Reutiliza el modal
+   #modal-plantilla. */
 function renderCfgPlantillas_(){
   const cont = $('#cfg-plantillas');
-  cont.innerHTML = CFG.data.plantillas.map((p,i)=>{
-    const conAsunto = p.canal === 'EMAIL' || p.canal === 'AMBOS';
-    return `<div class="cfg-card plt-card" id="plt-${i}">
-      <h3 class="cfg-card__title">${esc_(p.descripcion||p.clave)} <span class="plt-canal">${esc_(p.canal)}</span></h3>
-      ${conAsunto?`<div class="cfg-field"><label>Asunto (correo)</label><input id="plt-asunto-${i}" type="text" value="${esc_(p.asunto)}"></div>`:''}
-      <div class="var-chips">${PLT_VARS.map(v=>`<span class="var-chip" data-var="${v}" data-target="plt-cuerpo-${i}">${v}</span>`).join('')}</div>
-      <textarea id="plt-cuerpo-${i}">${esc_(p.cuerpo)}</textarea>
-      <div class="cfg-actions"><button class="btn btn-primary" id="plt-save-${i}">Guardar plantilla</button></div>
-    </div>`;
+  pltWire_();
+  const lista = CFG.data.plantillas || [];
+  const cards = lista.map(p => {
+    const canalCls = p.canal === 'EMAIL' ? 'email' : (p.canal === 'AMBOS' ? 'ambos' : '');
+    const canalTxt = p.canal === 'EMAIL' ? 'Correo' : (p.canal === 'AMBOS' ? 'WA+Correo' : 'WhatsApp');
+    const sysTag = p.sistema ? '<span class="plt-sys">Sistema</span>' : '';
+    return `
+      <div class="plt-card">
+        <div class="plt-head">
+          <span class="plt-clave">${esc_(p.clave)}</span>
+          <span class="plt-canal ${canalCls}">${canalTxt}</span>
+        </div>
+        <div class="plt-desc">${esc_(p.descripcion || '')} ${sysTag}</div>
+        <div class="plt-body">${esc_(p.cuerpo || '')}</div>
+        <div class="plt-actions">
+          <button class="plt-btn" data-pledit="${esc_(p.clave)}">Editar</button>
+        </div>
+      </div>`;
   }).join('');
 
-  $$('#cfg-plantillas .var-chip').forEach(chip => chip.addEventListener('click', ()=>{
-    const ta = $('#'+chip.dataset.target); const v = chip.dataset.var;
-    const s = ta.selectionStart||ta.value.length;
-    ta.value = ta.value.slice(0,s) + v + ta.value.slice(ta.selectionEnd||s);
-    ta.focus();
+  cont.innerHTML = `
+    <div class="cfg-card" style="margin-bottom:12px;">
+      <p class="muted" style="margin:0;">Plantillas de WhatsApp y correo. La lista es dinámica: las plantillas se crean desde el código (al cablear su flujo). Aquí editas su contenido y canal.</p>
+    </div>
+    <div class="plt-cards">${cards || '<p class="muted">Sin plantillas configuradas.</p>'}</div>`;
+
+  cont.querySelectorAll('[data-pledit]').forEach(b => b.addEventListener('click', ()=>{
+    const p = (CFG.data.plantillas || []).find(x => x.clave === b.getAttribute('data-pledit'));
+    if (p) pltAbrirModal_(p);
   }));
-  CFG.data.plantillas.forEach((p,i)=>{
-    $('#plt-save-'+i).addEventListener('click', async ()=>{
-      try{
-        const body = { usuarioId: currentUser.id, clave:p.clave, cuerpo:$('#plt-cuerpo-'+i).value };
-        const aEl = $('#plt-asunto-'+i); if (aEl) body.asunto = aEl.value;
-        CFG.data.plantillas = await apiPost('savePlantilla', body);
-        Swal.fire({icon:'success', title:'Plantilla guardada', timer:900, showConfirmButton:false});
-      }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+}
+
+/* Modal de edición (cableado una sola vez) */
+let _pltWired = false;
+function pltWire_(){
+  if (_pltWired) return; _pltWired = true;
+  $('#pl-modal-close')?.addEventListener('click', pltCerrarModal_);
+  $('#pl-cancel')?.addEventListener('click', pltCerrarModal_);
+  $('#pl-save')?.addEventListener('click', pltGuardar_);
+  $('#pl-canal')?.addEventListener('change', pltToggleAsunto_);
+  $('#modal-plantilla')?.addEventListener('click', (e)=>{ if (e.target.id === 'modal-plantilla') pltCerrarModal_(); });
+}
+
+function pltToggleAsunto_(){
+  const canal = $('#pl-canal').value;
+  const mostrar = (canal === 'EMAIL' || canal === 'AMBOS');
+  $('#pl-asunto-fld')?.classList.toggle('hidden', !mostrar);
+}
+
+function pltAbrirModal_(p){
+  $('#pl-modal-title').textContent = 'Editar plantilla';
+  $('#pl-clave').value = p.clave;
+  $('#pl-clave').disabled = true;                 // edición pura: la clave no cambia
+  $('#pl-canal').value = p.canal || 'AMBOS';
+  $('#pl-asunto').value = p.asunto || '';
+  $('#pl-cuerpo').value = p.cuerpo || '';
+  $('#pl-descripcion').value = p.descripcion || '';
+  $('#pl-sys-note').classList.toggle('hidden', !p.sistema);
+  pltToggleAsunto_();
+
+  const vars = CFG.data.plantillaVariables || [];
+  $('#pl-vars').innerHTML = vars.map(v => `<span class="plt-var-chip" data-var="${esc_(v)}">${esc_(v)}</span>`).join('');
+  $('#pl-vars').querySelectorAll('.plt-var-chip').forEach(ch => ch.addEventListener('click', ()=> pltInsertVar_(ch.getAttribute('data-var'))));
+
+  $('#modal-plantilla').classList.remove('hidden');
+}
+function pltCerrarModal_(){ $('#modal-plantilla').classList.add('hidden'); }
+
+function pltInsertVar_(token){
+  const ta = $('#pl-cuerpo');
+  const start = ta.selectionStart ?? ta.value.length;
+  const end = ta.selectionEnd ?? ta.value.length;
+  ta.value = ta.value.slice(0, start) + token + ta.value.slice(end);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = start + token.length;
+}
+
+async function pltGuardar_(){
+  const clave = $('#pl-clave').value.trim();
+  const canal = $('#pl-canal').value;
+  const asunto = $('#pl-asunto').value;
+  const cuerpo = $('#pl-cuerpo').value.trim();
+  const descripcion = $('#pl-descripcion').value;
+  if (!cuerpo){ Swal.fire({ icon:'warning', title:'Falta el mensaje' }); return; }
+  if ((canal === 'EMAIL' || canal === 'AMBOS') && !asunto.trim()){
+    Swal.fire({ icon:'warning', title:'Falta el asunto', text:'El asunto es obligatorio para correo.' }); return;
+  }
+  try{
+    CFG.data.plantillas = await apiPost('savePlantilla', {
+      usuarioId: currentUser.id, clave, canal, asunto, cuerpo, descripcion
     });
-  });
+    pltCerrarModal_();
+    renderCfgPlantillas_();
+    Swal.fire({ icon:'success', title:'Plantilla guardada', timer:1000, showConfirmButton:false });
+  }catch(e){ Swal.fire({ icon:'error', title:'No se pudo guardar', text:String(e.message||e) }); }
 }
 
 /* ── AVANZADO (solo DESARROLLADOR) ── */
@@ -1636,14 +1707,15 @@ function usrWire_(){
 }
 
 /* ============================================================
- * MÓDULO MI BOT (Fase 10) — Conexión + Plantillas
+ * MÓDULO MI BOT (Fase 11) — solo CONEXIÓN
  * ============================================================
  * Conexión: control del bot de WhatsApp (BuilderBot) — estado,
  * QR para vincular, reiniciar, silenciar, eliminar sesión y
  * acciones por contacto. La API key vive solo en el servidor.
- * Plantillas: CRUD; las del sistema no se eliminan. Sin difusión.
+ * Las plantillas se gestionan en Configuración › Plantillas (Fase 11).
+ * Sin difusión masiva.
  * ============================================================ */
-const MB = { silenciado:false, qrPoll:null, plantillas:[], variables:[], _wired:false, _plLoaded:false };
+const MB = { silenciado:false, qrPoll:null, _wired:false };
 
 async function abrirBot_(){
   const rol = String(currentUser?.rol || '').toUpperCase();
@@ -1653,31 +1725,14 @@ async function abrirBot_(){
   }
   botWire_();
   showView('bot');
-  botTab_('conexion');
+  botPollingStop_();
+  botRenderConexion_();
 }
 
 function botWire_(){
   if (MB._wired) return;
   MB._wired = true;
-  $$('#bot-tabs .cfg-tab').forEach(b => b.addEventListener('click', ()=> botTab_(b.dataset.bottab)));
-  $('#bot-refresh')?.addEventListener('click', ()=>{
-    if ($('#bot-conexion').classList.contains('hidden')){ botRenderPlantillas_(true); }
-    else { botEstado_(); }
-  });
-  // Modal plantilla
-  $('#pl-modal-close')?.addEventListener('click', plCerrarModal_);
-  $('#pl-cancel')?.addEventListener('click', plCerrarModal_);
-  $('#pl-save')?.addEventListener('click', plGuardar_);
-  $('#modal-plantilla')?.addEventListener('click', (e)=>{ if (e.target.id === 'modal-plantilla') plCerrarModal_(); });
-}
-
-function botTab_(name){
-  $$('#bot-tabs .cfg-tab').forEach(b => b.classList.toggle('active', b.dataset.bottab === name));
-  $('#bot-conexion').classList.toggle('hidden', name !== 'conexion');
-  $('#bot-plantillas').classList.toggle('hidden', name !== 'plantillas');
-  botPollingStop_();
-  if (name === 'conexion'){ botRenderConexion_(); }
-  else { botRenderPlantillas_(!MB._plLoaded); }
+  $('#bot-refresh')?.addEventListener('click', botEstado_);
 }
 
 /* ================== CONEXIÓN ================== */
@@ -1842,112 +1897,4 @@ async function botContacto_(action, titulo){
     if (r.ok) Swal.fire({ icon:'success', title:'Listo', timer:1000, showConfirmButton:false });
     else Swal.fire({ icon:'info', title:'Aviso', text:'No se confirmó la acción.' });
   }catch(e){ Swal.fire({ icon:'error', title:'Error', text:String(e.message||e) }); }
-}
-
-/* ================== PLANTILLAS ================== */
-async function botRenderPlantillas_(reload){
-  const cont = $('#bot-plantillas');
-  if (reload || !MB._plLoaded){
-    cont.innerHTML = '<p class="muted">Cargando plantillas…</p>';
-    try{
-      const r = await apiGet('listPlantillas', { usuarioId: currentUser.id }, { silent:true });
-      MB.plantillas = r.plantillas || [];
-      MB.variables = r.variables || [];
-      MB._plLoaded = true;
-    }catch(e){
-      cont.innerHTML = `<p class="muted">No se pudieron cargar: ${esc_(String(e.message||e))}</p>`;
-      return;
-    }
-  }
-  const cards = MB.plantillas.map(p => {
-    const canalCls = p.canal === 'EMAIL' ? 'email' : (p.canal === 'AMBOS' ? 'ambos' : '');
-    const canalTxt = p.canal === 'EMAIL' ? 'Correo' : (p.canal === 'AMBOS' ? 'WA+Correo' : 'WhatsApp');
-    const delBtn = p.sistema ? '' : `<button class="bot-pl-btn danger" data-pldel="${esc_(p.clave)}">Eliminar</button>`;
-    const sysTag = p.sistema ? '<span class="bot-pl-sys">Sistema</span>' : '';
-    return `
-      <div class="bot-pl-card">
-        <div class="bot-pl-head">
-          <span class="bot-pl-clave">${esc_(p.clave)}</span>
-          <span class="bot-pl-canal ${canalCls}">${canalTxt}</span>
-        </div>
-        <div class="bot-pl-desc">${esc_(p.descripcion || '')} ${sysTag}</div>
-        <div class="bot-pl-body">${esc_(p.cuerpo || '')}</div>
-        <div class="bot-pl-actions">
-          <button class="bot-pl-btn" data-pledit="${esc_(p.clave)}">Editar</button>
-          ${delBtn}
-        </div>
-      </div>`;
-  }).join('');
-
-  cont.innerHTML = `
-    <div class="com-toolbar">
-      <p class="muted" style="margin:0;flex:1;">Plantillas de WhatsApp y correo. Las del sistema alimentan los flujos automáticos.</p>
-      <button id="pl-add" class="btn btn-accent">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Nueva
-      </button>
-    </div>
-    <div class="bot-pl-cards">${cards || '<p class="muted">Sin plantillas.</p>'}</div>`;
-
-  $('#pl-add')?.addEventListener('click', ()=> plAbrirModal_(null));
-  cont.querySelectorAll('[data-pledit]').forEach(b => b.addEventListener('click', ()=>{
-    const p = MB.plantillas.find(x => x.clave === b.getAttribute('data-pledit')); if (p) plAbrirModal_(p);
-  }));
-  cont.querySelectorAll('[data-pldel]').forEach(b => b.addEventListener('click', ()=>{
-    const p = MB.plantillas.find(x => x.clave === b.getAttribute('data-pldel')); if (p) plEliminar_(p);
-  }));
-}
-
-function plAbrirModal_(p){
-  const esEdicion = !!p;
-  $('#pl-modal-title').textContent = esEdicion ? 'Editar plantilla' : 'Nueva plantilla';
-  $('#pl-clave').value = esEdicion ? p.clave : '';
-  $('#pl-clave').disabled = esEdicion;            // la clave no se renombra
-  $('#pl-canal').value = esEdicion ? (p.canal || 'AMBOS') : 'AMBOS';
-  $('#pl-asunto').value = esEdicion ? (p.asunto || '') : '';
-  $('#pl-cuerpo').value = esEdicion ? (p.cuerpo || '') : '';
-  $('#pl-descripcion').value = esEdicion ? (p.descripcion || '') : '';
-  $('#pl-sys-note').classList.toggle('hidden', !(esEdicion && p.sistema));
-
-  $('#pl-vars').innerHTML = (MB.variables || []).map(v => `<span class="bot-var-chip" data-var="${esc_(v)}">${esc_(v)}</span>`).join('');
-  $('#pl-vars').querySelectorAll('.bot-var-chip').forEach(ch => ch.addEventListener('click', ()=> plInsertVar_(ch.getAttribute('data-var'))));
-
-  $('#modal-plantilla').classList.remove('hidden');
-}
-function plCerrarModal_(){ $('#modal-plantilla').classList.add('hidden'); }
-
-function plInsertVar_(token){
-  const ta = $('#pl-cuerpo');
-  const start = ta.selectionStart ?? ta.value.length;
-  const end = ta.selectionEnd ?? ta.value.length;
-  ta.value = ta.value.slice(0, start) + token + ta.value.slice(end);
-  ta.focus();
-  ta.selectionStart = ta.selectionEnd = start + token.length;
-}
-
-async function plGuardar_(){
-  const clave = $('#pl-clave').value.trim();
-  const cuerpo = $('#pl-cuerpo').value.trim();
-  if (!clave){ Swal.fire({ icon:'warning', title:'Falta la clave' }); return; }
-  if (!cuerpo){ Swal.fire({ icon:'warning', title:'Falta el mensaje' }); return; }
-  try{
-    const r = await apiPost('guardarPlantilla', {
-      usuarioId: currentUser.id, clave,
-      canal: $('#pl-canal').value, asunto: $('#pl-asunto').value, cuerpo, descripcion: $('#pl-descripcion').value
-    });
-    MB.plantillas = r.plantillas || MB.plantillas;
-    plCerrarModal_();
-    botRenderPlantillas_(false);
-    Swal.fire({ icon:'success', title:'Plantilla guardada', timer:1000, showConfirmButton:false });
-  }catch(e){ Swal.fire({ icon:'error', title:'No se pudo guardar', text:String(e.message||e) }); }
-}
-
-async function plEliminar_(p){
-  if (!await botConfirm_('¿Eliminar plantilla?', `Se eliminará <b>${esc_(p.clave)}</b>.`, 'Eliminar')) return;
-  try{
-    const r = await apiPost('eliminarPlantilla', { usuarioId: currentUser.id, clave: p.clave });
-    MB.plantillas = r.plantillas || MB.plantillas;
-    botRenderPlantillas_(false);
-    Swal.fire({ icon:'success', title:'Plantilla eliminada', timer:1000, showConfirmButton:false });
-  }catch(e){ Swal.fire({ icon:'error', title:'No se pudo eliminar', text:String(e.message||e) }); }
 }
