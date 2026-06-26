@@ -2,7 +2,7 @@
  * SEP GROUP — APP FRONTEND (PWA)
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
  * Software propietario. Modificarlo anula la garantía de funcionamiento.
- * FASE 1 — Comercial (Parte 1: instalar · login · inicio)
+ * FASE ACTUAL: Fase 5 — Ajustes (texto de Configuración→Agenda: cupos compartidos)
  * ============================================================ */
 
 /* ================== CONFIGURACIÓN ================== */
@@ -963,7 +963,7 @@ function renderCfgAgenda_(){
     </div>
     <div class="cfg-card">
       <h3 class="cfg-card__title">📅 Días disponibles</h3>
-      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías. Cada bloque admite un solo estudiante.</p>
+      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías. Cada bloque admite varios estudiantes (cupos compartidos).</p>
       <button type="button" class="btn btn-accent" id="agenda-add">+ Agregar día</button>
       <div class="agenda-dias" id="agenda-dias"></div>
     </div>
