@@ -1,13 +1,24 @@
-/* ============================================================
+/**
+ * ============================================================
  * SEP GROUP — APP FRONTEND (PWA)
- * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
- * Software propietario. Modificarlo anula la garantía de funcionamiento.
- * FASE ACTUAL: Fase 7 — Chat interno por lead (sondeo / polling)
- *   Hilo de colaboración del equipo por cada lead (NO participa el
- *   estudiante). Lee con historialChat (refresco periódico) y envía
- *   con enviarMensajeChat. Sin Firebase en el cliente.
- *   SEP-AGENDA queda intacta. Ver sección "CHAT INTERNO POR LEAD".
- * ============================================================ */
+ * SEP Colombia Group SAS
+ * ------------------------------------------------------------
+ * © Oscar Polanía — Experto en Soluciones Digitales
+ * Contacto: +57 310 323 0712
+ * ------------------------------------------------------------
+ * Software propietario. Cualquier modificación de este archivo
+ * por terceros anula automáticamente la garantía de
+ * funcionamiento. Diseñado y desarrollado íntegramente por
+ * Oscar Polanía.
+ * ------------------------------------------------------------
+ * FASE ACTUAL: Fase 8 — Dashboard
+ *   Vista view-dashboard alimentada por el endpoint 'dashboard'
+ *   (apiDashboard_) en un solo viaje. KPIs con count-up, donas,
+ *   barras y línea con Chart.js, tablas, alertas, meta con glow y
+ *   filtros (mes/acumulado + asesor) con refresco silencioso.
+ *   Fase 7: chat interno por lead (polling). SEP-AGENDA intacta.
+ * ============================================================
+ */
 
 /* ================== CONFIGURACIÓN ================== */
 // 👇 Pega aquí la URL /exec de tu Apps Script desplegado (Setup → Implementar)
@@ -274,6 +285,9 @@ const TILES = [
   { key:'comercial', titulo:'Comercial', desc:'Leads, seguimiento y dashboard',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1782391218/comercial_vlu9py.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL'], listo:true, view:'comercial' },
+  { key:'dashboard', titulo:'Dashboard', desc:'Indicadores, metas y alertas',
+    icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1782391218/comercial_vlu9py.webp',
+    roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL'], listo:true, view:'dashboard' },
   { key:'usuarios', titulo:'Usuarios', desc:'Gestionar el equipo',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO'], listo:false },
@@ -309,6 +323,7 @@ function irAInicio_(u){
         return;
       }
       if (t.key === 'comercial'){ abrirComercial_(); }
+      else if (t.key === 'dashboard'){ abrirDashboard_(); }
       else if (t.key === 'config'){ abrirConfig_(); }
     });
     grid.appendChild(tile);
@@ -434,9 +449,7 @@ function bindCard_(r){
 
 /* ── Buscar ── */
 $('#com-search')?.addEventListener('input', (e)=>{ COM.filtroTexto = e.target.value; renderCards_(); });
-$('#com-dashboard-btn')?.addEventListener('click', ()=>{
-  Swal.fire({icon:'info', title:'Dashboard', text:'El dashboard dinámico llega en una próxima parte.'});
-});
+$('#com-dashboard-btn')?.addEventListener('click', ()=>{ abrirDashboard_(); });
 
 /* ── Detalle (Ver) ── */
 async function verComercial_(id){
@@ -503,6 +516,208 @@ async function eliminarComercial_(r){
     await recargarComercial_();
     Swal.fire({icon:'success', title:'Eliminado', timer:1000, showConfirmButton:false});
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo eliminar', text:String(e.message||e)}); }
+}
+
+/* ============================================================
+ * MÓDULO DASHBOARD (Fase 8)
+ * ------------------------------------------------------------
+ * Consume el endpoint 'dashboard' (apiDashboard_) en un solo
+ * viaje. Filtros: rango (mes_actual|acumulado) + asesor. Render
+ * con Chart.js (ya cargado en index.html), count-up y refresco
+ * silencioso. Toda la UI vive bajo #view-dashboard con prefijo dsh-.
+ * ============================================================ */
+const DASH = { rango:'mes_actual', asesor:'', data:null, charts:{}, asesoresCargados:false, bound:false };
+const DASH_PALETA = ['#263143','#d6da09','#7c3aed','#2563eb','#0891b2','#c2792a','#16a34a','#ef4444','#06b6d4','#f59e0b'];
+
+const DASH_KPI_DEF = [
+  { k:'leadsTotales',        label:'Leads totales',        hint:'Total acumulado',     ic:'👥', bg:'rgba(37,99,235,.14)',  glow:'rgba(37,99,235,.16)' },
+  { k:'asesoriasAgendadas',  label:'Asesorías agendadas',  hint:'Este mes',            ic:'📅', bg:'rgba(168,85,247,.14)', glow:'rgba(168,85,247,.16)' },
+  { k:'inscripciones',       label:'Inscripciones',        hint:'Total acumulado',     ic:'✅', bg:'rgba(22,163,74,.14)',  glow:'rgba(22,163,74,.16)' },
+  { k:'conversion',          label:'Conversión',           hint:'Inscripciones / Leads',ic:'📈', bg:'rgba(124,58,237,.14)', glow:'rgba(124,58,237,.16)', pct:true },
+  { k:'asesoriasRealizadas', label:'Asesorías realizadas', hint:'Este mes',            ic:'🎯', bg:'rgba(8,145,178,.14)',  glow:'rgba(8,145,178,.16)' },
+  { k:'ventasTotales',       label:'Ventas totales',       hint:'Total acumulado',     ic:'💰', bg:'rgba(214,218,9,.20)',  glow:'rgba(214,218,9,.20)', money:true }
+];
+
+function dashMoney_(v){ return '$ ' + Math.round(v).toLocaleString('es-CO'); }
+function dashCountUp_(el, to, opts){
+  opts = opts || {};
+  const dur = 900, t0 = performance.now(), reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if (reduce){ el.textContent = opts.money ? dashMoney_(to) : (Number.isInteger(to)? to.toLocaleString('es-CO') : (Math.round(to*100)/100).toFixed(2)) + (opts.suf||''); return; }
+  function step(t){
+    const p = Math.min(1, (t - t0)/dur), e = 1 - Math.pow(1-p, 3), v = to * e;
+    el.textContent = opts.money ? dashMoney_(v)
+      : (Number.isInteger(to) ? Math.round(v).toLocaleString('es-CO') : (Math.round(v*100)/100).toFixed(2) + (opts.suf||''));
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+async function abrirDashboard_(){
+  showView('dashboard');
+  dashBind_();
+  try { await dashLoad_(false); }
+  catch(e){ Swal.fire({icon:'error', title:'No se pudo cargar el dashboard', text:String(e.message||e)}); }
+}
+
+async function dashLoad_(silent){
+  const d = await apiGet('dashboard', { rango: DASH.rango, asesor: DASH.asesor }, { silent: !!silent });
+  DASH.data = d;
+  if (!DASH.asesoresCargados){
+    const sel = $('#dsh-asesor');
+    sel.innerHTML = '<option value="">Todo el equipo</option>' +
+      (d.asesores||[]).map(a => `<option value="${esc_(a)}">${esc_(a)}</option>`).join('');
+    sel.value = DASH.asesor;
+    DASH.asesoresCargados = true;
+  }
+  dashRenderAll_(d);
+}
+
+function dashBind_(){
+  if (DASH.bound) return;
+  DASH.bound = true;
+  $('#dsh-seg-rango')?.addEventListener('click', (e)=>{
+    const b = e.target.closest('button'); if (!b) return;
+    $$('#dsh-seg-rango button').forEach(x => x.classList.toggle('on', x === b));
+    DASH.rango = b.dataset.r;
+    dashLoad_(true);
+  });
+  $('#dsh-asesor')?.addEventListener('change', (e)=>{ DASH.asesor = e.target.value; dashLoad_(true); });
+  $('#dsh-refresh')?.addEventListener('click', ()=>{
+    const b = $('#dsh-refresh'); b.classList.add('spin'); setTimeout(()=> b.classList.remove('spin'), 650);
+    dashLoad_(true);
+  });
+}
+
+function dashRenderAll_(d){
+  const fecha = new Date().toLocaleDateString('es-CO', { day:'numeric', month:'long', year:'numeric' });
+  $('#dsh-sub').textContent = (d.rango === 'mes_actual' ? 'Este mes' : 'Acumulado') +
+    (d.asesor ? ' · ' + d.asesor : ' · Todo el equipo') + ' · ' + fecha;
+  dashRenderKPIs_(d);
+  dashDonut_('dsh-ch-prog','dsh-ctr-prog','dsh-lg-prog', d.leadsPorPrograma, 'Leads');
+  dashRenderRend_(d);
+  dashDonut_('dsh-ch-fuente','dsh-ctr-fuente','dsh-lg-fuente', d.leadsPorFuente, 'Leads');
+  dashRenderEstados_(d);
+  dashRenderInscPrograma_(d);
+  dashRenderVentas_(d);
+  dashRenderAlertas_(d);
+  dashRenderMeta_(d);
+  dashRenderMeses_(d);
+}
+
+function dashRenderKPIs_(d){
+  const cont = $('#dsh-kpis');
+  cont.innerHTML = DASH_KPI_DEF.map(def => `
+    <div class="dsh-kpi" style="--kbg:${def.bg};--kglow:${def.glow};">
+      <div class="dsh-kpi__ic">${def.ic}</div>
+      <div class="dsh-kpi__label">${def.label}</div>
+      <div class="dsh-kpi__value" data-k="${def.k}"></div>
+      <div class="dsh-kpi__hint">${def.hint}</div>
+    </div>`).join('');
+  DASH_KPI_DEF.forEach(def=>{
+    const el = cont.querySelector(`[data-k="${def.k}"]`);
+    dashCountUp_(el, Number(d.kpis[def.k]||0), { money: !!def.money, suf: def.pct ? '%' : '' });
+  });
+}
+
+function dashDestroy_(id){ if (DASH.charts[id]){ DASH.charts[id].destroy(); delete DASH.charts[id]; } }
+
+function dashDonut_(canvasId, centerId, legendId, items, centerLabel){
+  items = items || [];
+  dashDestroy_(canvasId);
+  const labels = items.map(i=>i.label), data = items.map(i=>i.valor);
+  const colors = items.map((_,i)=> DASH_PALETA[i % DASH_PALETA.length]);
+  DASH.charts[canvasId] = new Chart($('#'+canvasId), {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:2, borderColor:'#fff', hoverOffset:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c=>` ${c.label}: ${c.raw}` } } },
+      animation:{ animateRotate:true, duration:900 } }
+  });
+  const total = data.reduce((s,x)=>s+x, 0);
+  $('#'+centerId).innerHTML = `<b>${total.toLocaleString('es-CO')}</b><span>${centerLabel}</span>`;
+  $('#'+legendId).innerHTML = items.map((i,idx)=>`
+    <div class="dsh-legend__row"><span class="sw" style="background:${DASH_PALETA[idx % DASH_PALETA.length]}"></span>
+      <span class="nm">${esc_(i.label)}</span><span class="vl">${i.valor}</span><span class="pc">${i.pct}%</span></div>`).join('');
+}
+
+function dashRenderRend_(d){
+  const rows = (d.rendimiento||[]).map(b=>`<tr>
+    <td><span class="dsh-nm-dot"><i style="background:${b.asesor==='(Sin asesor)'?'#9ca3af':DASH_PALETA[2]}"></i>${esc_(b.asesor)}</span></td>
+    <td>${b.leads}</td><td>${b.asesorias}</td><td>${b.inscripciones}</td><td>${b.conversion}%</td></tr>`).join('');
+  const t = d.rendimientoTotal || { leads:0, asesorias:0, inscripciones:0, conversion:0 };
+  $('#dsh-rend').innerHTML = `<table><thead><tr><th>Asesor</th><th>Leads</th><th>Ases.</th><th>Insc.</th><th>Conv.</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5" style="color:var(--text-muted)">Sin datos</td></tr>'}</tbody>
+    <tfoot><tr><td>Total</td><td>${t.leads}</td><td>${t.asesorias}</td><td>${t.inscripciones}</td><td>${t.conversion}%</td></tr></tfoot></table>`;
+}
+
+function dashRenderEstados_(d){
+  const items = d.estadoLeads || [];
+  const max = Math.max(1, ...items.map(e=>e.valor));
+  $('#dsh-estados').innerHTML = items.length ? items.map(e=>`
+    <div class="dsh-hbar"><span class="lb" title="${esc_(e.label)}">${esc_(e.label)}</span>
+      <span class="tr"><span class="fl" style="background:${e.color}" data-w="${Math.round(e.valor/max*100)}"></span></span>
+      <span class="vn">${e.valor}</span></div>`).join('')
+    : '<p class="muted">Sin leads en este rango.</p>';
+  requestAnimationFrame(()=> $$('#dsh-estados .fl').forEach(f=> f.style.width = f.dataset.w + '%'));
+}
+
+function dashRenderInscPrograma_(d){
+  dashDestroy_('dsh-ch-insc');
+  const items = d.inscripcionesPorPrograma || [];
+  DASH.charts['dsh-ch-insc'] = new Chart($('#dsh-ch-insc'), {
+    type:'bar',
+    data:{ labels: items.map(x=>x.label),
+      datasets:[{ data: items.map(x=>x.valor), backgroundColor: items.map((_,i)=>DASH_PALETA[i % DASH_PALETA.length]), borderRadius:8, maxBarThickness:54 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+      scales:{ x:{ grid:{ display:false }, ticks:{ font:{ size:10 }, maxRotation:0, autoSkip:false,
+        callback:function(v){ const l = this.getLabelForValue(v); return l.length>12 ? l.slice(0,11)+'…' : l; } } },
+        y:{ beginAtZero:true, ticks:{ precision:0 } } }, animation:{ duration:900 } }
+  });
+}
+
+function dashRenderVentas_(d){
+  const items = d.ventasPorPrograma || [];
+  const t = d.ventasPorProgramaTotal || { inscritos:0, ventas:0 };
+  const rows = items.map(x=>`<tr><td>${esc_(x.programa)}</td><td style="text-align:center;font-weight:600">${x.inscritos}</td><td>${dashMoney_(x.ventas)}</td></tr>`).join('');
+  $('#dsh-ventas').innerHTML = `<table><thead><tr><th>Programa</th><th style="text-align:center">Inscritos</th><th>Ventas</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="3" style="color:var(--text-muted)">Sin inscripciones</td></tr>'}</tbody>
+    <tfoot><tr><td>Total</td><td style="text-align:center">${t.inscritos}</td><td>${dashMoney_(t.ventas)}</td></tr></tfoot></table>`;
+}
+
+function dashRenderAlertas_(d){
+  const a = d.alertas || { sinContacto3:0, sinContacto7:0, seguimientosVencidos:0 };
+  $('#dsh-alertas').innerHTML = `
+    <div class="dsh-alert lv-red"><span class="ai">⛔</span><span class="at">Leads sin contacto por más de <b>3 días</b></span><span class="av" data-v="${a.sinContacto3}">0</span></div>
+    <div class="dsh-alert lv-amb"><span class="ai">⚠️</span><span class="at">Leads sin contacto por más de <b>7 días</b></span><span class="av" data-v="${a.sinContacto7}">0</span></div>
+    <div class="dsh-alert lv-yel"><span class="ai">🔔</span><span class="at">Seguimientos vencidos</span><span class="av" data-v="${a.seguimientosVencidos}">0</span></div>`;
+  $$('#dsh-alertas .av').forEach(el=> dashCountUp_(el, +el.dataset.v));
+}
+
+function dashRenderMeta_(d){
+  const m = d.meta || { objetivo:0, inscripciones:0, cumplimiento:0 };
+  dashCountUp_($('#dsh-m-obj'), m.objetivo);
+  dashCountUp_($('#dsh-m-ins'), m.inscripciones);
+  dashCountUp_($('#dsh-m-pct'), m.cumplimiento, { suf:'%' });
+  const pct = Math.min(100, m.cumplimiento);
+  requestAnimationFrame(()=> $('#dsh-m-fill').style.width = pct + '%');
+}
+
+function dashRenderMeses_(d){
+  dashDestroy_('dsh-ch-mes');
+  const s = d.inscripcionesPorMes || { anio:'', labels:[], data:[] };
+  $('#dsh-anio').textContent = s.anio;
+  const ctx = $('#dsh-ch-mes').getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 185);
+  g.addColorStop(0, 'rgba(38,49,67,.28)'); g.addColorStop(1, 'rgba(38,49,67,0)');
+  DASH.charts['dsh-ch-mes'] = new Chart($('#dsh-ch-mes'), {
+    type:'line',
+    data:{ labels:s.labels, datasets:[{ label:'Inscripciones', data:s.data,
+      borderColor:'#263143', backgroundColor:g, fill:true, tension:.4, borderWidth:2.5,
+      pointBackgroundColor:'#d6da09', pointBorderColor:'#263143', pointRadius:4, pointHoverRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+      scales:{ x:{ grid:{ display:false }, ticks:{ font:{ size:10 } } }, y:{ beginAtZero:true, ticks:{ precision:0 } } },
+      animation:{ duration:1000 } }
+  });
 }
 
 /* ============================================================
