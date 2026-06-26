@@ -463,3 +463,33 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .agenda-dia { border:1.5px solid var(--border); border-radius:var(--r-md); padding:12px 14px; background:var(--bg-soft); }
 .agenda-dia__head { display:flex; align-items:center; justify-content:space-between; }
 .agenda-dia__head b { font-family:var(--font-display); color:var(--primary); text-transform:capitalize; }
+
+/* ============================================================
+   FASE 6 — Seguimientos (modal + detalle)
+   ============================================================ */
+.seg-list { display:flex; flex-direction:column; gap:8px; }
+.seg-row { display:flex; align-items:center; gap:8px; }
+.seg-row .seg-name { flex:0 0 118px; font-weight:700; color:var(--primary); font-size:.86rem; display:flex; flex-direction:column; gap:2px; }
+.seg-row .seg-pick { flex:1; padding:10px 12px; font-size:.9rem; }
+.seg-row .seg-text { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.seg-clear { flex:0 0 34px; height:38px; border-radius:var(--r-md); border:1.5px solid var(--border-strong);
+  background:var(--bg-card); color:var(--text-soft); font-weight:800; cursor:pointer; transition:all .15s; }
+.seg-clear:hover { border-color:#dc2626; color:#dc2626; }
+.seg-state { display:inline-block; font-size:.64rem; font-weight:800; letter-spacing:.3px; color:#16a34a; }
+.seg-state.pend { color:var(--accent-2); }
+
+.det-seg-box { padding:6px 22px 14px; }
+.det-seg-box h4 { font-family:var(--font-display); color:var(--primary); margin:6px 0 8px; font-size:.98rem; }
+.det-seg-list { display:flex; flex-direction:column; gap:8px; }
+.det-seg-row { display:flex; align-items:center; gap:10px; justify-content:space-between;
+  background:var(--bg-card); border:1.5px solid var(--border); border-radius:var(--r-md); padding:10px 12px; box-shadow:var(--sh-sm); }
+.det-seg-info { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.det-seg-info b { color:var(--primary); font-size:.9rem; }
+.det-seg-when { font-size:.78rem; color:var(--text-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.det-seg-acts { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.det-seg-btn { padding:7px 12px; border-radius:var(--r-pill); border:1.5px solid var(--primary);
+  background:var(--primary); color:#fff; font-weight:700; font-size:.78rem; cursor:pointer; transition:all .15s; }
+.det-seg-btn:hover { background:var(--primary-2); }
+.det-seg-clear { width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border-strong);
+  background:var(--bg-card); color:var(--text-soft); font-weight:800; cursor:pointer; }
+.det-seg-clear:hover { border-color:#dc2626; color:#dc2626; }
