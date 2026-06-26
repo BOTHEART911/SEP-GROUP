@@ -18,6 +18,10 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Fase 7 — Firebase (chat interno por lead en tiempo real). SDK compat (global `firebase`). -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -322,6 +326,34 @@
     </div>
   </div>
 
+
+  <!-- ============================================================
+       CHAT INTERNO POR LEAD (Fase 7 — RTDB en tiempo real)
+       Hilo de colaboración del equipo. El estudiante NO participa.
+       ============================================================ -->
+  <div id="sep-chat" class="chat-overlay hidden" aria-hidden="true">
+    <div class="chat-card">
+      <header class="chat-head">
+        <div class="chat-head__info">
+          <span class="chat-head__title">💬 Chat del lead</span>
+          <span id="chat-lead-name" class="chat-head__sub">—</span>
+        </div>
+        <button type="button" id="chat-close" class="chat-close" aria-label="Cerrar">✕</button>
+      </header>
+
+      <div id="chat-msgs" class="chat-msgs">
+        <div class="chat-empty">Cargando conversación…</div>
+      </div>
+
+      <div id="chat-status" class="chat-status hidden"></div>
+
+      <footer class="chat-foot">
+        <textarea id="chat-input" class="chat-input" rows="1"
+          placeholder="Escribe un mensaje para el equipo…" maxlength="4000"></textarea>
+        <button type="button" id="chat-send" class="chat-send" aria-label="Enviar">➤</button>
+      </footer>
+    </div>
+  </div>
 
   <script src="version.js"></script>
   <script src="app.js"></script>
