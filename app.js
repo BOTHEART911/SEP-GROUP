@@ -320,7 +320,7 @@ $('#btn-logout')?.addEventListener('click', async ()=>{
 /* ============================================================
  * MÓDULO COMERCIAL (Parte 2)
  * ============================================================ */
-let COM = { catalogo:null, ubic:null, registros:[], filtroTexto:'', filtroEstado:'__ALL__', editId:null, segModal:{} };
+let COM = { catalogo:null, ubic:null, registros:[], filtroTexto:'', filtroEstado:'__ALL__', editId:null };
 
 /* Navegación por data-go (botones "volver") */
 document.addEventListener('click', (e)=>{
@@ -446,18 +446,15 @@ async function verComercial_(id){
       const est = i>0 ? t.slice(0,i) : t; const fec = i>0 ? t.slice(i+1).trim() : '';
       return `<li><b>${esc_(est)}</b>${fec?` · ${esc_(fec)}`:''}</li>`;
     }).join('');
-    const segHtml = `<div class="det-seg-box"><h4>🔔 Seguimientos</h4><div class="det-seg-list">` +
+    const hayCiclo = r.enSeguimiento || (r.seguimientos||[]).some(s=>s.prog||s.enviado);
+    const segHtml = !hayCiclo ? '' : `<div class="det-seg-box"><h4>🔔 Ciclo de seguimientos</h4><div class="det-seg-list">` +
       (r.seguimientos||[]).map(s=>`
-        <div class="det-seg-row">
+        <div class="det-seg-row${s.actual?' actual':''}">
           <div class="det-seg-info">
-            <b>${esc_(s.label)}</b>
-            <span class="det-seg-when">${s.prog?esc_(s.prog):'Sin programar'}</span>
-            ${s.enviado?'<span class="seg-state">✅ enviado</span>':(s.prog?'<span class="seg-state pend">⏳ pendiente</span>':'')}
+            <b>${esc_(s.label)}${s.actual?' · actual':''}</b>
+            <span class="det-seg-when">${s.prog?esc_(s.prog):'—'}</span>
           </div>
-          <div class="det-seg-acts">
-            <button class="det-seg-btn" data-prog="${s.n}" data-iso="${esc_(s.progRaw||'')}">${s.prog?'Reprogramar':'Programar'}</button>
-            ${s.prog&&!s.enviado?`<button class="det-seg-clear" data-clearseg="${s.n}" title="Quitar">✕</button>`:''}
-          </div>
+          <span class="seg-state${s.enviado?'':' pend'}">${s.enviado?'✅ enviado':(s.prog?'⏳ pendiente':'—')}</span>
         </div>`).join('') + `</div></div>`;
     $('#com-detalle').innerHTML = `
       <div class="detalle-card">
@@ -487,25 +484,6 @@ async function verComercial_(id){
     $('#det-editar')?.addEventListener('click', ()=> abrirModalComercial_(r));
     $('#det-chat')?.addEventListener('click', ()=> Swal.fire({icon:'info', title:'Chat', text:'El chat por lead llega en la próxima parte (Firebase en tiempo real).'}));
     $('#det-eliminar')?.addEventListener('click', ()=> eliminarComercial_(r).then(()=> showView('comercial')));
-    $$('#com-detalle .det-seg-btn').forEach(b=> b.addEventListener('click', ()=>{
-      const n = +b.dataset.prog;
-      abrirRuedaFecha_(b.dataset.iso||'', async (iso)=>{
-        try{
-          const body = { usuarioId: currentUser.id, id: r.id }; body['seg'+n+'Prog'] = iso;
-          await apiPost('guardarSeguimientos', body);
-          Swal.fire({icon:'success', title:'Seguimiento programado', timer:900, showConfirmButton:false});
-          verComercial_(r.id);
-        }catch(e){ Swal.fire({icon:'error', title:'No se pudo programar', text:String(e.message||e)}); }
-      });
-    }));
-    $$('#com-detalle .det-seg-clear').forEach(b=> b.addEventListener('click', async ()=>{
-      const n = +b.dataset.clearseg;
-      try{
-        const body = { usuarioId: currentUser.id, id: r.id }; body['seg'+n+'Prog'] = '';
-        await apiPost('guardarSeguimientos', body);
-        verComercial_(r.id);
-      }catch(e){ Swal.fire({icon:'error', title:'No se pudo quitar', text:String(e.message||e)}); }
-    }));
     showView('comercial-detalle');
   }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
 }
@@ -550,11 +528,18 @@ function abrirModalComercial_(r){
   // Asesores
   $('#f-asesor').innerHTML = '<option value="">— Sin asesor —</option>' +
     (COM.catalogo.asesores||[]).map(a=>opt_(a.nombre, `${a.nombre} (${a.rol})`, r?r.asesor:'')).join('');
-  // Estados (Inscrito solo si el usuario puede inscribir)
+  // Estados (seguimientos son automáticos: ocultos salvo el actual; en seguimiento solo salidas permitidas)
   const puedeInscribir = currentUser && (currentUser.isDev || currentUser.isSuper || String(currentUser.rol).toUpperCase()==='CONTADOR');
+  const estadoActual = r ? r.estado : 'NUEVO_LEAD';
+  const enSeg = /^SEGUIMIENTO_[1-4]$/.test(estadoActual);
+  const SEG_SALIDA = ['PERFIL_NO_APTO','SIN_RESPUESTA','NO_INTERESADO','PENDIENTE_PAGO','INSCRITO'];
   $('#f-estado').innerHTML = (COM.catalogo.estados||[])
-    .filter(e => e.clave!=='INSCRITO' || puedeInscribir)
-    .map(e=>opt_(e.clave, e.label, r?r.estado:'NUEVO_LEAD')).join('');
+    .filter(e => {
+      if (e.clave==='INSCRITO' && !puedeInscribir) return false;
+      if (enSeg) return e.clave===estadoActual || SEG_SALIDA.indexOf(e.clave)>=0;
+      return !/^SEGUIMIENTO_[1-4]$/.test(e.clave);
+    })
+    .map(e=>opt_(e.clave, e.label, estadoActual)).join('');
   // Programas / Promos
   $('#f-programa').innerHTML = '<option value="">— Ninguno —</option>' +
     (COM.catalogo.programas||[]).map(p=>opt_(p.nombre, p.nombre, r?r.programa:'')).join('');
@@ -571,51 +556,11 @@ function abrirModalComercial_(r){
   $('#f-fecha-hora-agendada').value = fhRaw;
   $('#f-agenda-text').textContent = (r && r.fechaHoraAgendada) ? r.fechaHoraAgendada : 'Seleccionar fecha y hora';
 
-  // Seguimientos 1–4 (rueda iOS)
-  renderSegModal_(r);
-
   actualizarVisibilidadEstado_();
   actualizarVisibilidadAgenda_();
   $('#modal-comercial').classList.remove('hidden');
 }
 function cerrarModalComercial_(){ $('#modal-comercial').classList.add('hidden'); }
-
-/* ── Seguimientos 1–4 dentro del modal (rueda iOS) ── */
-const SEG_CAL_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
-
-function renderSegModal_(r){
-  COM.segModal = {};
-  const mapa = {};
-  (r && r.seguimientos ? r.seguimientos : []).forEach(s => { mapa[s.n] = s; });
-  let html = '';
-  for (let n=1; n<=4; n++){
-    const s = mapa[n] || {};
-    COM.segModal[n] = s.progRaw || '';
-    const texto = s.prog ? esc_(s.prog) : 'Sin programar';
-    const enviado = s.enviado ? '<span class="seg-state">✅ enviado</span>' : '';
-    html += `<div class="seg-row" data-seg="${n}">
-        <span class="seg-name">Seguimiento ${n}${enviado}</span>
-        <button type="button" class="agenda-pick seg-pick" data-seg="${n}">
-          <span class="seg-text" id="f-seg${n}-text">${texto}</span>${SEG_CAL_SVG}
-        </button>
-        <button type="button" class="seg-clear" data-clear="${n}" title="Quitar" aria-label="Quitar">✕</button>
-      </div>`;
-  }
-  $('#seg-list').innerHTML = html;
-
-  $$('#seg-list .seg-pick').forEach(btn => btn.addEventListener('click', ()=>{
-    const n = +btn.dataset.seg;
-    abrirRuedaFecha_(COM.segModal[n] || '', (iso, texto)=>{
-      COM.segModal[n] = iso;
-      $('#f-seg'+n+'-text').textContent = texto;
-    });
-  }));
-  $$('#seg-list .seg-clear').forEach(btn => btn.addEventListener('click', ()=>{
-    const n = +btn.dataset.clear;
-    COM.segModal[n] = '';
-    $('#f-seg'+n+'-text').textContent = 'Sin programar';
-  }));
-}
 
 function poblarMunicipios_(depto, sel){
   const lista = (depto && COM.ubic.mapa[String(depto).toUpperCase()]) || [];
@@ -649,9 +594,7 @@ async function guardarComercial_(){
     fuente: $('#f-fuente').value, asesor: $('#f-asesor').value,
     estado: $('#f-asesor').value ? $('#f-estado').value : 'NUEVO_LEAD',
     fechaHoraAgendada: $('#f-fecha-hora-agendada').value,
-    programa: $('#f-programa').value, promo: $('#f-promo').value,
-    seg1Prog: COM.segModal[1]||'', seg2Prog: COM.segModal[2]||'',
-    seg3Prog: COM.segModal[3]||'', seg4Prog: COM.segModal[4]||''
+    programa: $('#f-programa').value, promo: $('#f-promo').value
   };
   // Validación rápida en cliente
   if (!body.nombres.trim() || !body.apellidos.trim()) return Swal.fire({icon:'warning', title:'Nombres y apellidos obligatorios'});
