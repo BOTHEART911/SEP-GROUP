@@ -2,9 +2,10 @@
  * SEP GROUP — APP FRONTEND (PWA)
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
  * Software propietario. Modificarlo anula la garantía de funcionamiento.
- * FASE ACTUAL: Fase 7 — Chat interno por lead (Firebase RTDB en tiempo real)
+ * FASE ACTUAL: Fase 7 — Chat interno por lead (sondeo / polling)
  *   Hilo de colaboración del equipo por cada lead (NO participa el
- *   estudiante). Custom token "staff" + suscripción a /chats/{id}/mensajes.
+ *   estudiante). Lee con historialChat (refresco periódico) y envía
+ *   con enviarMensajeChat. Sin Firebase en el cliente.
  *   SEP-AGENDA queda intacta. Ver sección "CHAT INTERNO POR LEAD".
  * ============================================================ */
 
@@ -503,40 +504,18 @@ async function eliminarComercial_(r){
 }
 
 /* ============================================================
- *  CHAT INTERNO POR LEAD (Fase 7 — Firebase RTDB en tiempo real)
+ *  CHAT INTERNO POR LEAD (Fase 7 — sondeo / polling)
  * ------------------------------------------------------------
- *  Hilo de colaboración del equipo por cada lead. El backend es la
- *  fuente de verdad (hoja CHAT) y publica el espejo en RTDB. El
- *  cliente LEE en tiempo real con un custom token "staff" y ENVÍA
- *  vía endpoint (enviarMensajeChat). El estudiante NO participa.
+ *  Hilo de colaboración del equipo por cada lead. El backend
+ *  (hoja CHAT) es la fuente de verdad. El cliente LEE con
+ *  historialChat (refresco cada CHAT.intervaloMs mientras el chat
+ *  está abierto) y ENVÍA vía enviarMensajeChat. Sin Firebase en el
+ *  cliente. El estudiante NO participa.
  * ============================================================ */
 const CHAT = {
-  app:null, authed:false, token:null, exp:0,
-  ref:null, leadId:null, leadNombre:'', yoUid:null, realtime:false
+  leadId:null, leadNombre:'', yoUid:null,
+  timer:null, intervaloMs:4000, cargando:false, sig:'', visible:true
 };
-
-/* Inicializa Firebase y autentica con custom token (renueva si expira). */
-async function chatInit_(){
-  const now = Math.floor(Date.now()/1000);
-  if (CHAT.authed && CHAT.token && (CHAT.exp - now) > 300 && CHAT.realtime) return;
-
-  const t = await apiPost('tokenChat', { usuarioId: currentUser?.id });
-  CHAT.token = t.token; CHAT.exp = t.exp; CHAT.yoUid = t.uid;
-
-  if (typeof firebase === 'undefined') throw new Error('SDK de Firebase no disponible');
-  if (!t.firebase || !t.firebase.apiKey) throw new Error('Falta FIREBASE_API_KEY en Configuración del backend');
-
-  if (!CHAT.app){
-    CHAT.app = firebase.initializeApp({
-      apiKey:      t.firebase.apiKey,
-      authDomain:  t.firebase.authDomain,
-      databaseURL: t.firebase.databaseURL,
-      projectId:   t.firebase.projectId
-    });
-  }
-  await firebase.auth().signInWithCustomToken(t.token);
-  CHAT.authed = true; CHAT.realtime = true;
-}
 
 /* Abre el chat para un lead (recibe el objeto del lead o su id). */
 async function abrirChat_(lead){
@@ -544,7 +523,7 @@ async function abrirChat_(lead){
   const leadId = typeof lead === 'string' ? lead : lead.id;
   const nombre = typeof lead === 'string' ? leadId
                : ((lead.nombres||'')+' '+(lead.apellidos||'')).trim();
-  CHAT.leadId = leadId; CHAT.leadNombre = nombre || leadId;
+  CHAT.leadId = leadId; CHAT.leadNombre = nombre || leadId; CHAT.sig = '';
 
   $('#chat-lead-name').textContent = CHAT.leadNombre;
   $('#chat-msgs').innerHTML = `<div class="chat-empty">Cargando conversación…</div>`;
@@ -552,50 +531,54 @@ async function abrirChat_(lead){
   chatAbrirUI_();
 
   try{
-    // 1) Semilla instantánea y confiable desde la hoja CHAT.
-    const hist = await apiPost('historialChat', { usuarioId: currentUser.id, leadId });
-    CHAT.yoUid = (hist.yo && hist.yo.uid) || CHAT.yoUid;
-    chatRender_(hist.mensajes || []);
-
-    // 2) Tiempo real por RTDB (sin polling). Si falla, seguimos con la semilla.
-    try{
-      await chatInit_();
-      chatSuscribir_(leadId);
-    }catch(rt){
-      CHAT.realtime = false;
-      chatStatus_('Sin tiempo real (se actualiza al enviar). ' + (rt && rt.message ? rt.message : ''));
-    }
+    await chatCargar_(true);   // primera carga (fuerza render)
+    chatIniciarPolling_();     // refrescos periódicos
   }catch(e){
     $('#chat-msgs').innerHTML = `<div class="chat-empty">No se pudo cargar el chat.</div>`;
     chatStatus_(String(e && e.message || e));
   }
 }
 
-/* Suscripción en vivo a /chats/{leadId}/mensajes. */
-function chatSuscribir_(leadId){
-  chatDesuscribir_();
+/* Trae el historial desde la hoja CHAT y repinta solo si cambió. */
+async function chatCargar_(forzar){
+  if (CHAT.cargando || !CHAT.leadId) return;
+  CHAT.cargando = true;
   try{
-    CHAT.ref = firebase.database().ref('/chats/'+leadId+'/mensajes');
-    CHAT.ref.on('value', (snap)=>{
-      const val = snap.val() || {};
-      const arr = Object.keys(val).map(k => val[k])
-        .sort((a,b)=> (a.ts||0)-(b.ts||0) || String(a.id||'').localeCompare(String(b.id||'')));
-      chatRender_(arr);
-      chatStatus_('');
-    }, (err)=> chatStatus_('Conexión en vivo interrumpida: ' + (err && err.message || err)));
-  }catch(e){ CHAT.realtime = false; }
-}
-function chatDesuscribir_(){
-  if (CHAT.ref){ try{ CHAT.ref.off(); }catch(_){} CHAT.ref = null; }
+    const hist = await apiPost('historialChat', { usuarioId: currentUser.id, leadId: CHAT.leadId });
+    if (!CHAT.leadId) return; // se cerró mientras cargaba
+    CHAT.yoUid = (hist.yo && hist.yo.uid) || CHAT.yoUid;
+    const msgs = hist.mensajes || [];
+    const sig  = msgs.length + '|' + (msgs.length ? (msgs[msgs.length-1].id + '|' + msgs[msgs.length-1].ts) : '0');
+    if (forzar || sig !== CHAT.sig){
+      CHAT.sig = sig;
+      chatRender_(msgs);
+    }
+    chatStatus_('');
+  } finally { CHAT.cargando = false; }
 }
 
-/* Pinta la lista de mensajes (burbujas; las propias a la derecha). */
+/* Arranca/recrea el ciclo de sondeo (se pausa si la pestaña no está visible). */
+function chatIniciarPolling_(){
+  chatDetenerPolling_();
+  CHAT.timer = setInterval(()=>{
+    if (document.hidden) return;        // ahorra cuota si la pestaña está oculta
+    chatCargar_(false).catch(()=>{});
+  }, CHAT.intervaloMs);
+}
+function chatDetenerPolling_(){
+  if (CHAT.timer){ clearInterval(CHAT.timer); CHAT.timer = null; }
+}
+
+/* Pinta la lista de mensajes (burbujas; las propias a la derecha).
+   Conserva la posición de lectura: solo baja al fondo si ya estabas
+   cerca del fondo (para no interrumpir si estás leyendo arriba). */
 function chatRender_(msgs){
   const box = $('#chat-msgs'); if (!box) return;
   if (!msgs || !msgs.length){
     box.innerHTML = `<div class="chat-empty">Aún no hay mensajes. ¡Inicia la conversación del equipo!</div>`;
     return;
   }
+  const cercaDelFondo = (box.scrollHeight - box.scrollTop - box.clientHeight) < 80;
   const rolClase = { DESARROLLADOR:'dev', SUPERUSUARIO:'super', CONTADOR:'conta', COMERCIAL:'com' };
   box.innerHTML = msgs.map(m=>{
     const mio = m.uid && CHAT.yoUid && m.uid === CHAT.yoUid;
@@ -609,10 +592,10 @@ function chatRender_(msgs){
       </div>
     </div>`;
   }).join('');
-  box.scrollTop = box.scrollHeight;
+  if (cercaDelFondo) box.scrollTop = box.scrollHeight;
 }
 
-/* Envía un mensaje (el backend persiste y publica; el listener repinta). */
+/* Envía un mensaje y refresca de inmediato. */
 async function chatEnviar_(){
   const inp = $('#chat-input'); if (!inp) return;
   const txt = (inp.value||'').trim();
@@ -620,11 +603,7 @@ async function chatEnviar_(){
   inp.value=''; chatAutoGrow_();
   try{
     await apiPost('enviarMensajeChat', { usuarioId: currentUser.id, leadId: CHAT.leadId, texto: txt });
-    // Si no hay tiempo real, recargamos el historial para reflejar el envío.
-    if (!CHAT.realtime){
-      const hist = await apiPost('historialChat', { usuarioId: currentUser.id, leadId: CHAT.leadId });
-      chatRender_(hist.mensajes || []);
-    }
+    await chatCargar_(true); // refleja el envío al instante
   }catch(e){
     inp.value = txt;
     Swal.fire({icon:'error', title:'No se envió', text:String(e && e.message || e)});
@@ -642,7 +621,7 @@ function chatCerrarUI_(){
   const ov = $('#sep-chat'); if (!ov) return;
   ov.classList.add('hidden'); ov.setAttribute('aria-hidden','true');
   document.body.style.overflow = '';
-  chatDesuscribir_();
+  chatDetenerPolling_();
   CHAT.leadId = null;
 }
 function chatStatus_(txt){
@@ -677,6 +656,10 @@ $('#chat-input')?.addEventListener('keydown', (e)=>{
 });
 document.addEventListener('keydown', (e)=>{
   if (e.key==='Escape' && !$('#sep-chat')?.classList.contains('hidden')) chatCerrarUI_();
+});
+/* Al volver a la pestaña con el chat abierto, refresca de inmediato. */
+document.addEventListener('visibilitychange', ()=>{
+  if (!document.hidden && CHAT.leadId) chatCargar_(false).catch(()=>{});
 });
 
 /* ============================================================
