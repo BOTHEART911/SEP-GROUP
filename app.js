@@ -11,13 +11,13 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 9 — Usuarios
- *   Vista view-usuarios: lista del equipo + modal CRUD (crear/
- *   editar/eliminar) con foto subida a Drive. Tile 'usuarios'
- *   activo para DESARROLLADOR/SUPERUSUARIO. Endpoints:
- *   listUsuarios · saveUsuario · eliminarUsuario · uploadFotoUsuario.
- *   Protección dura del rol DESARROLLADOR (no editable/eliminable).
- *   Fase 8: dashboard. Fase 7: chat interno por lead. SEP-AGENDA intacta.
+ * FASE ACTUAL: Fase 10 — Mi Bot
+ *   Vista view-bot con dos pestañas: Conexión (control del bot de
+ *   WhatsApp vía BuilderBot: estado, QR para vincular, reiniciar,
+ *   silenciar, eliminar sesión, bloquear/limpiar contacto) y
+ *   Plantillas (CRUD; las del sistema no se eliminan). Sin difusión
+ *   masiva. Tile 'bot' activo para DEV/SUPERUSUARIO.
+ *   Fase 9: usuarios. Fase 8: dashboard. Fase 7: chat. SEP-AGENDA intacta.
  * ============================================================
  */
 
@@ -294,7 +294,7 @@ const TILES = [
     roles:['DESARROLLADOR','SUPERUSUARIO'], listo:true },
   { key:'bot', titulo:'Mi Bot', desc:'WhatsApp y plantillas',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1776016986/chat_sueco4.webp',
-    roles:['DESARROLLADOR','SUPERUSUARIO'], listo:false }
+    roles:['DESARROLLADOR','SUPERUSUARIO'], listo:true, view:'bot' }
 ];
 
 function irAInicio_(u){
@@ -323,6 +323,7 @@ function irAInicio_(u){
       if (t.key === 'comercial'){ abrirComercial_(); }
       else if (t.key === 'config'){ abrirConfig_(); }
       else if (t.key === 'usuarios'){ abrirUsuarios_(); }
+      else if (t.key === 'bot'){ abrirBot_(); }
     });
     grid.appendChild(tile);
   });
@@ -1632,4 +1633,321 @@ function usrWire_(){
     if (ed){ const u = USR.all.find(x => String(x.id) === ed.getAttribute('data-edit')); if (u) usrAbrirModal_(u); }
     else if (dl){ const u = USR.all.find(x => String(x.id) === dl.getAttribute('data-del')); if (u) usrEliminar_(u); }
   });
+}
+
+/* ============================================================
+ * MÓDULO MI BOT (Fase 10) — Conexión + Plantillas
+ * ============================================================
+ * Conexión: control del bot de WhatsApp (BuilderBot) — estado,
+ * QR para vincular, reiniciar, silenciar, eliminar sesión y
+ * acciones por contacto. La API key vive solo en el servidor.
+ * Plantillas: CRUD; las del sistema no se eliminan. Sin difusión.
+ * ============================================================ */
+const MB = { silenciado:false, qrPoll:null, plantillas:[], variables:[], _wired:false, _plLoaded:false };
+
+async function abrirBot_(){
+  const rol = String(currentUser?.rol || '').toUpperCase();
+  if (rol !== 'DESARROLLADOR' && rol !== 'SUPERUSUARIO'){
+    Swal.fire({ icon:'warning', title:'Sin permiso', text:'Solo SUPERUSUARIO o DESARROLLADOR pueden gestionar el bot.' });
+    return;
+  }
+  botWire_();
+  showView('bot');
+  botTab_('conexion');
+}
+
+function botWire_(){
+  if (MB._wired) return;
+  MB._wired = true;
+  $$('#bot-tabs .cfg-tab').forEach(b => b.addEventListener('click', ()=> botTab_(b.dataset.bottab)));
+  $('#bot-refresh')?.addEventListener('click', ()=>{
+    if ($('#bot-conexion').classList.contains('hidden')){ botRenderPlantillas_(true); }
+    else { botEstado_(); }
+  });
+  // Modal plantilla
+  $('#pl-modal-close')?.addEventListener('click', plCerrarModal_);
+  $('#pl-cancel')?.addEventListener('click', plCerrarModal_);
+  $('#pl-save')?.addEventListener('click', plGuardar_);
+  $('#modal-plantilla')?.addEventListener('click', (e)=>{ if (e.target.id === 'modal-plantilla') plCerrarModal_(); });
+}
+
+function botTab_(name){
+  $$('#bot-tabs .cfg-tab').forEach(b => b.classList.toggle('active', b.dataset.bottab === name));
+  $('#bot-conexion').classList.toggle('hidden', name !== 'conexion');
+  $('#bot-plantillas').classList.toggle('hidden', name !== 'plantillas');
+  botPollingStop_();
+  if (name === 'conexion'){ botRenderConexion_(); }
+  else { botRenderPlantillas_(!MB._plLoaded); }
+}
+
+/* ================== CONEXIÓN ================== */
+function botRenderConexion_(){
+  $('#bot-conexion').innerHTML = `
+    <div id="bot-status" class="bot-status bot-status--unknown">
+      <div class="bot-status__icon">⏳</div>
+      <div class="bot-status__txt">Consultando estado…</div>
+      <div class="bot-status__sub">Un momento por favor</div>
+    </div>
+
+    <div class="bot-section">
+      <h3 class="bot-section__title">📱 Conectar WhatsApp</h3>
+      <p class="muted">Si el bot está desconectado, genera el código QR y escanéalo desde WhatsApp → Dispositivos vinculados.</p>
+      <button id="bot-qr-btn" class="btn btn-primary btn-block mt-sm">⚡ Inicializar conexión</button>
+      <div id="bot-qr-box" style="text-align:center"></div>
+    </div>
+
+    <div class="bot-section">
+      <h3 class="bot-section__title">🛠 Controles del bot</h3>
+      <div class="bot-btn-grid">
+        <button class="bot-action" id="bot-reboot"><span class="bot-action__icon">🔄</span>Reiniciar</button>
+        <button class="bot-action" id="bot-mute"><span class="bot-action__icon">🔇</span><span id="bot-mute-lbl">Silenciar</span></button>
+      </div>
+      <button class="bot-action danger" id="bot-logout" style="width:100%;margin-top:10px;flex-direction:row;gap:10px;"><span class="bot-action__icon">🗑️</span>Eliminar sesión</button>
+    </div>
+
+    <div class="bot-section">
+      <h3 class="bot-section__title">👤 Gestionar un contacto</h3>
+      <p class="muted">Escribe el número con código de país (ej. 573001234567) para bloquearlo, desbloquearlo o limpiar su conversación.</p>
+      <div class="bot-contacto-row mt-sm"><input id="bot-num" inputmode="numeric" placeholder="573001234567" /></div>
+      <div class="bot-btn-grid mt-sm">
+        <button class="bot-action" id="bot-block"><span class="bot-action__icon">🚫</span>Bloquear</button>
+        <button class="bot-action" id="bot-unblock"><span class="bot-action__icon">✅</span>Desbloquear</button>
+      </div>
+      <button class="bot-action" id="bot-clear" style="width:100%;margin-top:10px;flex-direction:row;gap:10px;"><span class="bot-action__icon">🧹</span>Limpiar conversación</button>
+    </div>`;
+
+  $('#bot-qr-btn').addEventListener('click', botQR_);
+  $('#bot-reboot').addEventListener('click', botReiniciar_);
+  $('#bot-mute').addEventListener('click', botMute_);
+  $('#bot-logout').addEventListener('click', botEliminarSesion_);
+  $('#bot-block').addEventListener('click', ()=> botContacto_('botBloquear', 'Bloquear contacto'));
+  $('#bot-unblock').addEventListener('click', ()=> botContacto_('botDesbloquear', 'Desbloquear contacto'));
+  $('#bot-clear').addEventListener('click', ()=> botContacto_('botLimpiar', 'Limpiar conversación'));
+  $('#bot-num')?.addEventListener('input', (e)=>{ e.target.value = onlyDigits(e.target.value); });
+
+  botEstado_();
+}
+
+async function botEstado_(){
+  const box = $('#bot-status'); if (!box) return;
+  try{
+    const r = await apiGet('botEstado', { usuarioId: currentUser.id }, { silent:true });
+    if (r.configurado === false){
+      box.className = 'bot-status bot-status--unknown';
+      box.innerHTML = '<div class="bot-status__icon">⚙️</div><div class="bot-status__txt">Bot sin configurar</div><div class="bot-status__sub">El DESARROLLADOR debe cargar las claves en Configuración › Avanzado</div>';
+      return;
+    }
+    const st = String(r.status || 'UNKNOWN').toUpperCase();
+    if (st === 'ONLINE'){ box.className='bot-status bot-status--online'; box.innerHTML='<div class="bot-status__icon">🟢</div><div class="bot-status__txt">Tu bot está conectado</div><div class="bot-status__sub">Funcionando correctamente</div>'; }
+    else if (st === 'READY_TO_SCAN'){ box.className='bot-status bot-status--scan'; box.innerHTML='<div class="bot-status__icon">🟡</div><div class="bot-status__txt">Esperando que escanees el QR</div><div class="bot-status__sub">Genera el QR abajo y escanéalo</div>'; }
+    else if (st === 'OFFLINE' || st === 'FAILED'){ box.className='bot-status bot-status--offline'; box.innerHTML='<div class="bot-status__icon">🔴</div><div class="bot-status__txt">Tu bot está desconectado</div><div class="bot-status__sub">Genera el QR para reconectarlo</div>'; }
+    else { box.className='bot-status bot-status--unknown'; box.innerHTML=`<div class="bot-status__icon">⚪</div><div class="bot-status__txt">Estado: ${esc_(st)}</div><div class="bot-status__sub">Toca actualizar para reintentar</div>`; }
+  }catch(e){
+    box.className='bot-status bot-status--unknown';
+    box.innerHTML=`<div class="bot-status__icon">⚪</div><div class="bot-status__txt">No se pudo consultar</div><div class="bot-status__sub">${esc_(String(e.message||e))}</div>`;
+  }
+}
+
+async function botQR_(){
+  const boxQR = $('#bot-qr-box');
+  const btn = $('#bot-qr-btn');
+  if (btn){ btn.disabled = true; btn.textContent = '⏳ Conectando…'; }
+  boxQR.innerHTML = '<p class="muted">Preparando la conexión… (si el bot estaba apagado puede tardar unos segundos)</p>';
+  try{
+    const r = await apiGet('botQR', { usuarioId: currentUser.id }, { silent:true });
+    const qr = r && r.qr ? String(r.qr) : '';
+    if (!qr){
+      if (btn){ btn.disabled = false; btn.textContent = '📲 Generar QR'; }
+      boxQR.innerHTML = `<p class="muted">${esc_((r && r.error) || 'Conexión inicializada. Toca Generar QR para ver el código.')}</p>`;
+      return;
+    }
+    const src = qr.indexOf('data:') === 0 ? qr : (/^https?:\/\//.test(qr) ? qr : 'data:image/png;base64,' + qr);
+    boxQR.innerHTML = `
+      <img class="bot-qr-img" src="${src}" alt="Código QR de WhatsApp" onerror="this.replaceWith(document.createTextNode('No se pudo mostrar el QR. Toca Regenerar.'))" />
+      <p class="muted">Escanéalo desde WhatsApp → <b>Dispositivos vinculados</b>. El código se renueva cada cierto tiempo.</p>
+      <button class="bot-action" id="bot-qr-regen" style="width:100%;flex-direction:row;gap:10px;"><span class="bot-action__icon">🔄</span>Regenerar QR</button>`;
+    if (btn){ btn.disabled = false; btn.textContent = '📲 Generar QR'; }
+    $('#bot-qr-regen')?.addEventListener('click', botQR_);
+    botPollingStart_();
+  }catch(e){
+    if (btn){ btn.disabled = false; btn.textContent = '⚡ Inicializar conexión'; }
+    boxQR.innerHTML = `<p class="muted">${esc_(String(e.message||e))}</p>`;
+  }
+}
+
+function botPollingStart_(){
+  botPollingStop_();
+  MB.qrPoll = setInterval(async ()=>{
+    const img = $('#bot-qr-box .bot-qr-img');
+    if (!img){ botPollingStop_(); return; }
+    try{
+      await botEstado_();
+      if ($('#bot-status')?.classList.contains('bot-status--online')){
+        botPollingStop_();
+        img.classList.add('bot-qr-img--connected');
+        if (!$('#bot-qr-ok')){
+          const ok = document.createElement('div');
+          ok.id = 'bot-qr-ok'; ok.className = 'bot-qr-ok';
+          ok.innerHTML = '🟢 <b>WhatsApp conectado</b><br><span>Ya puedes cerrar esta vista.</span>';
+          img.insertAdjacentElement('afterend', ok);
+        }
+      }
+    }catch(_){}
+  }, 60000);
+}
+function botPollingStop_(){ if (MB.qrPoll){ clearInterval(MB.qrPoll); MB.qrPoll = null; } }
+
+async function botConfirm_(title, html, confirmText){
+  const r = await Swal.fire({ icon:'warning', title, html, showCancelButton:true, confirmButtonText:confirmText||'Sí', cancelButtonText:'Cancelar' });
+  return r.isConfirmed;
+}
+
+async function botReiniciar_(){
+  if (!await botConfirm_('Reiniciar bot', 'El bot se reiniciará y puede tardar unos segundos en reconectarse. ¿Continuar?', 'Sí, reiniciar')) return;
+  try{
+    const r = await apiPost('botReiniciar', { usuarioId: currentUser.id });
+    if (r.ok) Swal.fire({ icon:'success', title:'Bot reiniciado', timer:1100, showConfirmButton:false });
+    else Swal.fire({ icon:'info', title:'Aviso', text:'No se confirmó el reinicio.' });
+    setTimeout(botEstado_, 2000);
+  }catch(e){ Swal.fire({ icon:'error', title:'Error', text:String(e.message||e) }); }
+}
+
+async function botMute_(){
+  const nuevo = !MB.silenciado;
+  if (!await botConfirm_(nuevo?'Silenciar bot':'Activar bot', nuevo?'El bot dejará de responder mensajes. ¿Continuar?':'El bot volverá a responder mensajes. ¿Continuar?', 'Sí')) return;
+  try{
+    const r = await apiPost('botMute', { usuarioId: currentUser.id, flag: nuevo });
+    if (r.ok){ MB.silenciado = nuevo; const l = $('#bot-mute-lbl'); if (l) l.textContent = nuevo ? 'Activar' : 'Silenciar';
+      Swal.fire({ icon:'success', title: nuevo ? 'Bot silenciado' : 'Bot activado', timer:1000, showConfirmButton:false }); }
+    else Swal.fire({ icon:'info', title:'Aviso', text:'No se confirmó el cambio.' });
+  }catch(e){ Swal.fire({ icon:'error', title:'Error', text:String(e.message||e) }); }
+}
+
+async function botEliminarSesion_(){
+  if (!await botConfirm_('Eliminar sesión', 'Esto cerrará la sesión de WhatsApp del bot y eliminará el despliegue actual.<br>Tendrás que generar un nuevo <b>QR</b> y escanearlo para reconectar.<br><br>¿Continuar?', 'Sí, eliminar sesión')) return;
+  try{
+    const r = await apiPost('botEliminarSesion', { usuarioId: currentUser.id });
+    if (r.ok) Swal.fire({ icon:'success', title:'Sesión eliminada', text:'El bot se desconectó. Genera un nuevo QR para volver a vincular WhatsApp.' });
+    else Swal.fire({ icon:'info', title:'Aviso', text:'No se pudo confirmar la eliminación.' });
+    setTimeout(botEstado_, 2000);
+  }catch(e){ Swal.fire({ icon:'error', title:'Error', text:String(e.message||e) }); }
+}
+
+async function botContacto_(action, titulo){
+  const num = onlyDigits(($('#bot-num').value || ''));
+  if (num.length < 8){ Swal.fire({ icon:'warning', title:'Número inválido', text:'Escribe un número con código de país (ej. 573001234567).' }); return; }
+  if (!await botConfirm_(titulo, `Acción sobre el número <b>${esc_(num)}</b>. ¿Continuar?`, 'Sí')) return;
+  try{
+    const r = await apiPost(action, { usuarioId: currentUser.id, numero: num });
+    if (r.ok) Swal.fire({ icon:'success', title:'Listo', timer:1000, showConfirmButton:false });
+    else Swal.fire({ icon:'info', title:'Aviso', text:'No se confirmó la acción.' });
+  }catch(e){ Swal.fire({ icon:'error', title:'Error', text:String(e.message||e) }); }
+}
+
+/* ================== PLANTILLAS ================== */
+async function botRenderPlantillas_(reload){
+  const cont = $('#bot-plantillas');
+  if (reload || !MB._plLoaded){
+    cont.innerHTML = '<p class="muted">Cargando plantillas…</p>';
+    try{
+      const r = await apiGet('listPlantillas', { usuarioId: currentUser.id }, { silent:true });
+      MB.plantillas = r.plantillas || [];
+      MB.variables = r.variables || [];
+      MB._plLoaded = true;
+    }catch(e){
+      cont.innerHTML = `<p class="muted">No se pudieron cargar: ${esc_(String(e.message||e))}</p>`;
+      return;
+    }
+  }
+  const cards = MB.plantillas.map(p => {
+    const canalCls = p.canal === 'EMAIL' ? 'email' : (p.canal === 'AMBOS' ? 'ambos' : '');
+    const canalTxt = p.canal === 'EMAIL' ? 'Correo' : (p.canal === 'AMBOS' ? 'WA+Correo' : 'WhatsApp');
+    const delBtn = p.sistema ? '' : `<button class="bot-pl-btn danger" data-pldel="${esc_(p.clave)}">Eliminar</button>`;
+    const sysTag = p.sistema ? '<span class="bot-pl-sys">Sistema</span>' : '';
+    return `
+      <div class="bot-pl-card">
+        <div class="bot-pl-head">
+          <span class="bot-pl-clave">${esc_(p.clave)}</span>
+          <span class="bot-pl-canal ${canalCls}">${canalTxt}</span>
+        </div>
+        <div class="bot-pl-desc">${esc_(p.descripcion || '')} ${sysTag}</div>
+        <div class="bot-pl-body">${esc_(p.cuerpo || '')}</div>
+        <div class="bot-pl-actions">
+          <button class="bot-pl-btn" data-pledit="${esc_(p.clave)}">Editar</button>
+          ${delBtn}
+        </div>
+      </div>`;
+  }).join('');
+
+  cont.innerHTML = `
+    <div class="com-toolbar">
+      <p class="muted" style="margin:0;flex:1;">Plantillas de WhatsApp y correo. Las del sistema alimentan los flujos automáticos.</p>
+      <button id="pl-add" class="btn btn-accent">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nueva
+      </button>
+    </div>
+    <div class="bot-pl-cards">${cards || '<p class="muted">Sin plantillas.</p>'}</div>`;
+
+  $('#pl-add')?.addEventListener('click', ()=> plAbrirModal_(null));
+  cont.querySelectorAll('[data-pledit]').forEach(b => b.addEventListener('click', ()=>{
+    const p = MB.plantillas.find(x => x.clave === b.getAttribute('data-pledit')); if (p) plAbrirModal_(p);
+  }));
+  cont.querySelectorAll('[data-pldel]').forEach(b => b.addEventListener('click', ()=>{
+    const p = MB.plantillas.find(x => x.clave === b.getAttribute('data-pldel')); if (p) plEliminar_(p);
+  }));
+}
+
+function plAbrirModal_(p){
+  const esEdicion = !!p;
+  $('#pl-modal-title').textContent = esEdicion ? 'Editar plantilla' : 'Nueva plantilla';
+  $('#pl-clave').value = esEdicion ? p.clave : '';
+  $('#pl-clave').disabled = esEdicion;            // la clave no se renombra
+  $('#pl-canal').value = esEdicion ? (p.canal || 'AMBOS') : 'AMBOS';
+  $('#pl-asunto').value = esEdicion ? (p.asunto || '') : '';
+  $('#pl-cuerpo').value = esEdicion ? (p.cuerpo || '') : '';
+  $('#pl-descripcion').value = esEdicion ? (p.descripcion || '') : '';
+  $('#pl-sys-note').classList.toggle('hidden', !(esEdicion && p.sistema));
+
+  $('#pl-vars').innerHTML = (MB.variables || []).map(v => `<span class="bot-var-chip" data-var="${esc_(v)}">${esc_(v)}</span>`).join('');
+  $('#pl-vars').querySelectorAll('.bot-var-chip').forEach(ch => ch.addEventListener('click', ()=> plInsertVar_(ch.getAttribute('data-var'))));
+
+  $('#modal-plantilla').classList.remove('hidden');
+}
+function plCerrarModal_(){ $('#modal-plantilla').classList.add('hidden'); }
+
+function plInsertVar_(token){
+  const ta = $('#pl-cuerpo');
+  const start = ta.selectionStart ?? ta.value.length;
+  const end = ta.selectionEnd ?? ta.value.length;
+  ta.value = ta.value.slice(0, start) + token + ta.value.slice(end);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = start + token.length;
+}
+
+async function plGuardar_(){
+  const clave = $('#pl-clave').value.trim();
+  const cuerpo = $('#pl-cuerpo').value.trim();
+  if (!clave){ Swal.fire({ icon:'warning', title:'Falta la clave' }); return; }
+  if (!cuerpo){ Swal.fire({ icon:'warning', title:'Falta el mensaje' }); return; }
+  try{
+    const r = await apiPost('guardarPlantilla', {
+      usuarioId: currentUser.id, clave,
+      canal: $('#pl-canal').value, asunto: $('#pl-asunto').value, cuerpo, descripcion: $('#pl-descripcion').value
+    });
+    MB.plantillas = r.plantillas || MB.plantillas;
+    plCerrarModal_();
+    botRenderPlantillas_(false);
+    Swal.fire({ icon:'success', title:'Plantilla guardada', timer:1000, showConfirmButton:false });
+  }catch(e){ Swal.fire({ icon:'error', title:'No se pudo guardar', text:String(e.message||e) }); }
+}
+
+async function plEliminar_(p){
+  if (!await botConfirm_('¿Eliminar plantilla?', `Se eliminará <b>${esc_(p.clave)}</b>.`, 'Eliminar')) return;
+  try{
+    const r = await apiPost('eliminarPlantilla', { usuarioId: currentUser.id, clave: p.clave });
+    MB.plantillas = r.plantillas || MB.plantillas;
+    botRenderPlantillas_(false);
+    Swal.fire({ icon:'success', title:'Plantilla eliminada', timer:1000, showConfirmButton:false });
+  }catch(e){ Swal.fire({ icon:'error', title:'No se pudo eliminar', text:String(e.message||e) }); }
 }
