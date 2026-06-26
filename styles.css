@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 8 — Dashboard
+ * FASE ACTUAL: Fase 9 — Usuarios
  * Sistema de diseño premium: tema claro, tarjetas blancas con
  * acento institucional, tiles con título + descripción, welcome
  * bar con degradado, micro-animaciones. Paleta SEP: azul #263143
@@ -699,4 +699,59 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 }
 @media (prefers-reduced-motion:reduce){
   #view-dashboard *{ animation:none !important; transition:none !important; }
+}
+
+/* ============================================================
+   USUARIOS (Fase 9) — capa .usr- bajo #view-usuarios + modal
+   ============================================================ */
+.usr-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 6px; }
+.usr-empty { text-align: center; padding: 40px 16px; }
+
+.usr-card {
+  position: relative; display: flex; align-items: center; gap: 14px;
+  background: var(--bg-card); border: 1.5px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--sh-sm);
+  padding: 14px 14px 14px 16px; transition: box-shadow .15s, transform .15s, border-color .15s;
+}
+.usr-card:hover { box-shadow: var(--sh-md); transform: translateY(-2px); border-color: var(--border-strong); }
+.usr-card.is-inactive { opacity: .62; }
+.usr-card::before { content:''; position:absolute; left:0; top:12px; bottom:12px; width:4px; border-radius:0 4px 4px 0; background: var(--rolc, var(--border-strong)); }
+
+.usr-avatar {
+  width: 54px; height: 54px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  border: 2.5px solid var(--rolc, var(--border-strong)); background: var(--bg-soft);
+}
+.usr-info { flex: 1; min-width: 0; }
+.usr-name { font-family: var(--font-display); font-weight: 600; color: var(--primary); font-size: 1.02rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usr-meta { font-size: .82rem; color: var(--text-soft); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usr-chips { display: flex; gap: 6px; align-items: center; margin-top: 7px; flex-wrap: wrap; }
+
+.usr-chip-rol {
+  font-size: .68rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+  color: #fff; background: var(--rolc, var(--text-soft)); padding: 3px 9px; border-radius: var(--r-pill);
+}
+.usr-chip-estado {
+  font-size: .68rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: var(--r-pill); border: 1.5px solid var(--border-strong); color: var(--text-soft);
+}
+.usr-chip-estado.on { color: #157347; border-color: rgba(21,115,71,.4); background: rgba(21,115,71,.08); }
+
+.usr-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.usr-iconbtn {
+  width: 38px; height: 38px; border-radius: var(--r-md); display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--border-strong); background: var(--bg-card); color: var(--text-soft); transition: all .14s;
+}
+.usr-iconbtn:hover { color: var(--primary); border-color: var(--primary); background: var(--bg-soft); }
+.usr-iconbtn.danger:hover { color: #fff; background: var(--error); border-color: var(--error); }
+.usr-lock { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: var(--rol-dev); }
+
+/* Bloque de foto dentro del modal */
+.usr-foto-block { display: flex; align-items: center; gap: 16px; padding: 4px 2px 18px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
+.usr-foto-prev { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); background: var(--bg-soft); flex-shrink: 0; }
+.usr-foto-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.btn-sm { padding: 8px 14px; font-size: .85rem; min-width: auto; }
+
+@media (max-width: 380px) {
+  .usr-card { padding: 12px; gap: 10px; }
+  .usr-avatar { width: 46px; height: 46px; }
 }
