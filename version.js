@@ -17,4 +17,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.06.26.10";
+var APP_VERSION = "2026.06.26.11";
