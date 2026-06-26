@@ -11,10 +11,10 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 10 — Mi Bot
+ * FASE ACTUAL: Fase 11 — Plantillas unificadas en Configuración
  * Sube este número en cada despliegue. La app lo lee sin caché:
  * si cambia, limpia caches y recarga automáticamente en todos
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.06.26.8";
+var APP_VERSION = "2026.06.26.9";
