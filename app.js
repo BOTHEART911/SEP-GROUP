@@ -585,13 +585,10 @@ function chatRender_(msgs){
   box.innerHTML = msgs.map(m=>{
     const mio = m.uid && CHAT.yoUid && m.uid === CHAT.yoUid;
     const rc = rolClase[String(m.rol||'').toUpperCase()] || 'com';
-    const hora = chatHora_(m.ts);
     return `<div class="chat-row ${mio?'mio':'otro'}">
-      <div class="chat-bubble">
-        ${mio?'':`<span class="chat-autor rol-${rc}">${esc_(m.autor||'—')}</span>`}
-        <span class="chat-texto">${chatTexto_(m.texto)}</span>
-        <span class="chat-hora">${esc_(hora)}</span>
-      </div>
+      <span class="chat-autor rol-${rc}">${esc_(m.autor||'—')}</span>
+      <div class="chat-bubble"><span class="chat-texto">${chatTexto_(m.texto)}</span></div>
+      <span class="chat-hora">${esc_(chatFechaHora_(m.ts))}</span>
     </div>`;
   }).join('');
   if (cercaDelFondo) box.scrollTop = box.scrollHeight;
@@ -631,12 +628,15 @@ function chatStatus_(txt){
   if (txt){ el.textContent = txt; el.classList.remove('hidden'); }
   else { el.textContent=''; el.classList.add('hidden'); }
 }
-function chatHora_(ts){
+const _CHAT_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function chatFechaHora_(ts){
   const d = ts ? new Date(Number(ts)) : null;
   if (!d || isNaN(d.getTime())) return '';
+  const dia = d.getDate();
+  const mes = _CHAT_MESES[d.getMonth()] || '';
   let h = d.getHours(); const m = String(d.getMinutes()).padStart(2,'0');
   const ap = h>=12?'PM':'AM'; h = h%12; if (h===0) h=12;
-  return h+':'+m+' '+ap;
+  return dia + ' de ' + mes + ' ' + h + ':' + m + ' ' + ap;   // p.ej. "26 de junio 8:58 AM"
 }
 function chatTexto_(s){
   // escapa y respeta saltos de línea y *negrita*
