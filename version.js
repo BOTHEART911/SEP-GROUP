@@ -11,10 +11,10 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 8 — Dashboard
+ * FASE ACTUAL: Fase 9 — Usuarios
  * Sube este número en cada despliegue. La app lo lee sin caché:
  * si cambia, limpia caches y recarga automáticamente en todos
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.06.26.5";
+var APP_VERSION = "2026.06.26.7";
