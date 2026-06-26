@@ -12,9 +12,10 @@
   funcionamiento. Diseñado y desarrollado íntegramente por
   Oscar Polanía.
   ------------------------------------------------------------
-  FASE ACTUAL: Fase 9 — Usuarios
-    Vista view-usuarios (lista del equipo + modal CRUD + foto en
-    Drive). Tile 'usuarios' activo para DESARROLLADOR/SUPERUSUARIO.
+  FASE ACTUAL: Fase 10 — Mi Bot
+    Vista view-bot: Conexión (control del bot de WhatsApp por
+    BuilderBot: estado, QR, reiniciar, silenciar, blacklist) y
+    Plantillas (CRUD). Tile 'bot' activo para DEV/SUPERUSUARIO.
   ============================================================
 -->
 <html lang="es">
@@ -463,6 +464,61 @@
       <div class="modal-foot">
         <button id="usr-cancel" class="btn btn-ghost">Cancelar</button>
         <button id="usr-save" class="btn btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       VISTA MI BOT (Fase 10) — Conexión + Plantillas
+       ============================================================ -->
+  <section id="view-bot" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Mi Bot</h1>
+      <button id="bot-refresh" class="app-header__icon" title="Actualizar estado">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </header>
+    <div class="container">
+      <div class="cfg-tabs" id="bot-tabs">
+        <button class="cfg-tab active" data-bottab="conexion">Conexión</button>
+        <button class="cfg-tab" data-bottab="plantillas">Plantillas</button>
+      </div>
+      <div id="bot-conexion" class="cfg-panel"></div>
+      <div id="bot-plantillas" class="cfg-panel hidden"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       MODAL PLANTILLA (Fase 10) — crear / editar
+       ============================================================ -->
+  <div id="modal-plantilla" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="pl-modal-title">Nueva plantilla</h2>
+        <button id="pl-modal-close" class="modal-x" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="fld"><label>Clave *</label><input id="pl-clave" type="text" placeholder="EJ: BIENVENIDA" /></div>
+          <div class="fld"><label>Canal *</label>
+            <select id="pl-canal"><option value="AMBOS">WhatsApp + Correo</option><option value="WHATSAPP">Solo WhatsApp</option><option value="EMAIL">Solo Correo</option></select>
+          </div>
+          <div class="fld fld-full"><label>Asunto (correo)</label><input id="pl-asunto" type="text" placeholder="Asunto del correo" /></div>
+          <div class="fld fld-full"><label>Mensaje *</label><textarea id="pl-cuerpo" rows="7" placeholder="Escribe el mensaje…"></textarea></div>
+          <div class="fld fld-full"><label>Descripción (interna)</label><input id="pl-descripcion" type="text" placeholder="¿Cuándo se usa esta plantilla?" /></div>
+          <div class="fld fld-full">
+            <label>Variables disponibles (toca para insertar)</label>
+            <div id="pl-vars" class="bot-vars"></div>
+          </div>
+        </div>
+        <div id="pl-sys-note" class="cfg-hint hidden" style="color:var(--rol-comercial);font-weight:700;">Plantilla del sistema: puedes editar el contenido, pero no la clave ni eliminarla.</div>
+      </div>
+      <div class="modal-foot">
+        <button id="pl-cancel" class="btn btn-ghost">Cancelar</button>
+        <button id="pl-save" class="btn btn-primary">Guardar</button>
       </div>
     </div>
   </div>
