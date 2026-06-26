@@ -12,10 +12,12 @@
   funcionamiento. Diseñado y desarrollado íntegramente por
   Oscar Polanía.
   ------------------------------------------------------------
-  FASE ACTUAL: Fase 10 — Mi Bot
-    Vista view-bot: Conexión (control del bot de WhatsApp por
-    BuilderBot: estado, QR, reiniciar, silenciar, blacklist) y
-    Plantillas (CRUD). Tile 'bot' activo para DEV/SUPERUSUARIO.
+  FASE ACTUAL: Fase 11 — Plantillas unificadas en Configuración
+    Vista view-bot: SOLO Conexión (control del bot de WhatsApp por
+    BuilderBot: estado, QR, reiniciar, silenciar, blacklist).
+    La gestión de plantillas vive ahora ÚNICAMENTE en Configuración ›
+    Plantillas (lista dinámica + modal de EDICIÓN, sin crear ni
+    eliminar). Tile 'bot' activo para DEV/SUPERUSUARIO.
   ============================================================
 -->
 <html lang="es">
@@ -482,36 +484,31 @@
       </button>
     </header>
     <div class="container">
-      <div class="cfg-tabs" id="bot-tabs">
-        <button class="cfg-tab active" data-bottab="conexion">Conexión</button>
-        <button class="cfg-tab" data-bottab="plantillas">Plantillas</button>
-      </div>
       <div id="bot-conexion" class="cfg-panel"></div>
-      <div id="bot-plantillas" class="cfg-panel hidden"></div>
     </div>
   </section>
 
   <!-- ============================================================
-       MODAL PLANTILLA (Fase 10) — crear / editar
+       MODAL PLANTILLA (Fase 11) — EDICIÓN (Configuración)
        ============================================================ -->
   <div id="modal-plantilla" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-head">
-        <h2 id="pl-modal-title">Nueva plantilla</h2>
+        <h2 id="pl-modal-title">Editar plantilla</h2>
         <button id="pl-modal-close" class="modal-x" aria-label="Cerrar">✕</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="fld"><label>Clave *</label><input id="pl-clave" type="text" placeholder="EJ: BIENVENIDA" /></div>
+          <div class="fld"><label>Clave</label><input id="pl-clave" type="text" disabled /></div>
           <div class="fld"><label>Canal *</label>
             <select id="pl-canal"><option value="AMBOS">WhatsApp + Correo</option><option value="WHATSAPP">Solo WhatsApp</option><option value="EMAIL">Solo Correo</option></select>
           </div>
-          <div class="fld fld-full"><label>Asunto (correo)</label><input id="pl-asunto" type="text" placeholder="Asunto del correo" /></div>
+          <div class="fld fld-full" id="pl-asunto-fld"><label>Asunto (correo)</label><input id="pl-asunto" type="text" placeholder="Asunto del correo" /></div>
           <div class="fld fld-full"><label>Mensaje *</label><textarea id="pl-cuerpo" rows="7" placeholder="Escribe el mensaje…"></textarea></div>
           <div class="fld fld-full"><label>Descripción (interna)</label><input id="pl-descripcion" type="text" placeholder="¿Cuándo se usa esta plantilla?" /></div>
           <div class="fld fld-full">
             <label>Variables disponibles (toca para insertar)</label>
-            <div id="pl-vars" class="bot-vars"></div>
+            <div id="pl-vars" class="plt-vars"></div>
           </div>
         </div>
         <div id="pl-sys-note" class="cfg-hint hidden" style="color:var(--rol-comercial);font-weight:700;">Plantilla del sistema: puedes editar el contenido, pero no la clave ni eliminarla.</div>
