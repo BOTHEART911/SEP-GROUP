@@ -22,9 +22,11 @@ let loadingCount = 0, loaderTimer = null;
 function startLoading(){ loadingCount++; if (loadingCount === 1){ loaderTimer = setTimeout(()=>{ loader.classList.remove('hidden'); loaderTimer=null; }, 120); } }
 function stopLoading(){ if (loadingCount===0) return; loadingCount--; if (loadingCount===0){ if (loaderTimer){clearTimeout(loaderTimer);loaderTimer=null;} loader.classList.add('hidden'); } }
 
-/* ================== API (text/plain evita preflight CORS) ================== */
-async function apiGet(action, params = {}){
-  startLoading();
+/* ================== API (text/plain evita preflight CORS) ==================
+   opts.silent = true  → no muestra el spinner global (para refrescos en
+   segundo plano como el polling del chat). */
+async function apiGet(action, params = {}, opts = {}){
+  if (!opts.silent) startLoading();
   try{
     const url = new URL(API_BASE);
     url.search = new URLSearchParams({ action, ...params }).toString();
@@ -32,17 +34,17 @@ async function apiGet(action, params = {}){
     const j = await r.json();
     if(!j.ok) throw new Error(j.error || 'Error');
     return j.data;
-  } finally { stopLoading(); }
+  } finally { if (!opts.silent) stopLoading(); }
 }
-async function apiPost(action, body = {}){
-  startLoading();
+async function apiPost(action, body = {}, opts = {}){
+  if (!opts.silent) startLoading();
   try{
     const url = API_BASE + '?action=' + encodeURIComponent(action);
     const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
     const j = await r.json();
     if(!j.ok) throw new Error(j.error || 'Error');
     return j.data;
-  } finally { stopLoading(); }
+  } finally { if (!opts.silent) stopLoading(); }
 }
 
 /* ================== SESIÓN ================== */
@@ -544,7 +546,7 @@ async function chatCargar_(forzar){
   if (CHAT.cargando || !CHAT.leadId) return;
   CHAT.cargando = true;
   try{
-    const hist = await apiPost('historialChat', { usuarioId: currentUser.id, leadId: CHAT.leadId });
+    const hist = await apiPost('historialChat', { usuarioId: currentUser.id, leadId: CHAT.leadId }, { silent:true });
     if (!CHAT.leadId) return; // se cerró mientras cargaba
     CHAT.yoUid = (hist.yo && hist.yo.uid) || CHAT.yoUid;
     const msgs = hist.mensajes || [];
@@ -602,7 +604,7 @@ async function chatEnviar_(){
   if (!txt || !CHAT.leadId) return;
   inp.value=''; chatAutoGrow_();
   try{
-    await apiPost('enviarMensajeChat', { usuarioId: currentUser.id, leadId: CHAT.leadId, texto: txt });
+    await apiPost('enviarMensajeChat', { usuarioId: currentUser.id, leadId: CHAT.leadId, texto: txt }, { silent:true });
     await chatCargar_(true); // refleja el envío al instante
   }catch(e){
     inp.value = txt;
