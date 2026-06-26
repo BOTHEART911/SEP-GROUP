@@ -301,7 +301,7 @@ const TILES = [
 function irAInicio_(u){
   $('#welcome-name').textContent = (u.nombre || '').split(' ').slice(0,2).join(' ');
   $('#welcome-rol').textContent  = u.rol || '';
-  if (u.fotoUrl) $('#welcome-avatar').src = u.fotoUrl;
+  if (u.fotoUrl) $('#welcome-avatar').src = driveImg_(u.fotoUrl);
 
   const rol = String(u.rol || '').toUpperCase();
   const visibles = (rol === 'DESARROLLADOR') ? TILES : TILES.filter(t => t.roles.indexOf(rol) >= 0);
@@ -1548,6 +1548,17 @@ function sincronizarAgenda_(){
  * DESARROLLADOR solo puede asignarlo otro DESARROLLADOR.
  * ============================================================ */
 const USR_FOTO_FALLBACK = 'https://res.cloudinary.com/dqqeavica/image/upload/v1776287377/usuarios_dkzfqk.webp';
+/* Normaliza cualquier URL de foto a un formato renderizable en <img>.
+   - Drive (cualquier formato) → thumbnail?id=...&sz=w1000
+   - No-Drive (Cloudinary, etc.) → se usa tal cual
+   - Vacío → fallback */
+function driveImg_(url){
+  const s = String(url || '');
+  if (!s) return USR_FOTO_FALLBACK;
+  const m = s.match(/\/d\/([a-zA-Z0-9_-]+)/) || s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (!m) return s; // no es de Drive → respetar (p. ej. Cloudinary)
+  return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1000';
+}
 const USR_ROL_COLOR = {
   DESARROLLADOR: 'var(--rol-dev)',
   SUPERUSUARIO:  'var(--rol-super)',
@@ -1598,7 +1609,7 @@ function usrRenderList_(){
 
   cont.innerHTML = list.map(u => {
     const color = USR_ROL_COLOR[u.rol] || 'var(--text-soft)';
-    const foto  = esc_(u.fotoUrl || USR_FOTO_FALLBACK);
+    const foto  = esc_(driveImg_(u.fotoUrl));   // ← ANTES: esc_(u.fotoUrl || USR_FOTO_FALLBACK)
     const meta  = [u.documento, u.email].filter(Boolean).map(esc_).join(' · ');
     const acciones = u.esDev
       ? `<span class="usr-lock" title="Protegido"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
@@ -1641,7 +1652,7 @@ function usrAbrirModal_(u){
   $('#u-pin').value       = esEdicion ? (u.pin && /^\d{4}$/.test(u.pin) ? u.pin : '') : '';
   $('#u-rol').value       = esEdicion ? (u.rol || 'COMERCIAL') : 'COMERCIAL';
   $('#u-activo').value    = esEdicion ? (u.activo ? 'TRUE' : 'FALSE') : 'TRUE';
-  $('#u-foto-prev').src   = esEdicion ? (u.fotoUrl || USR_FOTO_FALLBACK) : USR_FOTO_FALLBACK;
+  $('#u-foto-prev').src   = esEdicion ? driveImg_(u.fotoUrl) : USR_FOTO_FALLBACK;   // ← ANTES: (u.fotoUrl || USR_FOTO_FALLBACK)
   $('#u-foto-ok').textContent = '';
   $('#u-foto-file').value = '';
 
