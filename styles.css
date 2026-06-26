@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 9 — Usuarios
+ * FASE ACTUAL: Fase 10 — Mi Bot
  * Sistema de diseño premium: tema claro, tarjetas blancas con
  * acento institucional, tiles con título + descripción, welcome
  * bar con degradado, micro-animaciones. Paleta SEP: azul #263143
@@ -755,3 +755,65 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
   .usr-card { padding: 12px; gap: 10px; }
   .usr-avatar { width: 46px; height: 46px; }
 }
+
+/* ============================================================
+   MI BOT (Fase 10) — capa .bot- bajo #view-bot
+   ============================================================ */
+.bot-section { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); padding: 18px; margin-bottom: 14px; }
+.bot-section__title { font-family: var(--font-display); font-size: 1rem; color: var(--primary); margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+.bot-section .muted { font-size: .85rem; }
+
+/* Indicador de estado */
+.bot-status { border-radius: var(--r-lg); padding: 20px; text-align: center; margin-bottom: 14px; border: 2px solid var(--border-strong); background: var(--bg-card); transition: all .2s; }
+.bot-status__icon { font-size: 2rem; line-height: 1; }
+.bot-status__txt { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; margin-top: 6px; color: var(--primary); }
+.bot-status__sub { font-size: .82rem; color: var(--text-soft); margin-top: 2px; }
+.bot-status--online  { border-color: rgba(21,115,71,.5);  background: rgba(21,115,71,.07); }
+.bot-status--online .bot-status__txt { color: #157347; }
+.bot-status--offline { border-color: rgba(220,53,69,.5);  background: rgba(220,53,69,.06); }
+.bot-status--offline .bot-status__txt { color: #b91c1c; }
+.bot-status--scan    { border-color: rgba(214,170,9,.6);  background: rgba(214,170,9,.08); }
+.bot-status--unknown { border-color: var(--border-strong); }
+
+/* QR */
+.bot-qr-img { width: 230px; max-width: 78%; border-radius: var(--r-md); border: 6px solid #fff; box-shadow: var(--sh-md); margin: 14px auto 8px; display: block; transition: filter .3s, opacity .3s; }
+.bot-qr-img--connected { filter: grayscale(1) blur(2px); opacity: .5; }
+.bot-qr-ok { background: rgba(21,115,71,.1); color: #157347; border-radius: var(--r-md); padding: 12px; font-size: .9rem; margin-top: 8px; }
+.bot-qr-ok span { color: var(--text-soft); font-size: .8rem; }
+
+/* Botones de acción del bot */
+.bot-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.bot-action {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 8px;
+  background: var(--bg-card); border: 1.5px solid var(--border-strong); border-radius: var(--r-md);
+  color: var(--text-soft); font-weight: 600; font-size: .85rem; transition: all .14s; cursor: pointer;
+}
+.bot-action:hover { color: var(--primary); border-color: var(--primary); background: var(--bg-soft); transform: translateY(-1px); }
+.bot-action__icon { font-size: 1.3rem; line-height: 1; }
+.bot-action.danger { color: #b91c1c; border-color: rgba(220,53,69,.35); }
+.bot-action.danger:hover { color: #fff; background: var(--error); border-color: var(--error); }
+.bot-contacto-row input { width: 100%; }
+.btn-block { width: 100%; }
+.mt-sm { margin-top: 10px; }
+
+/* Variables clicables en el editor de plantillas */
+.bot-vars { display: flex; flex-wrap: wrap; gap: 6px; }
+.bot-var-chip { font-size: .76rem; font-weight: 700; color: var(--primary); background: var(--bg-soft); border: 1.5px solid var(--border-strong); border-radius: var(--r-pill); padding: 4px 10px; cursor: pointer; transition: all .14s; }
+.bot-var-chip:hover { background: var(--accent); border-color: var(--accent); color: var(--primary); }
+
+/* Tarjetas de plantilla */
+.bot-pl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.bot-pl-card { position: relative; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); padding: 14px 14px 12px; transition: box-shadow .15s, transform .15s; }
+.bot-pl-card:hover { box-shadow: var(--sh-md); transform: translateY(-2px); }
+.bot-pl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.bot-pl-clave { font-family: var(--font-display); font-weight: 600; color: var(--primary); font-size: .95rem; word-break: break-word; }
+.bot-pl-canal { font-size: .66rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: #fff; background: var(--rol-super); padding: 3px 8px; border-radius: var(--r-pill); white-space: nowrap; }
+.bot-pl-canal.email { background: var(--rol-contador); }
+.bot-pl-canal.ambos { background: var(--primary); }
+.bot-pl-desc { font-size: .8rem; color: var(--text-soft); min-height: 1.1em; }
+.bot-pl-body { font-size: .78rem; color: var(--text-soft); margin-top: 8px; max-height: 3.6em; overflow: hidden; white-space: pre-wrap; opacity: .85; border-top: 1px dashed var(--border); padding-top: 8px; }
+.bot-pl-actions { display: flex; gap: 8px; margin-top: 10px; }
+.bot-pl-sys { font-size: .64rem; font-weight: 800; text-transform: uppercase; color: var(--rol-comercial); border: 1.5px solid rgba(194,121,42,.4); border-radius: var(--r-pill); padding: 2px 8px; }
+.bot-pl-btn { flex: 1; padding: 8px; border-radius: var(--r-md); border: 1.5px solid var(--border-strong); background: var(--bg-card); color: var(--text-soft); font-weight: 700; font-size: .8rem; transition: all .14s; }
+.bot-pl-btn:hover { color: var(--primary); border-color: var(--primary); background: var(--bg-soft); }
+.bot-pl-btn.danger:hover { color: #fff; background: var(--error); border-color: var(--error); }
