@@ -301,7 +301,9 @@ const TILES = [
 function irAInicio_(u){
   $('#welcome-name').textContent = (u.nombre || '').split(' ').slice(0,2).join(' ');
   $('#welcome-rol').textContent  = u.rol || '';
-  if (u.fotoUrl) $('#welcome-avatar').src = driveImg_(u.fotoUrl);
+  $('#welcome-avatar').src = driveImg_(u.fotoUrl);   // driveImg_ cae al genérico si está vacío
+  $('#welcome-avatar').onerror = function(){ this.onerror = null; this.src = USR_FOTO_FALLBACK; };
+  refrescarUsuarioActual_();   // trae la foto/nombre/rol actuales desde la hoja
 
   const rol = String(u.rol || '').toUpperCase();
   const visibles = (rol === 'DESARROLLADOR') ? TILES : TILES.filter(t => t.roles.indexOf(rol) >= 0);
@@ -330,6 +332,24 @@ function irAInicio_(u){
   });
 
   showView('inicio');
+}
+
+/* Refresca al usuario en sesión desde el backend (fuente de verdad: la
+   hoja USUARIOS) y actualiza avatar, nombre y rol del inicio. Corrige el
+   caso de una sesión vieja guardada antes de subir/cambiar la foto. */
+async function refrescarUsuarioActual_(){
+  if (!currentUser || !currentUser.id) return;
+  try{
+    const fresco = await apiGet('me', { usuarioId: currentUser.id });
+    if (!fresco || fresco.encontrado === false) return;
+    currentUser = Object.assign({}, currentUser, fresco);
+    guardarSesion_(currentUser);
+    $('#welcome-name').textContent = (currentUser.nombre || '').split(' ').slice(0,2).join(' ');
+    $('#welcome-rol').textContent  = currentUser.rol || '';
+    const av = $('#welcome-avatar');
+    av.onerror = function(){ this.onerror = null; this.src = USR_FOTO_FALLBACK; };
+    av.src = driveImg_(currentUser.fotoUrl);
+  }catch(_){}
 }
 
 $('#btn-logout')?.addEventListener('click', async ()=>{
