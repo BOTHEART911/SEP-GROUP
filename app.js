@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 18 — Notas de Lead (relabel + Vaciar mensajes + cascada)
+ * FASE ACTUAL: Fase 19 — Calendario configurable (CALENDAR_ID) para asesorías
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -1119,6 +1119,7 @@ function renderCfgGeneral_(){
       <div class="cfg-grid">
         ${field_('cf-LINK_AGENDA','Link de agenda (Perfil Apto)', g.LINK_AGENDA, 'full')}
         ${field_('cf-LINK_MEET_RESPALDO','Link Meet de respaldo', g.LINK_MEET_RESPALDO, 'full', 'Se usa si la creación automática del evento de Calendar falla.')}
+        ${field_('cf-CALENDAR_ID','ID del calendario de asesorías', g.CALENDAR_ID, 'full', 'Calendario donde se crean los eventos al pasar a "Asesoría Agendada". La cuenta que despliega debe poder hacer cambios en ese calendario.')}
       </div>
     </div>
 
@@ -1164,7 +1165,7 @@ function renderCfgGeneral_(){
 
   $('#cf-save-general').addEventListener('click', async ()=>{
     const claves = ['APP_NOMBRE','LOGO_URL','COLOR_PRIMARY','COLOR_ACCENT','EMAIL_REMITENTE','EMAIL_REMITENTE_NOMBRE',
-      'EMAIL_BANNER_URL','EMAIL_FINANCIERO','LINK_AGENDA','LINK_MEET_RESPALDO','COMERCIAL_ACCESO_INICIO','COMERCIAL_ACCESO_FIN',
+      'EMAIL_BANNER_URL','EMAIL_FINANCIERO','LINK_AGENDA','LINK_MEET_RESPALDO','CALENDAR_ID','COMERCIAL_ACCESO_INICIO','COMERCIAL_ACCESO_FIN',
       'BANCO_NOMBRE','BANCO_CUENTA','BANCO_TITULAR','BANCO_NIT'];
     const cambios = {}; claves.forEach(k => cambios[k] = $('#cf-'+k).value);
     await guardarConfig_(cambios);
