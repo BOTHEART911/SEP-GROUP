@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 13 — Agenda solo "horarios por día" + fix de slots
+ * FASE ACTUAL: Fase 14 — Header Comercial: Dashboard oculto a COMERCIAL + botón CRM
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -213,9 +213,12 @@ async function initApp_(){
   else  { showView('login'); }
 }
 
+let APP_CFG = {};   // Fase 14: config pública del bootstrap (incl. CRM_CHAT_URL)
+
 async function cargarBootstrap_(){
   try{
     const b = await apiGet('bootstrap');
+    APP_CFG = (b && b.config) || {};
     if (b?.config?.COLOR_PRIMARY) document.documentElement.style.setProperty('--primary', b.config.COLOR_PRIMARY);
     if (b?.config?.COLOR_ACCENT)  document.documentElement.style.setProperty('--accent',  b.config.COLOR_ACCENT);
   }catch(_){}
@@ -287,7 +290,7 @@ function entrar_(u){
 
 /* ================== INICIO: tiles por rol ================== */
 const TILES = [
-  { key:'comercial', titulo:'Comercial', desc:'Leads, seguimiento y dashboard',
+  { key:'comercial', titulo:'Comercial', desc:'Leads y seguimiento',
     icono:'https://res.cloudinary.com/dqqeavica/image/upload/v1782391218/comercial_vlu9py.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL'], listo:true, view:'comercial' },
   { key:'usuarios', titulo:'Usuarios', desc:'Gestionar el equipo',
@@ -374,6 +377,15 @@ document.addEventListener('click', (e)=>{
 
 async function abrirComercial_(){
   showView('comercial');
+  // Fase 14: visibilidad de los iconos del header por rol.
+  const rol = String((currentUser && currentUser.rol) || '').toUpperCase();
+  const dashBtn = $('#com-dashboard-btn');
+  if (dashBtn) dashBtn.style.display = (rol === 'COMERCIAL') ? 'none' : '';      // Cambio 1
+  const crmBtn = $('#com-crm-btn');
+  if (crmBtn){
+    const verCRM = (rol === 'DESARROLLADOR' || rol === 'SUPERUSUARIO' || rol === 'COMERCIAL'); // Cambio 2
+    crmBtn.style.display = verCRM ? '' : 'none';
+  }
   try{
     if (!COM.catalogo){
       const [cat, ubic] = await Promise.all([ apiGet('getCatalogoComercial'), apiGet('getUbicaciones') ]);
@@ -473,6 +485,12 @@ function bindCard_(r){
 /* ── Buscar ── */
 $('#com-search')?.addEventListener('input', (e)=>{ COM.filtroTexto = e.target.value; renderCards_(); });
 $('#com-dashboard-btn')?.addEventListener('click', ()=>{ abrirDashboard_(); });
+/* Fase 14: botón CRM → abre el CRM de BuilderBot en pestaña nueva */
+$('#com-crm-btn')?.addEventListener('click', ()=>{
+  const url = APP_CFG.CRM_CHAT_URL;
+  if (!url){ Swal.fire({icon:'info', title:'CRM no configurado', text:'Pídele al desarrollador que configure el enlace del CRM.'}); return; }
+  window.open(url, '_blank', 'noopener');
+});
 
 /* ── Detalle (Ver) ── */
 async function verComercial_(id){
@@ -583,7 +601,7 @@ async function abrirDashboard_(){
 }
 
 async function dashLoad_(silent){
-  const d = await apiGet('dashboard', { rango: DASH.rango, asesor: DASH.asesor }, { silent: !!silent });
+  const d = await apiGet('dashboard', { usuarioId: currentUser.id, rango: DASH.rango, asesor: DASH.asesor }, { silent: !!silent });
   DASH.data = d;
   if (!DASH.asesoresCargados){
     const sel = $('#dsh-asesor');
@@ -1377,6 +1395,14 @@ function renderCfgAvanzado_(){
         ${field_('cf-BB_MANAGER_API','BB_MANAGER_API', a.BB_MANAGER_API, 'full')}
       </div>
       <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-avanzado">Guardar</button></div>
+    </div>
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">🔗 CRM (botón en Comercial)</h3>
+      <p class="cfg-card__sub">Enlace del CRM de BuilderBot que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
+      <div class="cfg-grid">
+        ${field_('cf-CRM_CHAT_URL','CRM_CHAT_URL', a.CRM_CHAT_URL, 'full')}
+      </div>
+      <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-crm">Guardar CRM</button></div>
     </div>`;
   $('#cf-save-avanzado').addEventListener('click', async ()=>{
     const keys = ['BB_API_URL','BB_API_KEY','BB_ENDPOINT_BASE','BB_BOT_ID','BB_PROJECT_ID','BB_MANAGER_API'];
@@ -1384,6 +1410,14 @@ function renderCfgAvanzado_(){
     try{ await apiPost('saveConfig', { usuarioId: currentUser.id, cambios });
       Object.assign(CFG.data.avanzado, cambios);
       Swal.fire({icon:'success', title:'Guardado', timer:900, showConfirmButton:false});
+    }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+  });
+  $('#cf-save-crm').addEventListener('click', async ()=>{
+    const cambios = { CRM_CHAT_URL: $('#cf-CRM_CHAT_URL').value.trim() };
+    try{ await apiPost('saveConfig', { usuarioId: currentUser.id, cambios });
+      CFG.data.avanzado.CRM_CHAT_URL = cambios.CRM_CHAT_URL;
+      APP_CFG.CRM_CHAT_URL = cambios.CRM_CHAT_URL;   // refresca el botón sin recargar
+      Swal.fire({icon:'success', title:'CRM actualizado', timer:900, showConfirmButton:false});
     }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
   });
 }
