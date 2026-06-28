@@ -11,10 +11,10 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 18 — Notas de Lead (relabel + Vaciar mensajes + cascada)
+ * FASE ACTUAL: Fase 19 — Calendario configurable (CALENDAR_ID) para asesorías
  * Sube este número en cada despliegue. La app lo lee sin caché:
  * si cambia, limpia caches y recarga automáticamente en todos
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.06.27.06";
+var APP_VERSION = "2026.06.27.07";
