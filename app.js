@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 14 — Header Comercial: Dashboard oculto a COMERCIAL + botón CRM
+ * FASE ACTUAL: Fase 15 — Programas (máscara COP, frase, file Condiciones) + Asesoría Realizada
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -1180,13 +1180,16 @@ async function guardarConfig_(cambios){
 
 /* ── PROGRAMAS ── */
 function fmtCOP_(n){ return '$ ' + (Number(n)||0).toLocaleString('es-CO'); }
+/* Fase 15: máscara de pesos en vivo. Muestra "$ 50.000" mientras se
+   escribe; vacío si no hay dígitos. Al guardar se envía onlyDigits(). */
+function maskCOP_(v){ const d = onlyDigits(v); return d ? '$ ' + Number(d).toLocaleString('es-CO') : ''; }
 function renderCfgProgramas_(){
   const cont = $('#cfg-programas');
   cont.innerHTML = CFG.data.programas.map((p,i)=>`
     <div class="cfg-card" id="prog-card-${i}">
       <div class="prog-row"><img src="${esc_(p.iconoUrl)}"><b>${esc_(p.nombre)}</b></div>
       <div class="cfg-grid">
-        <div class="cfg-field"><label>Precio (COP)</label><input id="pr-precio-${i}" type="text" inputmode="numeric" value="${p.precio||''}"></div>
+        <div class="cfg-field"><label>Precio Inscripción (COP)</label><input id="pr-precio-${i}" type="text" inputmode="numeric" value="${maskCOP_(p.precio)}"></div>
         <div class="cfg-field"><label>Brochure (PDF)</label>
           <div class="brochure-line">
             ${p.brochureUrl?`<a class="file-btn" href="${esc_(p.brochureUrl)}" target="_blank">👁️ Ver actual</a>`:'<span class="cfg-hint">Sin brochure</span>'}
@@ -1194,21 +1197,29 @@ function renderCfgProgramas_(){
             <span class="brochure-ok" id="pr-ok-${i}"></span>
           </div>
         </div>
-        <div class="cfg-field full"><label>Condiciones</label><textarea id="pr-cond-${i}" rows="3">${esc_(p.condiciones)}</textarea></div>
+        <div class="cfg-field"><label>Condiciones (PDF)</label>
+          <div class="brochure-line">
+            ${p.condicionesUrl?`<a class="file-btn" href="${esc_(p.condicionesUrl)}" target="_blank">👁️ Ver actual</a>`:'<span class="cfg-hint">Sin condiciones</span>'}
+            <label class="file-btn">${p.condicionesUrl?'♻️ Reemplazar':'⬆️ Subir PDF'}<input type="file" accept="application/pdf" style="display:none" id="pr-cfile-${i}"></label>
+            <span class="brochure-ok" id="pr-cok-${i}"></span>
+          </div>
+        </div>
+        <div class="cfg-field full"><label>Frase Motivacional</label><textarea id="pr-frase-${i}" rows="3" placeholder="Frase que acompaña el correo/WhatsApp de Asesoría Realizada (variable {frase})">${esc_(p.frase)}</textarea></div>
       </div>
       <div class="cfg-actions"><button class="btn btn-primary" id="pr-save-${i}">Guardar</button></div>
     </div>`).join('');
 
   CFG.data.programas.forEach((p,i)=>{
-    $('#pr-precio-'+i).addEventListener('input', e=>{ e.target.value = onlyDigits(e.target.value); });
+    $('#pr-precio-'+i).addEventListener('input', e=>{ e.target.value = maskCOP_(e.target.value); });
     $('#pr-save-'+i).addEventListener('click', async ()=>{
       try{
         const res = await apiPost('savePrograma', { usuarioId: currentUser.id, id:p.id,
-          precio: onlyDigits($('#pr-precio-'+i).value), condiciones: $('#pr-cond-'+i).value });
+          precio: onlyDigits($('#pr-precio-'+i).value), frase: $('#pr-frase-'+i).value });
         CFG.data.programas = res;
         Swal.fire({icon:'success', title:'Programa guardado', timer:900, showConfirmButton:false});
       }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
     });
+    // Subir/reemplazar BROCHURE
     $('#pr-file-'+i).addEventListener('change', async (ev)=>{
       const file = ev.target.files[0]; if (!file) return;
       if (file.type !== 'application/pdf'){ Swal.fire({icon:'warning', title:'Debe ser PDF'}); return; }
@@ -1221,6 +1232,20 @@ function renderCfgProgramas_(){
         renderCfgProgramas_();
         Swal.fire({icon:'success', title:'Brochure actualizado', timer:1000, showConfirmButton:false});
       }catch(e){ $('#pr-ok-'+i).textContent=''; Swal.fire({icon:'error', title:'No se pudo subir', text:String(e.message||e)}); }
+    });
+    // Subir/reemplazar CONDICIONES (Fase 15)
+    $('#pr-cfile-'+i).addEventListener('change', async (ev)=>{
+      const file = ev.target.files[0]; if (!file) return;
+      if (file.type !== 'application/pdf'){ Swal.fire({icon:'warning', title:'Debe ser PDF'}); return; }
+      try{
+        $('#pr-cok-'+i).textContent = 'Subiendo…';
+        const base64 = await fileBase64_(file);
+        const res = await apiPost('uploadCondiciones', { usuarioId: currentUser.id, id:p.id, filename:file.name, base64 });
+        p.condicionesUrl = res.url;
+        $('#pr-cok-'+i).textContent = '✓ Subido';
+        renderCfgProgramas_();
+        Swal.fire({icon:'success', title:'Condiciones actualizadas', timer:1000, showConfirmButton:false});
+      }catch(e){ $('#pr-cok-'+i).textContent=''; Swal.fire({icon:'error', title:'No se pudo subir', text:String(e.message||e)}); }
     });
   });
 }
