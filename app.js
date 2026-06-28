@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 15 — Programas (máscara COP, frase, file Condiciones) + Asesoría Realizada
+ * FASE ACTUAL: Fase 17 — Rueda fecha/hora del modal comercial (Bugs A y B)
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -1409,7 +1409,7 @@ function renderCfgAvanzado_(){
   const a = CFG.data.avanzado;
   cont.innerHTML = `
     <div class="cfg-card">
-      <h3 class="cfg-card__title">🔐 BuilderBot / API (solo DESARROLLADOR)</h3>
+      <h3 class="cfg-card__title">🔐 HeartSync / API (solo DESARROLLADOR)</h3>
       <p class="cfg-card__sub">Estas claves no son visibles para otros roles.</p>
       <div class="cfg-grid">
         ${field_('cf-BB_API_URL','BB_API_URL', a.BB_API_URL, 'full')}
@@ -1457,65 +1457,84 @@ const IOSP_H = 42;
 function iospHoraLabel_(h){ const ap = h>=12?'PM':'AM'; let hh=h%12; if(hh===0)hh=12; return hh+':00 '+ap; }
 function iospDiasMes_(mesIdx, year){ return new Date(year, mesIdx+1, 0).getDate(); }
 
-function buildCol_(colEl, items, initIdx){
+function buildCol_(colEl, items, initIdx, onSettle){
   colEl.innerHTML = '<div class="iosp-pad"></div>' +
     items.map((t,i)=>`<div class="iosp-item" data-i="${i}">${t}</div>`).join('') +
     '<div class="iosp-pad"></div>';
   colEl.scrollTop = Math.max(0, initIdx)*IOSP_H;
   marcarSel_(colEl);
   let to=null;
-  colEl.onscroll = ()=>{ marcarSel_(colEl); if(to)clearTimeout(to); to=setTimeout(()=>{ const i=selCol_(colEl); colEl.scrollTo({top:i*IOSP_H, behavior:'smooth'}); }, 90); };
+  colEl.onscroll = ()=>{ marcarSel_(colEl); if(to)clearTimeout(to); to=setTimeout(()=>{ const i=selCol_(colEl); colEl.scrollTo({top:i*IOSP_H, behavior:'smooth'}); if (onSettle) onSettle(i); }, 90); };
 }
 function selCol_(colEl){ return Math.max(0, Math.round(colEl.scrollTop / IOSP_H)); }
 function marcarSel_(colEl){ const i=selCol_(colEl); colEl.querySelectorAll('.iosp-item').forEach(el=> el.classList.toggle('sel', +el.dataset.i===i)); }
 
+/* Días disponibles del mes elegido. Si es el MES ACTUAL, arranca en el
+   día de HOY (Bug A: no se pueden elegir días pasados). */
+function iospDiasArr_(mesIdx){
+  const total = iospDiasMes_(mesIdx, IOSP.year);
+  const desde = (mesIdx === IOSP.minMes) ? IOSP.minDia : 1;
+  const arr = []; for (let d=desde; d<=total; d++) arr.push(d);
+  return arr;
+}
+
 function abrirRuedaFecha_(valorISO, onOk, opts){
   IOSP.onOk = onOk;
   IOSP.soloFecha = !!(opts && opts.soloFecha);
-  IOSP.year = new Date().getFullYear();
+  const ahora = new Date();
+  IOSP.year   = ahora.getFullYear();
+  IOSP.minMes = ahora.getMonth();   // Bug A: cota inferior = mes/día de hoy
+  IOSP.minDia = ahora.getDate();
   $('#iosp-year').textContent = IOSP.year;
   $('#iosp-hora').style.display = IOSP.soloFecha ? 'none' : '';
 
-  let dRef = valorISO ? new Date(valorISO) : new Date();
-  if (isNaN(dRef.getTime())) dRef = new Date();
-  let mesIdx = dRef.getMonth();
+  let dRef = valorISO ? new Date(valorISO) : ahora;
+  if (isNaN(dRef.getTime())) dRef = ahora;
+  let mesIdx = (dRef.getFullYear() === IOSP.year) ? dRef.getMonth() : IOSP.minMes;
+  if (mesIdx < IOSP.minMes) mesIdx = IOSP.minMes;                       // no meses pasados
   let dia = dRef.getDate();
+  if (mesIdx === IOSP.minMes && dia < IOSP.minDia) dia = IOSP.minDia;   // no días pasados
   let hora = dRef.getHours(); if (hora < 6) hora = 9; if (hora > 20) hora = 20;
   const horaIdx = Math.max(0, IOSP_HORAS.indexOf(hora) >= 0 ? IOSP_HORAS.indexOf(hora) : 3);
 
-  const diasArr = Array.from({length: iospDiasMes_(mesIdx, IOSP.year)}, (_,i)=>String(i+1));
-  buildCol_($('#iosp-dia'), diasArr, dia-1);
-  buildCol_($('#iosp-mes'), IOSP_MESES.map(m=>m.charAt(0).toUpperCase()+m.slice(1)), mesIdx);
-  buildCol_($('#iosp-hora'), IOSP_HORAS.map(iospHoraLabel_), horaIdx);
+  // Meses disponibles: del mes actual a diciembre (Bug A).
+  IOSP.meses = []; for (let m=IOSP.minMes; m<=11; m++) IOSP.meses.push(m);
+  const mesPos = Math.max(0, IOSP.meses.indexOf(mesIdx));
+  IOSP.dias = iospDiasArr_(mesIdx);
+  const diaPos = Math.max(0, IOSP.dias.indexOf(dia));
 
-  // Si cambia el mes, ajusta la cantidad de días
-  $('#iosp-mes').addEventListener('scroll', ()=>{
-    const mi = selCol_($('#iosp-mes'));
-    const nDias = iospDiasMes_(mi, IOSP.year);
-    if ($('#iosp-dia').querySelectorAll('.iosp-item').length !== nDias){
-      const cur = Math.min(selCol_($('#iosp-dia')), nDias-1);
-      buildCol_($('#iosp-dia'), Array.from({length:nDias},(_,i)=>String(i+1)), cur);
-    }
-  }, { passive:true });
-
+  // IMPORTANTE (Bug B): mostrar el picker ANTES de construir las columnas.
+  // Con el contenedor en display:none, asignar scrollTop NO surte efecto,
+  // así que la rueda quedaba en el índice 0 (la hora salía siempre 6:00 AM).
   $('#ios-picker').classList.remove('hidden');
+
+  buildCol_($('#iosp-dia'), IOSP.dias.map(String), diaPos);
+  buildCol_($('#iosp-mes'), IOSP.meses.map(m=>IOSP_MESES[m].charAt(0).toUpperCase()+IOSP_MESES[m].slice(1)), mesPos, (pos)=>{
+    // Al cambiar el mes, recalcula los días disponibles (con cota de hoy).
+    // Va dentro del onSettle de buildCol_ (vía .onscroll) para NO acumular
+    // listeners en el elemento persistente #iosp-mes en cada apertura.
+    const nuevoMes = IOSP.meses[Math.min(pos, IOSP.meses.length-1)];
+    IOSP.dias = iospDiasArr_(nuevoMes);
+    const curPos = Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1);
+    buildCol_($('#iosp-dia'), IOSP.dias.map(String), Math.max(0, curPos));
+  });
+  buildCol_($('#iosp-hora'), IOSP_HORAS.map(iospHoraLabel_), horaIdx);
 }
 
 $('#iosp-cancel')?.addEventListener('click', ()=> $('#ios-picker').classList.add('hidden'));
 $('#iosp-ok')?.addEventListener('click', ()=>{
-  const mi = selCol_($('#iosp-mes'));
-  const nDias = iospDiasMes_(mi, IOSP.year);
-  const dia = Math.min(selCol_($('#iosp-dia'))+1, nDias);
+  const mesIdx = IOSP.meses[Math.min(selCol_($('#iosp-mes')), IOSP.meses.length-1)];
+  const dia    = IOSP.dias[Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1)];
   const pad = n => String(n).padStart(2,'0');
   $('#ios-picker').classList.add('hidden');
   if (IOSP.soloFecha){
-    const iso = `${IOSP.year}-${pad(mi+1)}-${pad(dia)}`;
-    if (IOSP.onOk) IOSP.onOk(iso, `${dia} de ${IOSP_MESES[mi]} de ${IOSP.year}`);
+    const iso = `${IOSP.year}-${pad(mesIdx+1)}-${pad(dia)}`;
+    if (IOSP.onOk) IOSP.onOk(iso, `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year}`);
     return;
   }
   const hora = IOSP_HORAS[Math.min(selCol_($('#iosp-hora')), IOSP_HORAS.length-1)];
-  const iso = `${IOSP.year}-${pad(mi+1)}-${pad(dia)}T${pad(hora)}:00`;
-  const texto = `${dia} de ${IOSP_MESES[mi]} de ${IOSP.year} · ${iospHoraLabel_(hora)}`;
+  const iso = `${IOSP.year}-${pad(mesIdx+1)}-${pad(dia)}T${pad(hora)}:00`;
+  const texto = `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year} · ${iospHoraLabel_(hora)}`;
   if (IOSP.onOk) IOSP.onOk(iso, texto);
 });
 
