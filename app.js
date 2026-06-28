@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 19 — Calendario configurable (CALENDAR_ID) para asesorías
+ * FASE ACTUAL: Fase 19.1 — Fix rueda: leer la hora antes de ocultar el picker
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -1447,7 +1447,7 @@ function renderCfgAvanzado_(){
     </div>
     <div class="cfg-card">
       <h3 class="cfg-card__title">🔗 CRM (botón en Comercial)</h3>
-      <p class="cfg-card__sub">Enlace del CRM de HeartSync que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
+      <p class="cfg-card__sub">Enlace del CRM deHeartSync que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
       <div class="cfg-grid">
         ${field_('cf-CRM_CHAT_URL','CRM_CHAT_URL', a.CRM_CHAT_URL, 'full')}
       </div>
@@ -1547,8 +1547,13 @@ function abrirRuedaFecha_(valorISO, onOk, opts){
 
 $('#iosp-cancel')?.addEventListener('click', ()=> $('#ios-picker').classList.add('hidden'));
 $('#iosp-ok')?.addEventListener('click', ()=>{
-  const mesIdx = IOSP.meses[Math.min(selCol_($('#iosp-mes')), IOSP.meses.length-1)];
-  const dia    = IOSP.dias[Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1)];
+  // Leer TODAS las columnas ANTES de ocultar el picker: en un contenedor
+  // display:none, scrollTop vale 0. Antes la HORA se leía después de
+  // ocultar → siempre salía 6:00 AM (índice 0). Por eso mes/día salían
+  // bien y la hora no.
+  const mesIdx  = IOSP.meses[Math.min(selCol_($('#iosp-mes')), IOSP.meses.length-1)];
+  const dia     = IOSP.dias[Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1)];
+  const hora    = IOSP_HORAS[Math.min(selCol_($('#iosp-hora')), IOSP_HORAS.length-1)];
   const pad = n => String(n).padStart(2,'0');
   $('#ios-picker').classList.add('hidden');
   if (IOSP.soloFecha){
@@ -1556,7 +1561,6 @@ $('#iosp-ok')?.addEventListener('click', ()=>{
     if (IOSP.onOk) IOSP.onOk(iso, `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year}`);
     return;
   }
-  const hora = IOSP_HORAS[Math.min(selCol_($('#iosp-hora')), IOSP_HORAS.length-1)];
   const iso = `${IOSP.year}-${pad(mesIdx+1)}-${pad(dia)}T${pad(hora)}:00`;
   const texto = `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year} · ${iospHoraLabel_(hora)}`;
   if (IOSP.onOk) IOSP.onOk(iso, texto);
