@@ -11,10 +11,10 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 19 — Calendario configurable (CALENDAR_ID) para asesorías
+ * FASE ACTUAL: Fase 19.1 — Fix rueda: leer la hora antes de ocultar el picker
  * Sube este número en cada despliegue. La app lo lee sin caché:
  * si cambia, limpia caches y recarga automáticamente en todos
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.06.27.07";
+var APP_VERSION = "2026.06.27.08";
