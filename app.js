@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 17 — Rueda fecha/hora del modal comercial (Bugs A y B)
+ * FASE ACTUAL: Fase 18 — Notas de Lead (relabel + Vaciar mensajes + cascada)
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -468,7 +468,7 @@ function cardHtml_(r){
     <div class="com-card__actions">
       <button class="act-btn act-ver" data-act="ver"><img src="${verIc}">Ver</button>
       <button class="act-btn act-editar" data-act="editar">✏️ Editar</button>
-      <button class="act-btn act-chat" data-act="chat"><img src="${chatIc}">Chat</button>
+      <button class="act-btn act-chat" data-act="chat"><img src="${chatIc}">Notas</button>
       ${puedeEliminar?`<button class="act-btn act-eliminar" data-act="eliminar">🗑 Eliminar</button>`:''}
     </div>
   </div>`;
@@ -533,7 +533,7 @@ async function verComercial_(id){
         ${r.meetLink?`<div style="padding:0 22px 8px;"><a class="btn-meet" href="${esc_(r.meetLink)}" target="_blank" rel="noopener">▶ Entrar a la reunión Meet</a></div>`:''}
         <div class="detalle-acciones">
           <button class="act-btn act-editar" id="det-editar">✏️ Editar</button>
-          <button class="act-btn act-chat" id="det-chat">💬 Chat</button>
+          <button class="act-btn act-chat" id="det-chat">📝 Notas</button>
           ${puedeEliminar?`<button class="act-btn act-eliminar" id="det-eliminar">🗑 Eliminar</button>`:''}
         </div>
         ${segHtml}
@@ -762,13 +762,14 @@ function dashRenderMeses_(d){
 }
 
 /* ============================================================
- *  CHAT INTERNO POR LEAD (Fase 7 — sondeo / polling)
+ *  NOTAS DE LEAD (Fase 7 — sondeo / polling · Fase 18 relabel)
  * ------------------------------------------------------------
- *  Hilo de colaboración del equipo por cada lead. El backend
- *  (hoja CHAT) es la fuente de verdad. El cliente LEE con
- *  historialChat (refresco cada CHAT.intervaloMs mientras el chat
- *  está abierto) y ENVÍA vía enviarMensajeChat. Sin Firebase en el
- *  cliente. El estudiante NO participa.
+ *  Hilo de colaboración del equipo por cada lead (antes "Chat").
+ *  El backend (hoja CHAT) es la fuente de verdad. El cliente LEE
+ *  con historialChat (refresco cada CHAT.intervaloMs mientras está
+ *  abierto) y ENVÍA vía enviarMensajeChat. "Vaciar mensajes"
+ *  (DEV/SUPER/ADMIN) usa vaciarChat. Sin Firebase en el cliente.
+ *  El estudiante NO participa. Los endpoints NO cambiaron de nombre.
  * ============================================================ */
 const CHAT = {
   leadId:null, leadNombre:'', yoUid:null,
@@ -784,7 +785,11 @@ async function abrirChat_(lead){
   CHAT.leadId = leadId; CHAT.leadNombre = nombre || leadId; CHAT.sig = '';
 
   $('#chat-lead-name').textContent = CHAT.leadNombre;
-  $('#chat-msgs').innerHTML = `<div class="chat-empty">Cargando conversación…</div>`;
+  // Fase 18: "Vaciar mensajes" solo DEV / SUPERUSUARIO (/ ADMINISTRADOR).
+  const puedeVaciar = currentUser && (currentUser.isDev || currentUser.isSuper ||
+    String(currentUser.rol||'').toUpperCase()==='ADMINISTRADOR');
+  const vb = $('#chat-vaciar'); if (vb) vb.style.display = puedeVaciar ? '' : 'none';
+  $('#chat-msgs').innerHTML = `<div class="chat-empty">Cargando notas…</div>`;
   chatStatus_('');
   chatAbrirUI_();
 
@@ -906,6 +911,24 @@ function chatAutoGrow_(){
 
 /* ── Eventos del overlay (se cablean una sola vez) ── */
 $('#chat-close')?.addEventListener('click', chatCerrarUI_);
+/* Fase 18: Vaciar mensajes (DEV/SUPER/ADMIN). Borra la hoja CHAT del lead + RTDB. */
+$('#chat-vaciar')?.addEventListener('click', async ()=>{
+  const leadId = CHAT.leadId; if (!leadId) return;
+  const r = await Swal.fire({
+    icon:'warning', title:'¿Vaciar las notas?',
+    text:'Se borrarán todos los mensajes de este lead. Esta acción no se puede deshacer.',
+    showCancelButton:true, confirmButtonText:'Sí, vaciar', cancelButtonText:'Cancelar',
+    confirmButtonColor:'#d33'
+  });
+  if (!r.isConfirmed) return;
+  try{
+    const res = await apiPost('vaciarChat', { usuarioId: currentUser.id, leadId });
+    CHAT.sig = '';
+    $('#chat-msgs').innerHTML = `<div class="chat-empty">Sin notas todavía.</div>`;
+    await chatCargar_(true).catch(()=>{});
+    Swal.fire({icon:'success', title:'Notas vaciadas', timer:1000, showConfirmButton:false});
+  }catch(e){ Swal.fire({icon:'error', title:'No se pudo vaciar', text:String(e && e.message || e)}); }
+});
 $('#sep-chat')?.addEventListener('click', (e)=>{ if (e.target.id==='sep-chat') chatCerrarUI_(); });
 $('#chat-send')?.addEventListener('click', chatEnviar_);
 $('#chat-input')?.addEventListener('input', chatAutoGrow_);
@@ -1423,7 +1446,7 @@ function renderCfgAvanzado_(){
     </div>
     <div class="cfg-card">
       <h3 class="cfg-card__title">🔗 CRM (botón en Comercial)</h3>
-      <p class="cfg-card__sub">Enlace del CRM de BuilderBot que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
+      <p class="cfg-card__sub">Enlace del CRM de HeartSync que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
       <div class="cfg-grid">
         ${field_('cf-CRM_CHAT_URL','CRM_CHAT_URL', a.CRM_CHAT_URL, 'full')}
       </div>
