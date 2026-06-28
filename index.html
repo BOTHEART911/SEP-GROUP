@@ -12,7 +12,7 @@
   funcionamiento. Diseñado y desarrollado íntegramente por
   Oscar Polanía.
   ------------------------------------------------------------
-  FASE ACTUAL: Fase 14 — Header Comercial: Dashboard oculto a COMERCIAL + botón CRM
+  FASE ACTUAL: Fase 18 — Notas de Lead (relabel + Vaciar mensajes + cascada)
     Vista view-bot: SOLO Conexión (control del bot de WhatsApp por
     BuilderBot: estado, QR, reiniciar, silenciar, blacklist).
     La gestión de plantillas vive ahora ÚNICAMENTE en Configuración ›
@@ -195,7 +195,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
       <h1 class="app-header__title">Comercial</h1>
-      <button class="app-header__icon" id="com-crm-btn" title="CRM (HeartSync)" style="display:none">
+      <button class="app-header__icon" id="com-crm-btn" title="CRM (HeartSyncs)" style="display:none">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </button>
       <button class="app-header__icon" id="com-dashboard-btn" title="Dashboard">
@@ -544,28 +544,29 @@
 
 
   <!-- ============================================================
-       CHAT INTERNO POR LEAD (Fase 7 — RTDB en tiempo real)
+       NOTAS DE LEAD (Fase 7 RTDB / Fase 18 relabel)
        Hilo de colaboración del equipo. El estudiante NO participa.
        ============================================================ -->
   <div id="sep-chat" class="chat-overlay hidden" aria-hidden="true">
     <div class="chat-card">
       <header class="chat-head">
         <div class="chat-head__info">
-          <span class="chat-head__title">💬 Chat del lead</span>
+          <span class="chat-head__title">📝 Notas de Lead</span>
           <span id="chat-lead-name" class="chat-head__sub">—</span>
         </div>
+        <button type="button" id="chat-vaciar" class="chat-close" title="Vaciar mensajes" style="display:none">🗑</button>
         <button type="button" id="chat-close" class="chat-close" aria-label="Cerrar">✕</button>
       </header>
 
       <div id="chat-msgs" class="chat-msgs">
-        <div class="chat-empty">Cargando conversación…</div>
+        <div class="chat-empty">Cargando notas…</div>
       </div>
 
       <div id="chat-status" class="chat-status hidden"></div>
 
       <footer class="chat-foot">
         <textarea id="chat-input" class="chat-input" rows="1"
-          placeholder="Escribe un mensaje para el equipo…" maxlength="4000"></textarea>
+          placeholder="Escribe una nota para el equipo…" maxlength="4000"></textarea>
         <button type="button" id="chat-send" class="chat-send" aria-label="Enviar">➤</button>
       </footer>
     </div>
