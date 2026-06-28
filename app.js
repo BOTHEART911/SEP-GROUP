@@ -11,11 +11,14 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 12 — Monitoreo del bot + Alertas por correo
- *   Configuración › General gana la sección "Alertas del bot": correos
- *   destinatarios (1 obligatorio + 2 opcionales, con validación), URL de
- *   la app para el enlace del correo y silencio nocturno opcional. El
- *   chequeo horario y el envío viven en el backend (Bot.gs).
+ * FASE ACTUAL: Fase 13 — Agenda solo "horarios por día" + fix de slots
+ *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
+ *   días"; cada día configura sus propios bloques. Se corrige el bug de la
+ *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
+ *   El backend (slotsDisponibles_) ahora lee siempre los bloques por día,
+ *   con lo que SEP-AGENDA vuelve a mostrar los horarios.
+ *   Fase 12: Configuración › General gana "Alertas del bot" (correos +
+ *   URL de la app + silencio nocturno); el chequeo vive en Bot.gs.
  *   Fase 11: plantillas unificadas en Configuración (lista dinámica +
  *   modal de EDICIÓN; Mi Bot quedó solo con Conexión).
  *   Fase 9: usuarios. Fase 8: dashboard. Fase 7: chat. SEP-AGENDA intacta.
@@ -1474,42 +1477,31 @@ function labelFechaISO_(iso){ const [y,m,d]=iso.split('-').map(Number); const dt
 function chipsBloques_(sel){ const s=new Set(sel||[]); let o=''; for(let h=6;h<=20;h++){const k=String(h).padStart(2,'0')+':00'; o+=`<span class="bchip ${s.has(k)?'on':''}" data-h="${k}">${iospHoraLabel_(h)}</span>`;} return o; }
 
 function renderCfgAgenda_(){
-  const a = CFG.data.agenda || { modo:'unificado', bloquesUnificados:[], dias:[] };
-  CFG.agenda = JSON.parse(JSON.stringify(a));
+  const a = CFG.data.agenda || { dias:[] };
+  CFG.agenda = { dias: (a.dias||[]).map(d=>({fecha:d.fecha, bloques:[...(d.bloques||[])]})) };
   const cont = $('#cfg-agenda');
   cont.innerHTML = `
     <div class="cfg-card">
-      <h3 class="cfg-card__title">⚙️ Modo de horarios</h3>
-      <div class="seg-toggle" id="agenda-modo">
-        <button type="button" class="seg ${a.modo==='unificado'?'on':''}" data-modo="unificado">Mismos horarios todos los días</button>
-        <button type="button" class="seg ${a.modo==='por_dia'?'on':''}" data-modo="por_dia">Horarios por día</button>
-      </div>
-      <div id="agenda-unif" class="${a.modo==='unificado'?'':'hidden'}">
-        <p class="cfg-card__sub" style="margin-top:14px">Bloques de 1 hora (se aplican a todos los días disponibles):</p>
-        <div class="bloques-chips" id="bloques-unif">${chipsBloques_(a.bloquesUnificados)}</div>
-      </div>
-    </div>
-    <div class="cfg-card">
       <h3 class="cfg-card__title">📅 Días disponibles</h3>
-      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías. Cada bloque admite varios estudiantes (cupos compartidos).</p>
+      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías y marca los horarios de cada día. Cada bloque admite varios estudiantes (cupos compartidos).</p>
       <button type="button" class="btn btn-accent" id="agenda-add">+ Agregar día</button>
       <div class="agenda-dias" id="agenda-dias"></div>
     </div>
     <div class="cfg-actions"><button class="btn btn-primary" id="agenda-save">Guardar disponibilidad</button></div>`;
   renderDiasAgenda_();
 
-  // Toggle de bloques (delegado)
-  cont.addEventListener('click', (e)=>{
-    const chip = e.target.closest('.bchip'); if (chip){ chip.classList.toggle('on'); }
-  });
-  // Modo
-  $('#agenda-modo').addEventListener('click', (e)=>{
-    const b = e.target.closest('.seg'); if (!b) return;
-    sincronizarAgenda_();
-    CFG.agenda.modo = b.dataset.modo;
-    $$('#agenda-modo .seg').forEach(s=> s.classList.toggle('on', s===b));
-    $('#agenda-unif').classList.toggle('hidden', CFG.agenda.modo!=='unificado');
-    renderDiasAgenda_();
+  // Toggle de bloques + quitar día, delegados en #agenda-dias (se recrea
+  // en cada render → NO se acumulan listeners como pasaba al colgarlos
+  // del contenedor persistente #cfg-agenda).
+  $('#agenda-dias').addEventListener('click', (e)=>{
+    const chip = e.target.closest('.bchip');
+    if (chip){ chip.classList.toggle('on'); return; }
+    const del = e.target.closest('[data-del]');
+    if (del){
+      sincronizarAgenda_();
+      CFG.agenda.dias = CFG.agenda.dias.filter(d=>d.fecha!==del.dataset.del);
+      renderDiasAgenda_();
+    }
   });
   // Agregar día
   $('#agenda-add').addEventListener('click', ()=>{
@@ -1518,13 +1510,6 @@ function renderCfgAgenda_(){
       if (!CFG.agenda.dias.some(d=>d.fecha===iso)) CFG.agenda.dias.push({fecha:iso, bloques:[]});
       renderDiasAgenda_();
     }, { soloFecha:true });
-  });
-  // Quitar día (delegado)
-  $('#agenda-dias').addEventListener('click', (e)=>{
-    const del = e.target.closest('[data-del]'); if (!del) return;
-    sincronizarAgenda_();
-    CFG.agenda.dias = CFG.agenda.dias.filter(d=>d.fecha!==del.dataset.del);
-    renderDiasAgenda_();
   });
   // Guardar
   $('#agenda-save').addEventListener('click', async ()=>{
@@ -1538,24 +1523,21 @@ function renderCfgAgenda_(){
 }
 
 function renderDiasAgenda_(){
-  const a = CFG.agenda; const porDia = a.modo==='por_dia';
+  const a = CFG.agenda;
   $('#agenda-dias').innerHTML = (a.dias||[]).slice().sort((x,y)=>x.fecha.localeCompare(y.fecha)).map(d=>`
     <div class="agenda-dia" data-fecha="${d.fecha}">
       <div class="agenda-dia__head"><b>${labelFechaISO_(d.fecha)}</b><button type="button" class="mini-btn danger" data-del="${d.fecha}">Quitar</button></div>
-      ${porDia?`<div class="bloques-chips" style="margin-top:10px">${chipsBloques_(d.bloques)}</div>`:''}
+      <div class="bloques-chips" style="margin-top:10px">${chipsBloques_(d.bloques)}</div>
     </div>`).join('') || '<p class="cfg-hint">Aún no agregas días.</p>';
 }
 
-/* Lee el DOM y actualiza CFG.agenda (para no perder selección al re-renderizar) */
+/* Lee el DOM y actualiza CFG.agenda (para no perder la selección de
+   bloques al re-renderizar). Fase 13: ya no hay modo unificado. */
 function sincronizarAgenda_(){
   const a = CFG.agenda;
-  const seg = $('#agenda-modo .seg.on'); if (seg) a.modo = seg.dataset.modo;
-  const unif = $('#bloques-unif');
-  if (unif) a.bloquesUnificados = [...unif.querySelectorAll('.bchip.on')].map(c=>c.dataset.h);
   $$('#agenda-dias .agenda-dia').forEach(card=>{
     const dia = a.dias.find(d=>d.fecha===card.dataset.fecha); if (!dia) return;
-    const chips = card.querySelectorAll('.bchip.on');
-    if (chips.length || a.modo==='por_dia') dia.bloques = [...chips].map(c=>c.dataset.h);
+    dia.bloques = [...card.querySelectorAll('.bchip.on')].map(c=>c.dataset.h);
   });
 }
 
