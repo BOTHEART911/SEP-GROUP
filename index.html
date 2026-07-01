@@ -12,7 +12,7 @@
   funcionamiento. Diseñado y desarrollado íntegramente por
   Oscar Polanía.
   ------------------------------------------------------------
-  FASE ACTUAL: Fase 18 — Notas de Lead (relabel + Vaciar mensajes + cascada)
+  FASE ACTUAL: Fase 22 — Picker PC, filtro de asesores y modal Acción ✈
     Vista view-bot: SOLO Conexión (control del bot de WhatsApp por
     BuilderBot: estado, QR, reiniciar, silenciar, blacklist).
     La gestión de plantillas vive ahora ÚNICAMENTE en Configuración ›
@@ -195,7 +195,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
       <h1 class="app-header__title">Comercial</h1>
-      <button class="app-header__icon" id="com-crm-btn" title="CRM (HeartSyncs)" style="display:none">
+      <button class="app-header__icon" id="com-crm-btn" title="CRM (BuilderBot)" style="display:none">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </button>
       <button class="app-header__icon" id="com-dashboard-btn" title="Dashboard">
@@ -291,6 +291,39 @@
       <div class="modal-foot">
         <button id="com-cancel" class="btn btn-ghost">Cancelar</button>
         <button id="com-save" class="btn btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL ACCIÓN ✈ (cambio rápido de estado / programa / promo)
+       ============================================================ -->
+  <div id="modal-accion" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="acc-title">✈️ Acción del lead</h3>
+        <button id="acc-x" class="modal-x" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="cfg-hint" id="acc-sub" style="margin:0 0 12px;">—</p>
+        <div class="form-grid">
+          <div class="fld fld-full"><label>Estado</label><select id="a-estado"></select></div>
+          <div class="fld"><label>Programa</label><select id="a-programa"></select></div>
+          <div class="fld"><label>Promo</label><select id="a-promo"></select></div>
+          <div class="fld fld-full" id="a-fld-agenda" style="display:none;">
+            <label>Fecha y hora de la asesoría</label>
+            <button type="button" id="a-agenda-btn" class="agenda-pick">
+              <span id="a-agenda-text">Seleccionar fecha y hora</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </button>
+            <input id="a-fecha-hora-agendada" type="hidden" />
+            <div class="cfg-hint">Se crea el evento en Google Calendar con Meet y se notifica al estudiante y al asesor.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button id="acc-cancel" class="btn btn-ghost">Cancelar</button>
+        <button id="acc-save" class="btn btn-primary">Guardar</button>
       </div>
     </div>
   </div>
@@ -533,11 +566,21 @@
         <span id="iosp-year" class="iosp-year">2026</span>
         <button type="button" id="iosp-ok" class="iosp-btn ok">Listo</button>
       </div>
+      <div class="iosp-nav iosp-nav--up">
+        <button type="button" class="iosp-arrow" data-col="iosp-dia" data-d="-1" aria-label="Día arriba">▲</button>
+        <button type="button" class="iosp-arrow" data-col="iosp-mes" data-d="-1" aria-label="Mes arriba">▲</button>
+        <button type="button" class="iosp-arrow iosp-arrow-hora" data-col="iosp-hora" data-d="-1" aria-label="Hora arriba">▲</button>
+      </div>
       <div class="iosp-wheels">
         <div class="iosp-highlight"></div>
         <div class="iosp-col" id="iosp-dia"></div>
         <div class="iosp-col" id="iosp-mes"></div>
         <div class="iosp-col" id="iosp-hora"></div>
+      </div>
+      <div class="iosp-nav iosp-nav--down">
+        <button type="button" class="iosp-arrow" data-col="iosp-dia" data-d="1" aria-label="Día abajo">▼</button>
+        <button type="button" class="iosp-arrow" data-col="iosp-mes" data-d="1" aria-label="Mes abajo">▼</button>
+        <button type="button" class="iosp-arrow iosp-arrow-hora" data-col="iosp-hora" data-d="1" aria-label="Hora abajo">▼</button>
       </div>
     </div>
   </div>
