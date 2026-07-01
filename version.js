@@ -11,10 +11,10 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 19.1 — Fix rueda: leer la hora antes de ocultar el picker
+ * FASE ACTUAL: Fase 22 — Picker PC, filtro de asesores y modal Acción ✈
  * Sube este número en cada despliegue. La app lo lee sin caché:
  * si cambia, limpia caches y recarga automáticamente en todos
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.06.27.08";
+var APP_VERSION = "2026.06.27.09";
