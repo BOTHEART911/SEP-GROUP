@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 19.1 — Fix rueda: leer la hora antes de ocultar el picker
+ * FASE ACTUAL: Fase 22 — Picker PC, filtro de asesores y modal Acción ✈
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -466,6 +466,7 @@ function cardHtml_(r){
       ${r.meetLink?`<a class="btn-meet" href="${esc_(r.meetLink)}" target="_blank" rel="noopener">▶ Entrar a Meet</a>`:''}
     </div>`:''}
     <div class="com-card__actions">
+      <button class="act-btn act-accion" data-act="accion">✈️ Acción</button>
       <button class="act-btn act-ver" data-act="ver"><img src="${verIc}">Ver</button>
       <button class="act-btn act-editar" data-act="editar">✏️ Editar</button>
       <button class="act-btn act-chat" data-act="chat"><img src="${chatIc}">Notas</button>
@@ -476,6 +477,7 @@ function cardHtml_(r){
 
 function bindCard_(r){
   const card = $('#card-'+r.id); if (!card) return;
+  card.querySelector('[data-act="accion"]')?.addEventListener('click', ()=> abrirModalAccion_(r));
   card.querySelector('[data-act="ver"]')?.addEventListener('click', ()=> verComercial_(r.id));
   card.querySelector('[data-act="editar"]')?.addEventListener('click', ()=> abrirModalComercial_(r));
   card.querySelector('[data-act="chat"]')?.addEventListener('click', ()=> abrirChat_(r));
@@ -532,6 +534,7 @@ async function verComercial_(id){
         </div>
         ${r.meetLink?`<div style="padding:0 22px 8px;"><a class="btn-meet" href="${esc_(r.meetLink)}" target="_blank" rel="noopener">▶ Entrar a la reunión Meet</a></div>`:''}
         <div class="detalle-acciones">
+          <button class="act-btn act-accion" id="det-accion">✈️ Acción</button>
           <button class="act-btn act-editar" id="det-editar">✏️ Editar</button>
           <button class="act-btn act-chat" id="det-chat">📝 Notas</button>
           ${puedeEliminar?`<button class="act-btn act-eliminar" id="det-eliminar">🗑 Eliminar</button>`:''}
@@ -539,6 +542,7 @@ async function verComercial_(id){
         ${segHtml}
         ${traza?`<div class="traza-box"><h4>📜 Trazabilidad</h4><ul class="traza-list">${traza}</ul></div>`:''}
       </div>`;
+    $('#det-accion')?.addEventListener('click', ()=> abrirModalAccion_(r));
     $('#det-editar')?.addEventListener('click', ()=> abrirModalComercial_(r));
     $('#det-chat')?.addEventListener('click', ()=> abrirChat_(r));
     $('#det-eliminar')?.addEventListener('click', ()=> eliminarComercial_(r).then(()=> showView('comercial')));
@@ -952,6 +956,16 @@ $('#com-cancel')?.addEventListener('click', cerrarModalComercial_);
 
 function opt_(v, label, sel){ return `<option value="${esc_(v)}" ${sel===v?'selected':''}>${esc_(label||v)}</option>`; }
 
+/* Fase 22 — Asesores que se ofrecen en el selector según el rol del usuario:
+   COMERCIAL → solo él mismo; los demás (SUPER/DEV/CONTADOR) → solo los
+   usuarios con rol COMERCIAL (asesores). */
+function asesoresParaSelect_(){
+  const all = COM.catalogo.asesores || [];
+  const rol = String(currentUser?.rol||'').toUpperCase();
+  if (rol === 'COMERCIAL') return all.filter(a => a.nombre === currentUser.nombre);
+  return all.filter(a => String(a.rol).toUpperCase() === 'COMERCIAL');
+}
+
 function abrirModalComercial_(r){
   COM.editId = r ? r.id : null;
   $('#com-modal-title').textContent = r ? 'Editar Registro' : 'Registro Comercial';
@@ -967,9 +981,15 @@ function abrirModalComercial_(r){
   // Fuentes
   $('#f-fuente').innerHTML = '<option value="">— Seleccionar —</option>' +
     (COM.catalogo.fuentes||[]).map(f=>opt_(f.nombre, f.nombre, r?r.fuente:'')).join('');
-  // Asesores
+  // Asesores (Fase 22): COMERCIAL ve solo su nombre; SUPER/DEV/otros ven
+  // solo a los asesores (rol COMERCIAL). Si se edita y el asesor actual no
+  // está en la lista, se conserva como opción para no perder la asignación.
+  let listaAse = asesoresParaSelect_();
+  if (r && r.asesor && !listaAse.some(a=>a.nombre===r.asesor)) listaAse = [{nombre:r.asesor, rol:''}].concat(listaAse);
+  const rolAct = String(currentUser?.rol||'').toUpperCase();
+  const selAse = r ? r.asesor : (rolAct==='COMERCIAL' ? currentUser.nombre : '');
   $('#f-asesor').innerHTML = '<option value="">— Sin asesor —</option>' +
-    (COM.catalogo.asesores||[]).map(a=>opt_(a.nombre, `${a.nombre} (${a.rol})`, r?r.asesor:'')).join('');
+    listaAse.map(a=>opt_(a.nombre, a.rol ? `${a.nombre} (${a.rol})` : a.nombre, selAse)).join('');
   // Estados (seguimientos son automáticos: ocultos salvo el actual; en seguimiento solo salidas permitidas)
   const puedeInscribir = currentUser && (currentUser.isDev || currentUser.isSuper || String(currentUser.rol).toUpperCase()==='CONTADOR');
   const estadoActual = r ? r.estado : 'NUEVO_LEAD';
@@ -1057,9 +1077,80 @@ async function guardarComercial_(){
 }
 
 /* ============================================================
- * MÓDULO CONFIGURACIÓN (Parte 3.1)
+ *  MODAL ACCIÓN ✈ (Fase 22) — cambio rápido de estado/programa/promo,
+ *  disponible para todos. Reutiliza editarComercial: envía el lead
+ *  COMPLETO + los overrides, así procesarEstado_ dispara las acciones
+ *  ya programadas (mensajes, evento de Calendar, etc.).
  * ============================================================ */
-let CFG = { data:null };
+const ACC = { lead:null };
+
+function abrirModalAccion_(r){
+  ACC.lead = r;
+  $('#acc-sub').textContent = `${r.nombres} ${r.apellidos} · ${r.id}`;
+
+  const puedeInscribir = currentUser && (currentUser.isDev || currentUser.isSuper || String(currentUser.rol).toUpperCase()==='CONTADOR');
+  const estadoActual = r.estado || 'NUEVO_LEAD';
+  const enSeg = /^SEGUIMIENTO_[1-4]$/.test(estadoActual);
+  const SEG_SALIDA = ['PERFIL_NO_APTO','SIN_RESPUESTA','NO_INTERESADO','PENDIENTE_PAGO','INSCRITO'];
+  $('#a-estado').innerHTML = (COM.catalogo.estados||[])
+    .filter(e => {
+      if (e.clave==='INSCRITO' && !puedeInscribir) return false;
+      if (enSeg) return e.clave===estadoActual || SEG_SALIDA.indexOf(e.clave)>=0;
+      return !/^SEGUIMIENTO_[1-4]$/.test(e.clave);
+    })
+    .map(e=>opt_(e.clave, e.label, estadoActual)).join('');
+
+  $('#a-programa').innerHTML = '<option value="">— Ninguno —</option>' +
+    (COM.catalogo.programas||[]).map(p=>opt_(p.nombre, p.nombre, r.programa)).join('');
+  $('#a-promo').innerHTML = '<option value="">— Ninguna —</option>' +
+    (COM.catalogo.promos||[]).map(p=>opt_(p.nombre, p.nombre, r.promo)).join('');
+
+  $('#a-fecha-hora-agendada').value = r.fechaHoraAgendadaRaw || '';
+  $('#a-agenda-text').textContent = r.fechaHoraAgendada || 'Seleccionar fecha y hora';
+
+  actualizarVisibilidadAccionAgenda_();
+  $('#modal-accion').classList.remove('hidden');
+}
+function cerrarModalAccion_(){ $('#modal-accion').classList.add('hidden'); }
+function actualizarVisibilidadAccionAgenda_(){
+  $('#a-fld-agenda').style.display = $('#a-estado').value === 'ASESORIA_AGENDADA' ? '' : 'none';
+}
+
+$('#a-estado')?.addEventListener('change', actualizarVisibilidadAccionAgenda_);
+$('#acc-x')?.addEventListener('click', cerrarModalAccion_);
+$('#acc-cancel')?.addEventListener('click', cerrarModalAccion_);
+$('#a-agenda-btn')?.addEventListener('click', ()=>{
+  abrirRuedaFecha_($('#a-fecha-hora-agendada').value, (iso, texto)=>{
+    $('#a-fecha-hora-agendada').value = iso;
+    $('#a-agenda-text').textContent = texto;
+  });
+});
+$('#acc-save')?.addEventListener('click', async ()=>{
+  const r = ACC.lead; if (!r) return;
+  const estado = $('#a-estado').value;
+  const fh = $('#a-fecha-hora-agendada').value;
+  if (estado === 'ASESORIA_AGENDADA' && !fh) return Swal.fire({icon:'warning', title:'Selecciona la fecha y hora de la asesoría'});
+  // editarComercial reescribe la fila → mandamos el lead completo + overrides.
+  const body = {
+    id: r.id,
+    nombres: r.nombres, apellidos: r.apellidos,
+    whatsapp: r.whatsapp, telefono: r.telefono, correo: r.correo,
+    departamento: r.departamento, municipio: r.municipio,
+    fuente: r.fuente, asesor: r.asesor,
+    estado: estado, programa: $('#a-programa').value, promo: $('#a-promo').value,
+    fechaHoraAgendada: fh
+  };
+  try{
+    $('#acc-save').disabled = true;
+    await apiPost('editarComercial', body);
+    cerrarModalAccion_();
+    await recargarComercial_();
+    Swal.fire({icon:'success', title:'Acción aplicada', timer:1000, showConfirmButton:false});
+  }catch(e){ Swal.fire({icon:'error', title:'No se pudo aplicar', text:String(e.message||e)}); }
+  finally{ $('#acc-save').disabled = false; }
+});
+
+
 
 async function abrirConfig_(){
   showView('config');
@@ -1447,7 +1538,7 @@ function renderCfgAvanzado_(){
     </div>
     <div class="cfg-card">
       <h3 class="cfg-card__title">🔗 CRM (botón en Comercial)</h3>
-      <p class="cfg-card__sub">Enlace del CRM deHeartSync que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
+      <p class="cfg-card__sub">Enlace del CRM de HeartSync que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
       <div class="cfg-grid">
         ${field_('cf-CRM_CHAT_URL','CRM_CHAT_URL', a.CRM_CHAT_URL, 'full')}
       </div>
@@ -1489,6 +1580,32 @@ function buildCol_(colEl, items, initIdx, onSettle){
   marcarSel_(colEl);
   let to=null;
   colEl.onscroll = ()=>{ marcarSel_(colEl); if(to)clearTimeout(to); to=setTimeout(()=>{ const i=selCol_(colEl); colEl.scrollTo({top:i*IOSP_H, behavior:'smooth'}); if (onSettle) onSettle(i); }, 90); };
+  // Fase 22 — PC: clic directo en cualquier fila para seleccionarla
+  // (además del arrastre en móvil). Deja la fila centrada al instante.
+  colEl.querySelectorAll('.iosp-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const i = +el.dataset.i;
+      colEl.scrollTop = i*IOSP_H;   // instantáneo → lectura fiable
+      marcarSel_(colEl);
+      if (onSettle) onSettle(i);
+    });
+  });
+}
+/* Fase 22 — Mueve una columna del picker ±1 (flechas ▲▼ para PC). */
+function iospNudge_(colId, delta){
+  const colEl = $('#'+colId); if (!colEl) return;
+  const n = colEl.querySelectorAll('.iosp-item').length;
+  let i = Math.min(Math.max(selCol_(colEl)+delta, 0), n-1);
+  colEl.scrollTop = i*IOSP_H;
+  marcarSel_(colEl);
+  if (colId==='iosp-mes') iospRebuildDias_(i);  // el mes recalcula días
+}
+/* Reconstruye la columna de días para el mes en la posición dada. */
+function iospRebuildDias_(mesPos){
+  const nuevoMes = IOSP.meses[Math.min(mesPos, IOSP.meses.length-1)];
+  IOSP.dias = iospDiasArr_(nuevoMes);
+  const curPos = Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1);
+  buildCol_($('#iosp-dia'), IOSP.dias.map(String), Math.max(0, curPos));
 }
 function selCol_(colEl){ return Math.max(0, Math.round(colEl.scrollTop / IOSP_H)); }
 function marcarSel_(colEl){ const i=selCol_(colEl); colEl.querySelectorAll('.iosp-item').forEach(el=> el.classList.toggle('sel', +el.dataset.i===i)); }
@@ -1511,6 +1628,7 @@ function abrirRuedaFecha_(valorISO, onOk, opts){
   IOSP.minDia = ahora.getDate();
   $('#iosp-year').textContent = IOSP.year;
   $('#iosp-hora').style.display = IOSP.soloFecha ? 'none' : '';
+  $$('.iosp-arrow-hora').forEach(b=> b.style.display = IOSP.soloFecha ? 'none' : '');
 
   let dRef = valorISO ? new Date(valorISO) : ahora;
   if (isNaN(dRef.getTime())) dRef = ahora;
@@ -1535,17 +1653,14 @@ function abrirRuedaFecha_(valorISO, onOk, opts){
   buildCol_($('#iosp-dia'), IOSP.dias.map(String), diaPos);
   buildCol_($('#iosp-mes'), IOSP.meses.map(m=>IOSP_MESES[m].charAt(0).toUpperCase()+IOSP_MESES[m].slice(1)), mesPos, (pos)=>{
     // Al cambiar el mes, recalcula los días disponibles (con cota de hoy).
-    // Va dentro del onSettle de buildCol_ (vía .onscroll) para NO acumular
-    // listeners en el elemento persistente #iosp-mes en cada apertura.
-    const nuevoMes = IOSP.meses[Math.min(pos, IOSP.meses.length-1)];
-    IOSP.dias = iospDiasArr_(nuevoMes);
-    const curPos = Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1);
-    buildCol_($('#iosp-dia'), IOSP.dias.map(String), Math.max(0, curPos));
+    iospRebuildDias_(pos);
   });
   buildCol_($('#iosp-hora'), IOSP_HORAS.map(iospHoraLabel_), horaIdx);
 }
 
 $('#iosp-cancel')?.addEventListener('click', ()=> $('#ios-picker').classList.add('hidden'));
+/* Fase 22 — flechas ▲▼ del picker (PC) */
+$$('.iosp-arrow').forEach(b=> b.addEventListener('click', ()=> iospNudge_(b.dataset.col, +b.dataset.d)));
 $('#iosp-ok')?.addEventListener('click', ()=>{
   // Leer TODAS las columnas ANTES de ocultar el picker: en un contenedor
   // display:none, scrollTop vale 0. Antes la HORA se leía después de
