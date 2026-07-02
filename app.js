@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * SEP GROUP — APP FRONTEND (PWA)
+ * SEP GROUP — APP FRONTEND (PWA) 
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
  * © Oscar Polanía — Experto en Soluciones Digitales
