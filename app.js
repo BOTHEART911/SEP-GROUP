@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 22 — Picker PC, filtro de asesores y modal Acción ✈
+ * FASE ACTUAL: Fase 22.1 — Fixes (CFG, usuarioId en Acción) + filtro por asesor
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -367,7 +367,7 @@ $('#btn-logout')?.addEventListener('click', async ()=>{
 /* ============================================================
  * MÓDULO COMERCIAL (Parte 2)
  * ============================================================ */
-let COM = { catalogo:null, ubic:null, registros:[], filtroTexto:'', filtroEstado:'__ALL__', editId:null };
+let COM = { catalogo:null, ubic:null, registros:[], filtroTexto:'', filtroEstado:'__ALL__', filtroAsesor:'__ALL__', editId:null };
 
 /* Navegación por data-go (botones "volver") */
 document.addEventListener('click', (e)=>{
@@ -396,16 +396,52 @@ async function abrirComercial_(){
 }
 
 async function recargarComercial_(){
-  COM.registros = await apiGet('listComercial');
-  renderPills_(); renderCards_();
+  COM.registros = await apiGet('listComercial', { usuarioId: currentUser.id });
+  renderAsesorPills_(); renderPills_(); renderCards_();
+}
+
+/* ── Pastillas por ASESOR (Fase 22) ──
+   Solo para usuarios que NO son COMERCIAL. Aparecen los asesores que
+   tienen al menos un lead registrado. Al elegir uno, filtra las tarjetas
+   por ese asesor (y luego se puede afinar por estado). */
+function renderAsesorPills_(){
+  const cont = $('#com-asesor-pills'); if (!cont) return;
+  const esComercial = String(currentUser?.rol||'').toUpperCase() === 'COMERCIAL';
+  if (esComercial){ cont.innerHTML = ''; cont.style.display = 'none'; return; }
+  cont.style.display = '';
+  const counts = {};
+  COM.registros.forEach(r => { const a = String(r.asesor||'').trim() || '— Sin asesor —'; counts[a] = (counts[a]||0)+1; });
+  const asesores = Object.keys(counts).sort((a,b)=>a.localeCompare(b));
+  if (!asesores.length){ cont.innerHTML = ''; return; }
+  let html = asesorPill_('__ALL__', 'Todos los asesores', COM.registros.length);
+  asesores.forEach(a => { html += asesorPill_(a, a, counts[a]); });
+  cont.innerHTML = html;
+  $$('#com-asesor-pills .pill').forEach(p => p.addEventListener('click', ()=>{
+    COM.filtroAsesor = p.dataset.asesor;
+    COM.filtroEstado = '__ALL__';            // al cambiar de asesor, reinicia el filtro de estado
+    renderAsesorPills_(); renderPills_(); renderCards_();
+  }));
+}
+function asesorPill_(clave, label, count){
+  const active = COM.filtroAsesor === clave;
+  return `<button class="pill pill-asesor ${active?'active':''}" data-asesor="${esc_(clave)}">
+    <span class="pill__ic">👤</span>${esc_(label)}
+    <span class="pill__count">${count}</span></button>`;
+}
+
+/* Registros visibles según el asesor elegido (base para estado/tarjetas). */
+function registrosVisibles_(){
+  if (COM.filtroAsesor === '__ALL__') return COM.registros;
+  return COM.registros.filter(r => (String(r.asesor||'').trim() || '— Sin asesor —') === COM.filtroAsesor);
 }
 
 /* ── Pastillas por estado ── */
 function renderPills_(){
   const cont = $('#com-pills'); if (!cont) return;
-  const counts = {}; COM.registros.forEach(r => counts[r.estado] = (counts[r.estado]||0)+1);
+  const base = registrosVisibles_();
+  const counts = {}; base.forEach(r => counts[r.estado] = (counts[r.estado]||0)+1);
   const estados = (COM.catalogo?.estados || []);
-  let html = pill_('__ALL__', 'Todos', COM.registros.length, '#263143');
+  let html = pill_('__ALL__', 'Todos', base.length, '#263143');
   estados.forEach(e => { if (counts[e.clave]) html += pill_(e.clave, e.label, counts[e.clave], e.color); });
   cont.innerHTML = html;
   $$('#com-pills .pill').forEach(p => p.addEventListener('click', ()=>{
@@ -424,7 +460,7 @@ function pill_(clave, label, count, color){
 function renderCards_(){
   const cont = $('#com-cards'); const empty = $('#com-empty'); if (!cont) return;
   const txt = COM.filtroTexto.trim().toLowerCase();
-  let list = COM.registros.slice(); // ya viene más antiguas primero
+  let list = registrosVisibles_().slice(); // respeta el asesor elegido; más antiguas primero
   if (COM.filtroEstado !== '__ALL__') list = list.filter(r => r.estado === COM.filtroEstado);
   if (txt) list = list.filter(r =>
     (`${r.nombres} ${r.apellidos}`).toLowerCase().includes(txt) ||
@@ -1133,6 +1169,7 @@ $('#acc-save')?.addEventListener('click', async ()=>{
   // editarComercial reescribe la fila → mandamos el lead completo + overrides.
   const body = {
     id: r.id,
+    usuarioId: currentUser.id, usuario: currentUser.nombre,
     nombres: r.nombres, apellidos: r.apellidos,
     whatsapp: r.whatsapp, telefono: r.telefono, correo: r.correo,
     departamento: r.departamento, municipio: r.municipio,
@@ -1150,7 +1187,10 @@ $('#acc-save')?.addEventListener('click', async ()=>{
   finally{ $('#acc-save').disabled = false; }
 });
 
-
+/* ============================================================
+ * MÓDULO CONFIGURACIÓN (Parte 3.1)
+ * ============================================================ */
+let CFG = { data:null };
 
 async function abrirConfig_(){
   showView('config');
