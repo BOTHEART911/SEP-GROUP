@@ -441,7 +441,7 @@ function renderPills_(){
   const base = registrosVisibles_();
   const counts = {}; base.forEach(r => counts[r.estado] = (counts[r.estado]||0)+1);
   const estados = (COM.catalogo?.estados || []);
-  let html = pill_('__ALL__', 'Todos', base.length, '#263143');
+  let html = pill_('__ALL__', 'Todos los Estados', base.length, '#263143');
   estados.forEach(e => { if (counts[e.clave]) html += pill_(e.clave, e.label, counts[e.clave], e.color); });
   cont.innerHTML = html;
   $$('#com-pills .pill').forEach(p => p.addEventListener('click', ()=>{
