@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 
+<!--
   ============================================================
   SEP GROUP — ÍNDICE / SHELL DE LA PWA
   SEP Colombia Group SAS
@@ -12,7 +12,7 @@
   funcionamiento. Diseñado y desarrollado íntegramente por
   Oscar Polanía.
   ------------------------------------------------------------
-  FASE ACTUAL: Fase 22 — Picker PC, filtro de asesores y modal Acción ✈
+  FASE ACTUAL: Fase 23 — Reprogramación + preservar botón Meet
     Vista view-bot: SOLO Conexión (control del bot de WhatsApp por
     BuilderBot: estado, QR, reiniciar, silenciar, blacklist).
     La gestión de plantillas vive ahora ÚNICAMENTE en Configuración ›
@@ -195,7 +195,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
       <h1 class="app-header__title">Comercial</h1>
-      <button class="app-header__icon" id="com-crm-btn" title="CRM (HeartSync)" style="display:none">
+      <button class="app-header__icon" id="com-crm-btn" title="CRM (BuilderBot)" style="display:none">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </button>
       <button class="app-header__icon" id="com-dashboard-btn" title="Dashboard">
@@ -283,6 +283,10 @@
             </button>
             <input id="f-fecha-hora-agendada" type="hidden" />
             <div class="cfg-hint">Se crea el evento en Google Calendar con Meet y se notifica al estudiante y al asesor.</div>
+            <label id="fld-reprograma" class="reprog-check" style="display:none;">
+              <input type="checkbox" id="f-reprogramada" />
+              <span>Reprogramada — notificar al estudiante del cambio de fecha</span>
+            </label>
           </div>
 
           <div class="fld"><label>Programa</label><select id="f-programa"></select></div>
@@ -319,6 +323,10 @@
             </button>
             <input id="a-fecha-hora-agendada" type="hidden" />
             <div class="cfg-hint">Se crea el evento en Google Calendar con Meet y se notifica al estudiante y al asesor.</div>
+            <label id="a-fld-reprograma" class="reprog-check" style="display:none;">
+              <input type="checkbox" id="a-reprogramada" />
+              <span>Reprogramada — notificar al estudiante del cambio de fecha</span>
+            </label>
           </div>
         </div>
       </div>
