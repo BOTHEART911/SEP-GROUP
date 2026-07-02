@@ -300,6 +300,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .pill .pill__count { background: var(--bg-soft); color: var(--text-soft); border-radius: var(--r-pill); padding: 1px 8px; font-size: .72rem; font-weight: 800; }
 .pill.active { color: #fff; border-color: transparent; box-shadow: var(--sh-md); }
 .pill.active .pill__count { background: rgba(255,255,255,.25); color: #fff; }
+.pill-asesor.active { background: var(--primary); }
+.pill-asesor .pill__ic { font-size: .9rem; }
 
 /* Tarjetas */
 .com-cards { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 4px; }
