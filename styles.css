@@ -302,6 +302,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .pill.active .pill__count { background: rgba(255,255,255,.25); color: #fff; }
 .pill-asesor.active { background: var(--primary); }
 .pill-asesor .pill__ic { font-size: .9rem; }
+/* Fase 23 — check "Reprogramada" en los modales */
+.reprog-check { display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer;
+  font-size:.9rem; font-weight:600; color:var(--primary); }
+.reprog-check input { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; }
 
 /* Tarjetas */
 .com-cards { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 4px; }
