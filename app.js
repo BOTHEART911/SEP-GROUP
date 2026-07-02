@@ -11,7 +11,7 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 22.1 — Fixes (CFG, usuarioId en Acción) + filtro por asesor
+ * FASE ACTUAL: Fase 23 — Reprogramación + preservar botón Meet
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -441,7 +441,7 @@ function renderPills_(){
   const base = registrosVisibles_();
   const counts = {}; base.forEach(r => counts[r.estado] = (counts[r.estado]||0)+1);
   const estados = (COM.catalogo?.estados || []);
-  let html = pill_('__ALL__', 'Todos los Estados', base.length, '#263143');
+  let html = pill_('__ALL__', 'Todos', base.length, '#263143');
   estados.forEach(e => { if (counts[e.clave]) html += pill_(e.clave, e.label, counts[e.clave], e.color); });
   cont.innerHTML = html;
   $$('#com-pills .pill').forEach(p => p.addEventListener('click', ()=>{
@@ -1004,6 +1004,8 @@ function asesoresParaSelect_(){
 
 function abrirModalComercial_(r){
   COM.editId = r ? r.id : null;
+  COM.origEstado = r ? r.estado : '';                 // Fase 23
+  const cbRep = $('#f-reprogramada'); if (cbRep) cbRep.checked = false;
   $('#com-modal-title').textContent = r ? 'Editar Registro' : 'Registro Comercial';
   $('#fld-id').style.display = r ? '' : 'none';
   $('#f-id').value = r ? r.id : '';
@@ -1073,6 +1075,10 @@ function actualizarVisibilidadEstado_(){
 function actualizarVisibilidadAgenda_(){
   const est = $('#f-estado').value;
   $('#fld-agenda').style.display = est === 'ASESORIA_AGENDADA' ? '' : 'none';
+  // Fase 23: "Reprogramada" solo al editar un lead que YA estaba en
+  // Asesoría Agendada (tiene sentido notificar un cambio de fecha).
+  const rep = $('#fld-reprograma');
+  if (rep) rep.style.display = (est === 'ASESORIA_AGENDADA' && COM.origEstado === 'ASESORIA_AGENDADA') ? '' : 'none';
 }
 
 $('#f-departamento')?.addEventListener('change', e => poblarMunicipios_(e.target.value, ''));
@@ -1092,7 +1098,8 @@ async function guardarComercial_(){
     fuente: $('#f-fuente').value, asesor: $('#f-asesor').value,
     estado: $('#f-asesor').value ? $('#f-estado').value : 'NUEVO_LEAD',
     fechaHoraAgendada: $('#f-fecha-hora-agendada').value,
-    programa: $('#f-programa').value, promo: $('#f-promo').value
+    programa: $('#f-programa').value, promo: $('#f-promo').value,
+    reprogramada: $('#f-reprogramada')?.checked || false
   };
   // Validación rápida en cliente
   if (!body.nombres.trim() || !body.apellidos.trim()) return Swal.fire({icon:'warning', title:'Nombres y apellidos obligatorios'});
@@ -1143,13 +1150,18 @@ function abrirModalAccion_(r){
 
   $('#a-fecha-hora-agendada').value = r.fechaHoraAgendadaRaw || '';
   $('#a-agenda-text').textContent = r.fechaHoraAgendada || 'Seleccionar fecha y hora';
+  const cbR = $('#a-reprogramada'); if (cbR) cbR.checked = false;   // Fase 23
 
   actualizarVisibilidadAccionAgenda_();
   $('#modal-accion').classList.remove('hidden');
 }
 function cerrarModalAccion_(){ $('#modal-accion').classList.add('hidden'); }
 function actualizarVisibilidadAccionAgenda_(){
-  $('#a-fld-agenda').style.display = $('#a-estado').value === 'ASESORIA_AGENDADA' ? '' : 'none';
+  const est = $('#a-estado').value;
+  $('#a-fld-agenda').style.display = est === 'ASESORIA_AGENDADA' ? '' : 'none';
+  const rep = $('#a-fld-reprograma');
+  const origAgendada = ACC.lead && ACC.lead.estado === 'ASESORIA_AGENDADA';
+  if (rep) rep.style.display = (est === 'ASESORIA_AGENDADA' && origAgendada) ? '' : 'none';
 }
 
 $('#a-estado')?.addEventListener('change', actualizarVisibilidadAccionAgenda_);
@@ -1175,7 +1187,8 @@ $('#acc-save')?.addEventListener('click', async ()=>{
     departamento: r.departamento, municipio: r.municipio,
     fuente: r.fuente, asesor: r.asesor,
     estado: estado, programa: $('#a-programa').value, promo: $('#a-promo').value,
-    fechaHoraAgendada: fh
+    fechaHoraAgendada: fh,
+    reprogramada: $('#a-reprogramada')?.checked || false
   };
   try{
     $('#acc-save').disabled = true;
@@ -1564,7 +1577,7 @@ function renderCfgAvanzado_(){
   const a = CFG.data.avanzado;
   cont.innerHTML = `
     <div class="cfg-card">
-      <h3 class="cfg-card__title">🔐 HeartSync / API (solo DESARROLLADOR)</h3>
+      <h3 class="cfg-card__title">🔐 BuilderBot / API (solo DESARROLLADOR)</h3>
       <p class="cfg-card__sub">Estas claves no son visibles para otros roles.</p>
       <div class="cfg-grid">
         ${field_('cf-BB_API_URL','BB_API_URL', a.BB_API_URL, 'full')}
@@ -1578,7 +1591,7 @@ function renderCfgAvanzado_(){
     </div>
     <div class="cfg-card">
       <h3 class="cfg-card__title">🔗 CRM (botón en Comercial)</h3>
-      <p class="cfg-card__sub">Enlace del CRM de HeartSync que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
+      <p class="cfg-card__sub">Enlace del CRM de BuilderBot que abre el botón "CRM". Lo ven SUPER/DEV/COMERCIAL; solo el DESARROLLADOR puede editarlo aquí.</p>
       <div class="cfg-grid">
         ${field_('cf-CRM_CHAT_URL','CRM_CHAT_URL', a.CRM_CHAT_URL, 'full')}
       </div>
