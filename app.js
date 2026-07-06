@@ -77,9 +77,9 @@ function showView(id){
   el?.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
   // Sincronización en vivo del Comercial: activa solo mientras se ve su tablero.
-  if (typeof comercialIniciarPolling_ === 'function'){
-    if (id === 'comercial') comercialIniciarPolling_();
-    else comercialDetenerPolling_();
+  if (typeof comercialLiveOn_ === 'function'){
+    if (id === 'comercial') comercialLiveOn_();
+    else comercialLiveOff_();
   }
 }
 
@@ -412,21 +412,114 @@ async function recargarComercial_(silencioso){
   renderAsesorPills_(); renderPills_(); renderCards_();
 }
 
-/* ── Sincronización en vivo del tablero Comercial ──────────────
-   Mantiene la vista Comercial IGUAL en todas las pantallas: cada pocos
-   segundos relee la lista en segundo plano y solo re-renderiza si hubo
-   cambios reales (mismo patrón que el sondeo del chat). Se pausa si la
-   pestaña está oculta o si hay un modal/overlay abierto, para no pisar
-   una edición en curso. Arranca/para desde showView(). */
+/* ══════════════════════════════════════════════════════════════
+   SINCRONIZACIÓN EN VIVO DEL TABLERO COMERCIAL
+   ══════════════════════════════════════════════════════════════
+   Objetivo: que las tarjetas se vean IGUALES en TODAS las pantallas,
+   al instante, cuando cualquiera crea/edita/agenda/elimina un lead.
+
+   Cómo funciona:
+   • El backend actualiza un único valor /meta/comercial_rev (timestamp)
+     cada vez que cambia algo del comercial.
+   • El cliente escucha SOLO ese valor por Firebase (Realtime DB). No se
+     transmiten datos de leads por ese canal → un COMERCIAL nunca ve leads
+     de otros asesores.
+   • Al ver que el valor cambió, recarga su lista YA FILTRADA POR ROL vía
+     listComercial (la hoja es la única fuente de verdad) y re-renderiza
+     solo si hubo cambios reales.
+
+   Robustez: si Firebase no está disponible (SDK no cargó, sin API key,
+   token o reglas), cae automáticamente al SONDEO cada 12 s. Así nunca se
+   rompe nada respecto a la versión anterior.
+   Arranca/para desde showView(). */
+
+const FB = { listo:false, iniciando:null, ref:null, primed:false, refrescoTimer:null };
+
+/* ¿Hay un modal/overlay abierto? No refrescar para no pisar una edición. */
 function comercialOverlayAbierto_(){
   const abierto = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
   return abierto('modal-comercial') || abierto('modal-accion') || abierto('sep-chat') ||
          (window.Swal && typeof Swal.isVisible === 'function' && Swal.isVisible());
 }
+
+/* Recarga la lista (filtrada por rol) evitando solaparse y sin pisar modales. */
+async function comercialRefrescar_(){
+  if (document.hidden) return;
+  if (COM.cargando) return;
+  if (comercialOverlayAbierto_()){          // reintenta cuando se cierre el modal
+    clearTimeout(FB.refrescoTimer);
+    FB.refrescoTimer = setTimeout(comercialRefrescar_, 1500);
+    return;
+  }
+  COM.cargando = true;
+  try { await recargarComercial_(true); } catch(_){} finally { COM.cargando = false; }
+}
+/* Agrupa varios cambios seguidos en un solo refresco (debounce 400 ms). */
+function comercialAgendarRefresco_(){
+  clearTimeout(FB.refrescoTimer);
+  FB.refrescoTimer = setTimeout(comercialRefrescar_, 400);
+}
+
+/* ── Firebase: inicia sesión una sola vez con el custom token del backend ── */
+async function fbAsegurarSesion_(){
+  if (FB.listo) return;
+  if (FB.iniciando) return FB.iniciando;
+  FB.iniciando = (async ()=>{
+    if (!window.firebase || !firebase.database || !firebase.auth) throw new Error('SDK Firebase no cargado');
+    const r = await apiGet('tokenChat', { usuarioId: currentUser.id });  // endpoint ya existente
+    if (!r || !r.token) throw new Error('tokenChat sin token');
+    const cfg = r.firebase || {};
+    if (!cfg.apiKey) throw new Error('FIREBASE_API_KEY vacía en CONFIGURACION');
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    await firebase.auth().signInWithCustomToken(r.token);  // el SDK mantiene la sesión (renueva solo)
+    FB.listo = true;
+  })();
+  try { await FB.iniciando; } finally { FB.iniciando = null; }
+}
+
+/* ── Escucha /meta/comercial_rev (solo la señal, sin datos de leads) ── */
+function fbEscucharComercial_(){
+  if (!window.firebase || !firebase.database) return;
+  fbDejarDeEscuchar_();
+  FB.primed = false;
+  FB.ref = firebase.database().ref('meta/comercial_rev');
+  FB.ref.on('value',
+    ()=>{
+      if (!FB.primed){ FB.primed = true; return; }   // ignora el snapshot inicial (ya cargamos con listComercial)
+      comercialAgendarRefresco_();
+    },
+    (err)=>{                                          // sin permiso de lectura u otro error → sondeo
+      console.warn('RT /meta/comercial_rev no disponible, uso sondeo:', err && err.message || err);
+      fbDejarDeEscuchar_();
+      comercialIniciarPolling_();
+    });
+}
+function fbDejarDeEscuchar_(){
+  if (FB.ref){ try { FB.ref.off(); } catch(_){} FB.ref = null; }
+  clearTimeout(FB.refrescoTimer); FB.refrescoTimer = null;
+}
+
+/* ── Encendido/apagado del modo "en vivo" (lo llama showView) ── */
+async function comercialLiveOn_(){
+  try {
+    await fbAsegurarSesion_();      // Firebase listo
+    comercialDetenerPolling_();     // no hace falta el sondeo
+    fbEscucharComercial_();         // escucha la señal en tiempo real
+  } catch (e){
+    console.warn('Tiempo real no disponible, uso sondeo cada 12 s:', e && e.message || e);
+    comercialIniciarPolling_();     // fallback seguro
+  }
+}
+function comercialLiveOff_(){
+  fbDejarDeEscuchar_();
+  comercialDetenerPolling_();
+}
+
+/* ── Fallback: sondeo cada 12 s (idéntico patrón al chat) ── */
 async function comercialTick_(){
-  if (document.hidden) return;             // ahorra cuota con la pestaña oculta
-  if (COM.cargando) return;                // no solapar peticiones
-  if (comercialOverlayAbierto_()) return;  // no interrumpir una edición abierta
+  if (document.hidden) return;
+  if (COM.cargando) return;
+  if (comercialOverlayAbierto_()) return;
   COM.cargando = true;
   try { await recargarComercial_(true); } catch(_){} finally { COM.cargando = false; }
 }
@@ -437,9 +530,12 @@ function comercialIniciarPolling_(){
 function comercialDetenerPolling_(){
   if (COM.pollTimer){ clearInterval(COM.pollTimer); COM.pollTimer = null; }
 }
-/* Al regresar a la pestaña, refresca de inmediato (sin esperar el intervalo). */
+
+/* Al regresar a la pestaña, refresca de inmediato (en vivo o por sondeo). */
 document.addEventListener('visibilitychange', ()=>{
-  if (!document.hidden && COM.pollTimer) comercialTick_();
+  if (document.hidden) return;
+  if (FB.ref) comercialAgendarRefresco_();
+  else if (COM.pollTimer) comercialTick_();
 });
 
 /* ── Pastillas por ASESOR (Fase 22) ──
