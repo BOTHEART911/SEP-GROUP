@@ -11,10 +11,10 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 23 — Reprogramación + preservar botón Meet
+ * FASE ACTUAL: Fase 24 — Comercial en vivo (Firebase) + fecha exacta agenda
  * Sube este número en cada despliegue. La app lo lee sin caché:
  * si cambia, limpia caches y recarga automáticamente en todos
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.06.27.12";
+var APP_VERSION = "2026.07.06.01";
