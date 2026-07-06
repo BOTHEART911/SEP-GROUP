@@ -76,6 +76,11 @@ function showView(id){
   const el = document.getElementById('view-' + id) || document.getElementById(id);
   el?.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Sincronización en vivo del Comercial: activa solo mientras se ve su tablero.
+  if (typeof comercialIniciarPolling_ === 'function'){
+    if (id === 'comercial') comercialIniciarPolling_();
+    else comercialDetenerPolling_();
+  }
 }
 
 /* ================== BANNER DE CRÉDITOS ================== */
@@ -367,7 +372,8 @@ $('#btn-logout')?.addEventListener('click', async ()=>{
 /* ============================================================
  * MÓDULO COMERCIAL (Parte 2)
  * ============================================================ */
-let COM = { catalogo:null, ubic:null, registros:[], filtroTexto:'', filtroEstado:'__ALL__', filtroAsesor:'__ALL__', editId:null };
+let COM = { catalogo:null, ubic:null, registros:[], filtroTexto:'', filtroEstado:'__ALL__', filtroAsesor:'__ALL__', editId:null,
+            sig:'', pollTimer:null, pollMs:12000, cargando:false };
 
 /* Navegación por data-go (botones "volver") */
 document.addEventListener('click', (e)=>{
@@ -395,10 +401,46 @@ async function abrirComercial_(){
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo cargar', text:String(e.message||e)}); }
 }
 
-async function recargarComercial_(){
-  COM.registros = await apiGet('listComercial', { usuarioId: currentUser.id });
+async function recargarComercial_(silencioso){
+  const registros = await apiGet('listComercial', { usuarioId: currentUser.id });
+  const sig = JSON.stringify(registros);
+  // En modo silencioso (sondeo en segundo plano) solo re-renderiza si algo
+  // cambió realmente; así no se interrumpe el scroll/uso si no hay novedades.
+  if (silencioso && sig === COM.sig) return;
+  COM.registros = registros;
+  COM.sig = sig;
   renderAsesorPills_(); renderPills_(); renderCards_();
 }
+
+/* ── Sincronización en vivo del tablero Comercial ──────────────
+   Mantiene la vista Comercial IGUAL en todas las pantallas: cada pocos
+   segundos relee la lista en segundo plano y solo re-renderiza si hubo
+   cambios reales (mismo patrón que el sondeo del chat). Se pausa si la
+   pestaña está oculta o si hay un modal/overlay abierto, para no pisar
+   una edición en curso. Arranca/para desde showView(). */
+function comercialOverlayAbierto_(){
+  const abierto = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
+  return abierto('modal-comercial') || abierto('modal-accion') || abierto('sep-chat') ||
+         (window.Swal && typeof Swal.isVisible === 'function' && Swal.isVisible());
+}
+async function comercialTick_(){
+  if (document.hidden) return;             // ahorra cuota con la pestaña oculta
+  if (COM.cargando) return;                // no solapar peticiones
+  if (comercialOverlayAbierto_()) return;  // no interrumpir una edición abierta
+  COM.cargando = true;
+  try { await recargarComercial_(true); } catch(_){} finally { COM.cargando = false; }
+}
+function comercialIniciarPolling_(){
+  comercialDetenerPolling_();
+  COM.pollTimer = setInterval(comercialTick_, COM.pollMs);
+}
+function comercialDetenerPolling_(){
+  if (COM.pollTimer){ clearInterval(COM.pollTimer); COM.pollTimer = null; }
+}
+/* Al regresar a la pestaña, refresca de inmediato (sin esperar el intervalo). */
+document.addEventListener('visibilitychange', ()=>{
+  if (!document.hidden && COM.pollTimer) comercialTick_();
+});
 
 /* ── Pastillas por ASESOR (Fase 22) ──
    Solo para usuarios que NO son COMERCIAL. Aparecen los asesores que
