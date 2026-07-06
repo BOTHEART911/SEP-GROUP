@@ -8,7 +8,7 @@
  * versión cuando hay red) y cache de respaldo del shell para que
  * la app abra estando instalada sin conexión.
  * ============================================================ */
-const SEP_CACHE = 'sep-group-v1';
+const SEP_CACHE = 'sep-group-v2';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
