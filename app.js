@@ -1762,9 +1762,19 @@ function renderCfgAvanzado_(){
  * ============================================================ */
 const IOSP = { onOk:null, year:new Date().getFullYear() };
 const IOSP_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-const IOSP_HORAS = []; for (let h=6; h<=20; h++) IOSP_HORAS.push(h); // bloques exactos 6 AM–8 PM
+const IOSP_HORAS = []; for (let h=6; h<=20; h++) IOSP_HORAS.push(h); // bloques exactos 6 AM–8 PM (chips de la agenda)
+/* Fase 24 — El asesor programa asesorías de 30 min: la rueda de la hora
+   avanza de media en media (6:00 AM … 8:00 PM). Se guarda en minutos
+   desde medianoche. Los chips de Configuración › Agenda siguen siendo
+   en punto (usan IOSP_HORAS / iospHoraLabel_). */
+const IOSP_SLOTS = []; for (let h=6; h<=20; h++){ IOSP_SLOTS.push(h*60); if (h<20) IOSP_SLOTS.push(h*60+30); }
 const IOSP_H = 42;
 function iospHoraLabel_(h){ const ap = h>=12?'PM':'AM'; let hh=h%12; if(hh===0)hh=12; return hh+':00 '+ap; }
+function iospSlotLabel_(m){
+  const h = Math.floor(m/60), mi = m%60;
+  const ap = h>=12?'PM':'AM'; let hh = h%12; if(hh===0) hh=12;
+  return hh+':'+String(mi).padStart(2,'0')+' '+ap;
+}
 function iospDiasMes_(mesIdx, year){ return new Date(year, mesIdx+1, 0).getDate(); }
 
 function buildCol_(colEl, items, initIdx, onSettle){
@@ -1831,8 +1841,11 @@ function abrirRuedaFecha_(valorISO, onOk, opts){
   if (mesIdx < IOSP.minMes) mesIdx = IOSP.minMes;                       // no meses pasados
   let dia = dRef.getDate();
   if (mesIdx === IOSP.minMes && dia < IOSP.minDia) dia = IOSP.minDia;   // no días pasados
-  let hora = dRef.getHours(); if (hora < 6) hora = 9; if (hora > 20) hora = 20;
-  const horaIdx = Math.max(0, IOSP_HORAS.indexOf(hora) >= 0 ? IOSP_HORAS.indexOf(hora) : 3);
+  // Fase 24 — slot de 30 min (minutos desde medianoche), redondeado al más cercano
+  let slot = dRef.getHours()*60 + (dRef.getMinutes() >= 30 ? 30 : 0);
+  if (slot < 6*60) slot = 9*60;
+  if (slot > 20*60) slot = 20*60;
+  const horaIdx = Math.max(0, IOSP_SLOTS.indexOf(slot) >= 0 ? IOSP_SLOTS.indexOf(slot) : IOSP_SLOTS.indexOf(9*60));
 
   // Meses disponibles: del mes actual a diciembre (Bug A).
   IOSP.meses = []; for (let m=IOSP.minMes; m<=11; m++) IOSP.meses.push(m);
@@ -1850,7 +1863,7 @@ function abrirRuedaFecha_(valorISO, onOk, opts){
     // Al cambiar el mes, recalcula los días disponibles (con cota de hoy).
     iospRebuildDias_(pos);
   });
-  buildCol_($('#iosp-hora'), IOSP_HORAS.map(iospHoraLabel_), horaIdx);
+  buildCol_($('#iosp-hora'), IOSP_SLOTS.map(iospSlotLabel_), horaIdx);
 }
 
 $('#iosp-cancel')?.addEventListener('click', ()=> $('#ios-picker').classList.add('hidden'));
@@ -1863,7 +1876,7 @@ $('#iosp-ok')?.addEventListener('click', ()=>{
   // bien y la hora no.
   const mesIdx  = IOSP.meses[Math.min(selCol_($('#iosp-mes')), IOSP.meses.length-1)];
   const dia     = IOSP.dias[Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1)];
-  const hora    = IOSP_HORAS[Math.min(selCol_($('#iosp-hora')), IOSP_HORAS.length-1)];
+  const slotMin = IOSP_SLOTS[Math.min(selCol_($('#iosp-hora')), IOSP_SLOTS.length-1)];   // Fase 24
   const pad = n => String(n).padStart(2,'0');
   $('#ios-picker').classList.add('hidden');
   if (IOSP.soloFecha){
@@ -1871,8 +1884,8 @@ $('#iosp-ok')?.addEventListener('click', ()=>{
     if (IOSP.onOk) IOSP.onOk(iso, `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year}`);
     return;
   }
-  const iso = `${IOSP.year}-${pad(mesIdx+1)}-${pad(dia)}T${pad(hora)}:00`;
-  const texto = `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year} · ${iospHoraLabel_(hora)}`;
+  const iso = `${IOSP.year}-${pad(mesIdx+1)}-${pad(dia)}T${pad(Math.floor(slotMin/60))}:${pad(slotMin%60)}`;
+  const texto = `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year} · ${iospSlotLabel_(slotMin)}`;
   if (IOSP.onOk) IOSP.onOk(iso, texto);
 });
 
