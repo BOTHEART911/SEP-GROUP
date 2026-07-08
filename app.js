@@ -11,7 +11,11 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 23 — Reprogramación + preservar botón Meet
+ * FASE ACTUAL: Fase 24 — Configuración › Agenda gana el campo "Correo de
+ *   Asesorías" (se envía en saveAgenda). Al guardar la disponibilidad el
+ *   backend crea la sala (evento + Meet) de cada horario y comparte la
+ *   administración con ese correo. SEP-AGENDA intacta.
+ *   Fase 23 — Reprogramación + preservar botón Meet
  *   Configuración › Agenda: se elimina el modo "mismos horarios todos los
  *   días"; cada día configura sus propios bloques. Se corrige el bug de la
  *   vista que "se quedaba detenida" (listener acumulado en #cfg-agenda).
@@ -1894,8 +1898,20 @@ function renderCfgAgenda_(){
   const cont = $('#cfg-agenda');
   cont.innerHTML = `
     <div class="cfg-card">
+      <h3 class="cfg-card__title">📨 Correo de Asesorías</h3>
+      <p class="cfg-card__sub">Se le da administración sobre todos los eventos de asesoría (los de la disponibilidad y los que programa el asesor desde Comercial).</p>
+      <div class="cfg-grid">
+        <div class="cfg-field full">
+          <label>Correo de Asesorías</label>
+          <input id="cf-EMAIL_ASESORIAS" type="email" value="${esc_(a.correoAsesorias||'')}" placeholder="comercialsepcolombia@gmail.com" />
+          <div class="cfg-hint">Si lo dejas vacío se usa <b>comercialsepcolombia@gmail.com</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-card">
       <h3 class="cfg-card__title">📅 Días disponibles</h3>
-      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías y marca los horarios de cada día. Cada bloque admite varios estudiantes (cupos compartidos).</p>
+      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías y marca los horarios de cada día. Cada bloque admite varios estudiantes (cupos compartidos). Al guardar se crea el evento de calendario y el Meet de cada horario.</p>
       <button type="button" class="btn btn-accent" id="agenda-add">+ Agregar día</button>
       <div class="agenda-dias" id="agenda-dias"></div>
     </div>
@@ -1927,9 +1943,30 @@ function renderCfgAgenda_(){
   $('#agenda-save').addEventListener('click', async ()=>{
     sincronizarAgenda_();
     if (!CFG.agenda.dias.length) return Swal.fire({icon:'warning', title:'Agrega al menos un día'});
+    // Fase 24 — Correo de Asesorías (opcional; si va, debe ser válido)
+    const correoAses = $('#cf-EMAIL_ASESORIAS').value.trim();
+    if (correoAses && !emailValido_(correoAses)){
+      return Swal.fire({icon:'warning', title:'Correo de Asesorías inválido', text:'Revisa el formato del correo.'});
+    }
     try{
-      CFG.data.agenda = await apiPost('saveAgenda', { usuarioId: currentUser.id, agenda: CFG.agenda });
-      Swal.fire({icon:'success', title:'Disponibilidad guardada', timer:1000, showConfirmButton:false});
+      CFG.data.agenda = await apiPost('saveAgenda', {
+        usuarioId: currentUser.id,
+        agenda: CFG.agenda,
+        correoAsesorias: correoAses          // Fase 24
+      });
+      // Fase 24: el backend devuelve el resumen de salas creadas/borradas
+      const ev = CFG.data.agenda.eventos || {};
+      const detalle = [
+        ev.creados    ? `${ev.creados} sala(s) creada(s)`     : '',
+        ev.eliminados ? `${ev.eliminados} sala(s) eliminada(s)` : ''
+      ].filter(Boolean).join(' · ');
+      if (ev.errores && ev.errores.length){
+        Swal.fire({icon:'warning', title:'Disponibilidad guardada',
+          text:'Algunos horarios no pudieron crear su evento de calendario. Revisa el ID del calendario y los permisos.'});
+      } else {
+        Swal.fire({icon:'success', title:'Disponibilidad guardada',
+          text: detalle || undefined, timer: detalle ? 1800 : 1000, showConfirmButton:false});
+      }
     }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
   });
 }
