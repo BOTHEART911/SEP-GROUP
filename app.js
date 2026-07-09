@@ -1903,12 +1903,39 @@ $('#f-agenda-btn')?.addEventListener('click', ()=>{
 const AG_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const AG_DIAS  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 function labelFechaISO_(iso){ const [y,m,d]=iso.split('-').map(Number); const dt=new Date(y,m-1,d); return `${AG_DIAS[dt.getDay()]} ${d} de ${AG_MESES[m-1]}`; }
-function chipsBloques_(sel){ const s=new Set(sel||[]); let o=''; for(let h=6;h<=20;h++){const k=String(h).padStart(2,'0')+':00'; o+=`<span class="bchip ${s.has(k)?'on':''}" data-h="${k}">${iospHoraLabel_(h)}</span>`;} return o; }
+/* Fase 24.1 — Tres estados por hora:
+     amarillo (.on)  = activa, visible en SEP-AGENDA, con sala creada
+     gris     (.off) = apagada, oculta en SEP-AGENDA, la sala se conserva
+     blanca          = sin marcar, no hay sala (al guardar se borra si existía)
+   El chip cicla amarillo → gris → blanca. El paso a blanca pide confirmación
+   porque es el único destructivo. */
+const BCHIP_OFF_STYLE = 'background:#eef0f3;color:#8a8f98;border:1px dashed #c3c8d0';
+function chipsBloques_(sel, apagados){
+  const s=new Set(sel||[]), off=new Set(apagados||[]);
+  let o='';
+  for(let h=6;h<=20;h++){
+    const k=String(h).padStart(2,'0')+':00';
+    const esOff = s.has(k) && off.has(k);
+    const esOn  = s.has(k) && !esOff;
+    const cls   = esOn ? 'on' : (esOff ? 'off' : '');
+    const st    = esOff ? ` style="${BCHIP_OFF_STYLE}"` : '';
+    const tit   = esOn ? 'Visible en SEP-AGENDA · clic para apagar'
+                       : (esOff ? 'Oculta en SEP-AGENDA (la sala se conserva) · clic para desmarcar'
+                                : 'Sin marcar · clic para activar');
+    o+=`<span class="bchip ${cls}" data-h="${k}" title="${tit}"${st}>${iospHoraLabel_(h)}</span>`;
+  }
+  return o;
+}
 
 function renderCfgAgenda_(){
   const a = CFG.data.agenda || { dias:[] };
   // Fase 24.1 — 'activo' por día (por defecto encendido)
-  CFG.agenda = { dias: (a.dias||[]).map(d=>({fecha:d.fecha, bloques:[...(d.bloques||[])], activo: d.activo !== false})) };
+  CFG.agenda = { dias: (a.dias||[]).map(d=>({
+    fecha:d.fecha,
+    bloques:[...(d.bloques||[])],
+    bloquesApagados:[...(d.bloquesApagados||[])],   // Fase 24.1
+    activo: d.activo !== false
+  })) };
   const cont = $('#cfg-agenda');
   cont.innerHTML = `
     <div class="cfg-card">
@@ -1927,6 +1954,11 @@ function renderCfgAgenda_(){
       <h3 class="cfg-card__title">📅 Días disponibles</h3>
       <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías y marca los horarios de cada día. Cada bloque admite varios estudiantes (cupos compartidos). Al guardar se crea el evento de calendario y el Meet de cada horario. <b>Apagar</b> un día lo oculta en SEP-AGENDA sin borrar su disponibilidad ni sus eventos.</p>
       <button type="button" class="btn btn-accent" id="agenda-add">+ Agregar día</button>
+      <p class="cfg-hint" style="margin-top:10px">
+        <b>Amarillo</b>: visible en SEP-AGENDA. ·
+        <b>Gris</b>: apagada, oculta en SEP-AGENDA pero el evento y el Meet se conservan. ·
+        <b>Blanco</b>: sin marcar, no hay evento. Cada clic avanza al siguiente estado.
+      </p>
       <div class="agenda-dias" id="agenda-dias"></div>
     </div>
     <div class="cfg-actions"><button class="btn btn-primary" id="agenda-save">Guardar disponibilidad</button></div>`;
@@ -1935,9 +1967,29 @@ function renderCfgAgenda_(){
   // Toggle de bloques + quitar día, delegados en #agenda-dias (se recrea
   // en cada render → NO se acumulan listeners como pasaba al colgarlos
   // del contenedor persistente #cfg-agenda).
-  $('#agenda-dias').addEventListener('click', (e)=>{
+  $('#agenda-dias').addEventListener('click', async (e)=>{
     const chip = e.target.closest('.bchip');
-    if (chip){ chip.classList.toggle('on'); return; }
+    if (chip){
+      // Fase 24.1 — ciclo amarillo → gris → blanco
+      if (chip.classList.contains('on')){            // activa → apagada
+        chip.classList.remove('on'); chip.classList.add('off');
+        chip.setAttribute('style', BCHIP_OFF_STYLE);
+      } else if (chip.classList.contains('off')){    // apagada → sin marcar (destructivo)
+        const ok = await Swal.fire({
+          icon:'warning', title:'¿Desmarcar esta hora?',
+          html:'Al guardar se <b>eliminará el evento de calendario y su Meet</b> de este horario.<br>' +
+               'Si prefieres solo ocultarla, déjala en gris.<br><br>' +
+               '<small>Los estudiantes ya agendados conservan su asesoría y su enlace.</small>',
+          showCancelButton:true, confirmButtonText:'Sí, desmarcar', cancelButtonText:'Cancelar',
+          confirmButtonColor:'#d33'
+        });
+        if (!ok.isConfirmed) return;
+        chip.classList.remove('off'); chip.removeAttribute('style');
+      } else {                                       // sin marcar → activa
+        chip.classList.add('on');
+      }
+      return;
+    }
     // Fase 24.1 — Apagar / Encender el día (no borra nada)
     const tog = e.target.closest('[data-toggle]');
     if (tog){
@@ -1958,7 +2010,7 @@ function renderCfgAgenda_(){
   $('#agenda-add').addEventListener('click', ()=>{
     abrirRuedaFecha_('', (iso)=>{
       sincronizarAgenda_();
-      if (!CFG.agenda.dias.some(d=>d.fecha===iso)) CFG.agenda.dias.push({fecha:iso, bloques:[], activo:true});
+      if (!CFG.agenda.dias.some(d=>d.fecha===iso)) CFG.agenda.dias.push({fecha:iso, bloques:[], bloquesApagados:[], activo:true});
       renderDiasAgenda_();
     }, { soloFecha:true });
   });
@@ -2009,7 +2061,7 @@ function renderDiasAgenda_(){
         <button type="button" class="mini-btn" data-toggle="${d.fecha}" title="${on?'Ocultar este día en SEP-AGENDA':'Volver a mostrar este día en SEP-AGENDA'}">${on?'Apagar':'Encender'}</button>
         <button type="button" class="mini-btn danger" data-del="${d.fecha}">Quitar</button>
       </div>
-      <div class="bloques-chips" style="margin-top:10px">${chipsBloques_(d.bloques)}</div>
+      <div class="bloques-chips" style="margin-top:10px">${chipsBloques_(d.bloques, d.bloquesApagados)}</div>
     </div>`;
   }).join('') || '<p class="cfg-hint">Aún no agregas días.</p>';
 }
@@ -2020,8 +2072,14 @@ function sincronizarAgenda_(){
   const a = CFG.agenda;
   $$('#agenda-dias .agenda-dia').forEach(card=>{
     const dia = a.dias.find(d=>d.fecha===card.dataset.fecha); if (!dia) return;
-    dia.bloques = [...card.querySelectorAll('.bchip.on')].map(c=>c.dataset.h);
-    if (dia.activo === undefined) dia.activo = true;   // Fase 24.1
+    // Fase 24.1 — 'bloques' = activas + apagadas (ambas tienen sala).
+    // 'bloquesApagados' = solo las grises. Las blancas quedan fuera y su
+    // sala se borra al guardar.
+    const on  = [...card.querySelectorAll('.bchip.on')].map(c=>c.dataset.h);
+    const off = [...card.querySelectorAll('.bchip.off')].map(c=>c.dataset.h);
+    dia.bloques = on.concat(off).sort();
+    dia.bloquesApagados = off.sort();
+    if (dia.activo === undefined) dia.activo = true;
   });
 }
 
