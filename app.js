@@ -1907,7 +1907,8 @@ function chipsBloques_(sel){ const s=new Set(sel||[]); let o=''; for(let h=6;h<=
 
 function renderCfgAgenda_(){
   const a = CFG.data.agenda || { dias:[] };
-  CFG.agenda = { dias: (a.dias||[]).map(d=>({fecha:d.fecha, bloques:[...(d.bloques||[])]})) };
+  // Fase 24.1 — 'activo' por día (por defecto encendido)
+  CFG.agenda = { dias: (a.dias||[]).map(d=>({fecha:d.fecha, bloques:[...(d.bloques||[])], activo: d.activo !== false})) };
   const cont = $('#cfg-agenda');
   cont.innerHTML = `
     <div class="cfg-card">
@@ -1924,7 +1925,7 @@ function renderCfgAgenda_(){
 
     <div class="cfg-card">
       <h3 class="cfg-card__title">📅 Días disponibles</h3>
-      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías y marca los horarios de cada día. Cada bloque admite varios estudiantes (cupos compartidos). Al guardar se crea el evento de calendario y el Meet de cada horario.</p>
+      <p class="cfg-card__sub">Agrega las fechas concretas en las que atenderás asesorías y marca los horarios de cada día. Cada bloque admite varios estudiantes (cupos compartidos). Al guardar se crea el evento de calendario y el Meet de cada horario. <b>Apagar</b> un día lo oculta en SEP-AGENDA sin borrar su disponibilidad ni sus eventos.</p>
       <button type="button" class="btn btn-accent" id="agenda-add">+ Agregar día</button>
       <div class="agenda-dias" id="agenda-dias"></div>
     </div>
@@ -1937,6 +1938,15 @@ function renderCfgAgenda_(){
   $('#agenda-dias').addEventListener('click', (e)=>{
     const chip = e.target.closest('.bchip');
     if (chip){ chip.classList.toggle('on'); return; }
+    // Fase 24.1 — Apagar / Encender el día (no borra nada)
+    const tog = e.target.closest('[data-toggle]');
+    if (tog){
+      sincronizarAgenda_();
+      const dia = CFG.agenda.dias.find(d=>d.fecha===tog.dataset.toggle);
+      if (dia) dia.activo = (dia.activo === false);
+      renderDiasAgenda_();
+      return;
+    }
     const del = e.target.closest('[data-del]');
     if (del){
       sincronizarAgenda_();
@@ -1948,7 +1958,7 @@ function renderCfgAgenda_(){
   $('#agenda-add').addEventListener('click', ()=>{
     abrirRuedaFecha_('', (iso)=>{
       sincronizarAgenda_();
-      if (!CFG.agenda.dias.some(d=>d.fecha===iso)) CFG.agenda.dias.push({fecha:iso, bloques:[]});
+      if (!CFG.agenda.dias.some(d=>d.fecha===iso)) CFG.agenda.dias.push({fecha:iso, bloques:[], activo:true});
       renderDiasAgenda_();
     }, { soloFecha:true });
   });
@@ -1986,11 +1996,22 @@ function renderCfgAgenda_(){
 
 function renderDiasAgenda_(){
   const a = CFG.agenda;
-  $('#agenda-dias').innerHTML = (a.dias||[]).slice().sort((x,y)=>x.fecha.localeCompare(y.fecha)).map(d=>`
-    <div class="agenda-dia" data-fecha="${d.fecha}">
-      <div class="agenda-dia__head"><b>${labelFechaISO_(d.fecha)}</b><button type="button" class="mini-btn danger" data-del="${d.fecha}">Quitar</button></div>
+  $('#agenda-dias').innerHTML = (a.dias||[]).slice().sort((x,y)=>x.fecha.localeCompare(y.fecha)).map(d=>{
+    // Fase 24.1 — Apagar/Encender: oculta el día en SEP-AGENDA sin borrar
+    // la disponibilidad ni los eventos del calendario.
+    const on = d.activo !== false;
+    return `
+    <div class="agenda-dia" data-fecha="${d.fecha}" style="${on?'':'opacity:.62'}">
+      <div class="agenda-dia__head" style="display:flex;align-items:center;gap:8px">
+        <b>${labelFechaISO_(d.fecha)}</b>
+        ${on?'':'<span class="mini-tag" style="margin-left:8px;font-size:11px;font-weight:700;color:#8a8f98;border:1px solid #d7dae0;border-radius:999px;padding:2px 8px">Oculto en SEP-AGENDA</span>'}
+        <span style="flex:1"></span>
+        <button type="button" class="mini-btn" data-toggle="${d.fecha}" title="${on?'Ocultar este día en SEP-AGENDA':'Volver a mostrar este día en SEP-AGENDA'}">${on?'Apagar':'Encender'}</button>
+        <button type="button" class="mini-btn danger" data-del="${d.fecha}">Quitar</button>
+      </div>
       <div class="bloques-chips" style="margin-top:10px">${chipsBloques_(d.bloques)}</div>
-    </div>`).join('') || '<p class="cfg-hint">Aún no agregas días.</p>';
+    </div>`;
+  }).join('') || '<p class="cfg-hint">Aún no agregas días.</p>';
 }
 
 /* Lee el DOM y actualiza CFG.agenda (para no perder la selección de
@@ -2000,6 +2021,7 @@ function sincronizarAgenda_(){
   $$('#agenda-dias .agenda-dia').forEach(card=>{
     const dia = a.dias.find(d=>d.fecha===card.dataset.fecha); if (!dia) return;
     dia.bloques = [...card.querySelectorAll('.bchip.on')].map(c=>c.dataset.h);
+    if (dia.activo === undefined) dia.activo = true;   // Fase 24.1
   });
 }
 
