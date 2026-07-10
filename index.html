@@ -215,8 +215,10 @@
         </button>
       </div>
 
-      <div class="pills-row" id="com-asesor-pills"></div>
-      <div class="pills-row" id="com-pills"></div>
+      <!-- Fase 25.1 — Tres pastillas de filtro en una sola línea.
+           Cada una abre la hoja inferior #com-fsheet con sus opciones.
+           La de Asesor no se pinta para el rol COMERCIAL (solo ve lo suyo). -->
+      <div class="filters-row" id="com-filters"></div>
 
       <div id="com-cards" class="com-cards"></div>
       <div id="com-empty" class="com-empty hidden">
@@ -244,6 +246,22 @@
   <!-- ============================================================
        MODAL — REGISTRO COMERCIAL (Agregar / Editar)
        ============================================================ -->
+  <!-- ============================================================
+       HOJA INFERIOR DE FILTROS (Comercial · Fase 25.1)
+       Se rellena desde app.js → abrirSheetFiltro_()
+       ============================================================ -->
+  <div id="com-fsheet" class="fsheet hidden" aria-hidden="true">
+    <div class="fsheet__scrim" data-fsheet-close></div>
+    <div class="fsheet__panel" role="dialog" aria-modal="true" aria-labelledby="fsheet-title">
+      <div class="fsheet__grip"></div>
+      <div class="fsheet__head">
+        <h3 id="fsheet-title">Filtrar</h3>
+        <button class="fsheet__x" data-fsheet-close aria-label="Cerrar">✕</button>
+      </div>
+      <div class="fsheet__list" id="fsheet-list"></div>
+    </div>
+  </div>
+
   <div id="modal-comercial" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -260,7 +278,13 @@
           <div class="fld"><label>Nombres *</label><input id="f-nombres" type="text" placeholder="Ej: JUAN DAVID" /></div>
           <div class="fld"><label>Apellidos *</label><input id="f-apellidos" type="text" placeholder="Ej: PÉREZ GÓMEZ" /></div>
 
-          <div class="fld"><label>WhatsApp * (10 dígitos)</label><input id="f-whatsapp" type="tel" inputmode="numeric" placeholder="3001234567" /></div>
+          <!-- Fase 25 — En un registro NUEVO este es el ÚNICO campo activo.
+               A los 10 dígitos se consulta la columna F (WHATSAPP) de COMERCIAL. -->
+          <div class="fld">
+            <label>WhatsApp * (10 dígitos)</label>
+            <input id="f-whatsapp" type="tel" inputmode="numeric" placeholder="3001234567" />
+            <div class="cfg-hint" id="f-wa-hint" style="margin-top:6px;"></div>
+          </div>
           <div class="fld"><label>Teléfono (opcional)</label><input id="f-telefono" type="tel" inputmode="numeric" placeholder="6041234567" /></div>
 
           <div class="fld fld-full"><label>Correo *</label><input id="f-correo" type="email" placeholder="correo@ejemplo.com" /></div>
@@ -270,6 +294,13 @@
 
           <div class="fld"><label>Fuente Lead *</label><select id="f-fuente"></select></div>
           <div class="fld"><label>Asesor</label><select id="f-asesor"></select></div>
+
+          <!-- Fase 25 — Solo visible cuando la Fuente Lead es "Referido".
+               Se guarda en la columna COMERCIAL!REFERIDO. -->
+          <div class="fld fld-full" id="fld-referido" style="display:none;">
+            <label>Nombre del Referidor(a) (opcional)</label>
+            <input id="f-referido" type="text" placeholder="Ej: MARIA GOMEZ" />
+          </div>
 
           <div class="fld fld-full" id="fld-estado" style="display:none;">
             <label>Estado</label><select id="f-estado"></select>
