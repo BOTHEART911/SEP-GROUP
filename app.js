@@ -1304,7 +1304,10 @@ function asesoresParaSelect_(){
   const all = COM.catalogo.asesores || [];
   const rol = String(currentUser?.rol||'').toUpperCase();
   if (rol === 'COMERCIAL') return all.filter(a => a.nombre === currentUser.nombre);
-  return all.filter(a => String(a.rol).toUpperCase() === 'COMERCIAL');
+  // Fase 22 (ajuste): además de los asesores COMERCIAL, se muestran los
+  // SUPERUSUARIO para que puedan asignarse como asesor en el registro.
+  const ROLES_ASIGNABLES = ['COMERCIAL','SUPERUSUARIO'];
+  return all.filter(a => ROLES_ASIGNABLES.indexOf(String(a.rol).toUpperCase()) >= 0);
 }
 
 /* ============================================================
