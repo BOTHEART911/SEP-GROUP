@@ -11,7 +11,9 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 11 — Plantillas unificadas en Configuración
+ * FASE ACTUAL: Fase 25.1 — Filtros de Comercial: 3 pastillas en una línea
+ *   (Asesor · Programa · Estado) + hoja inferior de opciones (.fpill/.fsheet,
+ *   al final del archivo). Fase 11 — Plantillas unificadas en Configuración
  * Sistema de diseño premium: tema claro, tarjetas blancas con
  * acento institucional, tiles con título + descripción, welcome
  * bar con degradado, micro-animaciones. Paleta SEP: azul #263143
@@ -826,3 +828,94 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .plt-sys { font-size: .64rem; font-weight: 800; text-transform: uppercase; color: var(--rol-comercial); border: 1.5px solid rgba(194,121,42,.4); border-radius: var(--r-pill); padding: 2px 8px; }
 .plt-btn { flex: 1; padding: 8px; border-radius: var(--r-md); border: 1.5px solid var(--border-strong); background: var(--bg-card); color: var(--text-soft); font-weight: 700; font-size: .8rem; transition: all .14s; }
 .plt-btn:hover { color: var(--primary); border-color: var(--primary); background: var(--bg-soft); }
+
+
+/* ══════════════════════════════════════════════════════════
+   FASE 25.1 — FILTROS DE LA VISTA COMERCIAL
+   ══════════════════════════════════════════════════════════
+   Tres pastillas fijas en UNA sola línea (Asesor · Programa ·
+   Estado). Cada una abre la hoja inferior #com-fsheet con sus
+   opciones. Sin scroll horizontal: el ancho se reparte en grid.
+   Las clases .pills-row / .pill de la Fase 22 se conservan más
+   arriba por compatibilidad, pero ya no se usan en Comercial.
+   ══════════════════════════════════════════════════════════ */
+.filters-row {
+  display: flex; gap: 8px; padding: 10px 2px 14px;
+}
+/* Las tres reparten el ancho por igual… */
+.fpill {
+  --fp: var(--primary);
+  flex: 1 1 0;
+  position: relative; min-width: 0; overflow: hidden; text-align: left;
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 10px 9px 12px; border-radius: var(--r-pill); cursor: pointer;
+  background: var(--bg-card); border: 1.5px solid var(--border);
+  font-weight: 700; font-size: .78rem; color: var(--text-soft);
+  transition: transform .16s, box-shadow .16s, background .16s, border-color .16s, color .16s;
+}
+.fpill:hover  { transform: translateY(-1px); box-shadow: var(--sh-sm); border-color: var(--border-strong); }
+.fpill:active { transform: scale(.97); }
+
+.fpill__ic    { flex: none; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: .95rem; line-height: 1; }
+.fpill__ic img{ width: 18px; height: 18px; object-fit: contain; border-radius: 4px; }
+.fpill__dot   { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--fp); }
+.fpill__label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fpill__count { flex: none; background: var(--bg-soft); color: var(--text-soft); border-radius: var(--r-pill); padding: 1px 7px; font-size: .7rem; font-weight: 800; }
+.fpill__chev  { flex: none; opacity: .45; transition: transform .18s; }
+.fpill:hover .fpill__chev { transform: translateY(1.5px); }
+
+/* Encendida = hay filtro aplicado. El color lo inyecta app.js en --fp. */
+/* …y la que tiene filtro aplicado se expande para mostrar el valor completo.
+   Es la clave para que quepa "MARIA ALEJANDRA" sin recortar las otras dos. */
+.fpill.is-on { flex: 1.9 1 0; background: var(--fp); border-color: transparent; color: #fff; box-shadow: var(--sh-md); }
+.fpill.is-on .fpill__count { background: rgba(255,255,255,.24); color: #fff; }
+.fpill.is-on .fpill__dot   { background: #fff; }
+.fpill.is-on .fpill__chev  { opacity: .85; }
+.fpill.is-on::after { content:''; position:absolute; left:0; right:0; bottom:0; height:2px; background: rgba(255,255,255,.32); }
+
+@media (max-width: 420px) {
+  .fpill        { font-size: .71rem; gap: 5px; padding: 8px 8px 8px 10px; }
+  .fpill__count { padding: 1px 5px; font-size: .64rem; }
+  .fpill__chev  { display: none; }
+}
+
+/* ── Hoja inferior de opciones (bottom sheet) ── */
+.fsheet { position: fixed; inset: 0; z-index: 9500; display: flex; align-items: flex-end; justify-content: center; }
+.fsheet.hidden { display: none; }
+.fsheet__scrim { position: absolute; inset: 0; background: var(--scrim); backdrop-filter: blur(4px); animation: fsFade .2s ease; }
+.fsheet__panel {
+  position: relative; width: min(560px, 100%); max-height: 78vh;
+  display: flex; flex-direction: column;
+  background: var(--bg-card); border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--sh-xl); padding-bottom: var(--safe-bottom);
+  animation: fsUp .28s cubic-bezier(.32, 1, .56, 1);
+}
+@keyframes fsFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fsUp   { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.fsheet__grip { width: 44px; height: 5px; border-radius: 99px; background: var(--bg-soft); margin: 10px auto 2px; }
+.fsheet__head { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 12px; border-bottom: 1px solid var(--border); }
+.fsheet__head h3 { margin: 0; font-family: var(--font-display); font-size: 1.02rem; color: var(--primary); }
+.fsheet__x { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-soft); color: var(--text-soft); font-size: .95rem; }
+.fsheet__list { overflow-y: auto; padding: 8px 12px 18px; display: flex; flex-direction: column; gap: 4px; }
+
+.fopt {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 12px 14px; border-radius: var(--r-lg); cursor: pointer;
+  background: transparent; border: 1.5px solid transparent; color: var(--text-main);
+  font-weight: 600; font-size: .86rem;
+  transition: background .14s, border-color .14s, transform .14s;
+}
+.fopt:hover  { background: var(--bg-base); }
+.fopt:active { transform: scale(.985); }
+.fopt.is-sel { background: var(--primary-soft); border-color: var(--border-strong); font-weight: 800; }
+/* «Todos los …» siempre primero, separado del resto */
+.fopt.is-all { margin-bottom: 6px; border-bottom: 1px dashed var(--border); border-radius: var(--r-lg); }
+
+.fopt__ic     { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; }
+.fopt__ic img { width: 24px; height: 24px; object-fit: contain; border-radius: 6px; }
+.fopt__dot    { flex: none; width: 10px; height: 10px; border-radius: 50%; margin: 0 7px; }
+.fopt__label  { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fopt__count  { flex: none; background: var(--bg-soft); color: var(--text-soft); border-radius: var(--r-pill); padding: 2px 9px; font-size: .72rem; font-weight: 800; }
+.fopt__check  { flex: none; width: 20px; text-align: center; color: var(--ok); font-weight: 900; opacity: 0; transition: opacity .14s; }
+.fopt.is-sel .fopt__check { opacity: 1; }
