@@ -11,7 +11,10 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 24 — Configuración › Agenda gana el campo "Correo de
+ * FASE ACTUAL: Fase 25 — Loader silencioso · Antiduplicados por WhatsApp ·
+ *   Campo Referidor(a) · Nombres/Apellidos sin tildes ni ñ · Programas con
+ *   "Datos adicionales para el pago" ({bloque_pago}).
+ *   Fase 24 — Configuración › Agenda gana el campo "Correo de
  *   Asesorías" (se envía en saveAgenda). Al guardar la disponibilidad el
  *   backend crea la sala (evento + Meet) de cada horario y comparte la
  *   administración con ese correo. SEP-AGENDA intacta.
@@ -376,7 +379,11 @@ $('#btn-logout')?.addEventListener('click', async ()=>{
 /* ============================================================
  * MÓDULO COMERCIAL (Parte 2)
  * ============================================================ */
-let COM = { catalogo:null, ubic:null, registros:[], filtroTexto:'', filtroEstado:'__ALL__', filtroAsesor:'__ALL__', editId:null,
+let COM = { catalogo:null, ubic:null, registros:[], filtroTexto:'',
+            filtroEstado:'__ALL__', filtroAsesor:'__ALL__',
+            filtroPrograma:'__ALL__',            // Fase 25.1 — nueva pastilla
+            sheetKey:null,                       // Fase 25.1 — hoja de filtros abierta
+            editId:null,
             sig:'', pollTimer:null, pollMs:12000, cargando:false };
 
 /* Navegación por data-go (botones "volver") */
@@ -401,19 +408,27 @@ async function abrirComercial_(){
       const [cat, ubic] = await Promise.all([ apiGet('getCatalogoComercial'), apiGet('getUbicaciones') ]);
       COM.catalogo = cat; COM.ubic = ubic;
     }
-    await recargarComercial_();
+    // Fase 25 (Ajuste 1): el loader solo en la PRIMERA carga, viniendo de Inicio.
+    // Si ya hay tarjetas en memoria, la vista se refresca en silencio.
+    await recargarComercial_(COM.registros.length > 0);
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo cargar', text:String(e.message||e)}); }
 }
 
-async function recargarComercial_(silencioso){
-  const registros = await apiGet('listComercial', { usuarioId: currentUser.id });
+/* Fase 25 (Ajuste 1) — El flag `silencioso` AHORA SÍ viaja a apiGet.
+   Antes se recibía pero nunca se propagaba, así que el spinner global salía
+   igual en los tres refrescos de segundo plano: visibilitychange (volver a la
+   pestaña del navegador), el sondeo cada 12 s y la señal de Firebase.
+   `forzar` = repintar aunque la firma no haya cambiado (tras guardar/eliminar). */
+async function recargarComercial_(silencioso, forzar){
+  const registros = await apiGet('listComercial', { usuarioId: currentUser.id },
+                                 { silent: !!silencioso });
   const sig = JSON.stringify(registros);
   // En modo silencioso (sondeo en segundo plano) solo re-renderiza si algo
   // cambió realmente; así no se interrumpe el scroll/uso si no hay novedades.
-  if (silencioso && sig === COM.sig) return;
+  if (silencioso && !forzar && sig === COM.sig) return;
   COM.registros = registros;
   COM.sig = sig;
-  renderAsesorPills_(); renderPills_(); renderCards_();
+  renderFiltros_(); renderCards_();     // Fase 25.1
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -443,6 +458,7 @@ const FB = { listo:false, iniciando:null, ref:null, primed:false, refrescoTimer:
 function comercialOverlayAbierto_(){
   const abierto = id => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
   return abierto('modal-comercial') || abierto('modal-accion') || abierto('sep-chat') ||
+         abierto('com-fsheet') ||                       // Fase 25.1
          (window.Swal && typeof Swal.isVisible === 'function' && Swal.isVisible());
 }
 
@@ -470,7 +486,8 @@ async function fbAsegurarSesion_(){
   if (FB.iniciando) return FB.iniciando;
   FB.iniciando = (async ()=>{
     if (!window.firebase || !firebase.database || !firebase.auth) throw new Error('SDK Firebase no cargado');
-    const r = await apiGet('tokenChat', { usuarioId: currentUser.id });  // endpoint ya existente
+    // Fase 25 (Ajuste 1): silent → volver a Comercial no dispara el spinner.
+    const r = await apiGet('tokenChat', { usuarioId: currentUser.id }, { silent:true });  // endpoint ya existente
     if (!r || !r.token) throw new Error('tokenChat sin token');
     const cfg = r.firebase || {};
     if (!cfg.apiKey) throw new Error('FIREBASE_API_KEY vacía en CONFIGURACION');
@@ -542,61 +559,206 @@ document.addEventListener('visibilitychange', ()=>{
   else if (COM.pollTimer) comercialTick_();
 });
 
-/* ── Pastillas por ASESOR (Fase 22) ──
-   Solo para usuarios que NO son COMERCIAL. Aparecen los asesores que
-   tienen al menos un lead registrado. Al elegir uno, filtra las tarjetas
-   por ese asesor (y luego se puede afinar por estado). */
-function renderAsesorPills_(){
-  const cont = $('#com-asesor-pills'); if (!cont) return;
-  const esComercial = String(currentUser?.rol||'').toUpperCase() === 'COMERCIAL';
-  if (esComercial){ cont.innerHTML = ''; cont.style.display = 'none'; return; }
-  cont.style.display = '';
-  const counts = {};
-  COM.registros.forEach(r => { const a = String(r.asesor||'').trim() || '— Sin asesor —'; counts[a] = (counts[a]||0)+1; });
-  const asesores = Object.keys(counts).sort((a,b)=>a.localeCompare(b));
-  if (!asesores.length){ cont.innerHTML = ''; return; }
-  let html = asesorPill_('__ALL__', 'Todos los asesores', COM.registros.length);
-  asesores.forEach(a => { html += asesorPill_(a, a, counts[a]); });
-  cont.innerHTML = html;
-  $$('#com-asesor-pills .pill').forEach(p => p.addEventListener('click', ()=>{
-    COM.filtroAsesor = p.dataset.asesor;
-    COM.filtroEstado = '__ALL__';            // al cambiar de asesor, reinicia el filtro de estado
-    renderAsesorPills_(); renderPills_(); renderCards_();
-  }));
-}
-function asesorPill_(clave, label, count){
-  const active = COM.filtroAsesor === clave;
-  return `<button class="pill pill-asesor ${active?'active':''}" data-asesor="${esc_(clave)}">
-    <span class="pill__ic">👤</span>${esc_(label)}
-    <span class="pill__count">${count}</span></button>`;
+/* ══════════════════════════════════════════════════════════════
+   FILTROS DE LA VISTA COMERCIAL (Fase 25.1)
+   ══════════════════════════════════════════════════════════════
+   Antes: dos filas de pastillas con scroll horizontal (una por asesor,
+   otra por estado). Ahora: TRES pastillas fijas en una sola línea —
+   «Todos los asesores» · «Todos los programas» · «Todos los leads».
+
+   • Al tocar una, se abre una hoja inferior con sus opciones (con
+     icono, conteo y check de selección).
+   • Al elegir un valor, la pastilla se renombra con ese valor, se pinta
+     y aplica el filtro.
+   • Al volver a tocarla, la PRIMERA opción de la hoja es «Todos los X»:
+     la devuelve a su estado inicial y quita el filtro.
+
+   Los filtros son EN CASCADA: Asesor → Programa → Estado. Los conteos
+   de cada nivel se calculan sobre el nivel anterior, así nunca ofrece
+   una opción que devuelva cero tarjetas. Cambiar un nivel superior
+   reinicia los inferiores.
+
+   El rol COMERCIAL no ve la pastilla de Asesor (solo tiene sus leads):
+   la fila se reparte entre las dos restantes.
+   ══════════════════════════════════════════════════════════════ */
+
+const SIN_ASESOR   = '— Sin asesor —';
+const SIN_PROGRAMA = '— Sin programa —';
+
+const FILTROS_DEF = [
+  { key:'asesor',   allLabel:'Todos los asesores',  titulo:'Filtrar por asesor',   ic:'👤', color:'#263143' },
+  { key:'programa', allLabel:'Todos los programas', titulo:'Filtrar por programa', ic:'🎓', color:'#0891b2' },
+  { key:'estado',   allLabel:'Todos los leads',     titulo:'Filtrar por estado',   ic:'🏷️', color:'#263143' }
+];
+
+const CHEVRON_SVG = '<svg class="fpill__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+function normAsesor_(r){   return String(r.asesor  ||'').trim() || SIN_ASESOR; }
+function normPrograma_(r){ return String(r.programa||'').trim() || SIN_PROGRAMA; }
+
+/* En la pastilla el asesor va en corto (2 palabras, igual que el saludo de
+   Inicio): "MARIA ALEJANDRA SANABRIA CEPEDA" no cabe en un tercio de pantalla.
+   El nombre completo queda en la hoja de opciones y en el tooltip. */
+function nombreCortoAsesor_(n){
+  const s = String(n||'').trim();
+  if (s.startsWith('—')) return s;                 // "— Sin asesor —" va tal cual
+  return s.split(/\s+/).slice(0, 2).join(' ');
 }
 
-/* Registros visibles según el asesor elegido (base para estado/tarjetas). */
-function registrosVisibles_(){
+function valFiltro_(key){
+  return key === 'asesor' ? COM.filtroAsesor
+       : key === 'programa' ? COM.filtroPrograma
+       : COM.filtroEstado;
+}
+/* Cambiar un nivel superior reinicia los inferiores (evita filtros huérfanos). */
+function setFiltro_(key, valor){
+  if (key === 'asesor'){ COM.filtroAsesor = valor; COM.filtroPrograma = '__ALL__'; COM.filtroEstado = '__ALL__'; }
+  else if (key === 'programa'){ COM.filtroPrograma = valor; COM.filtroEstado = '__ALL__'; }
+  else { COM.filtroEstado = valor; }
+}
+
+/* ── Bases en cascada ── */
+function baseAsesor_(){
   if (COM.filtroAsesor === '__ALL__') return COM.registros;
-  return COM.registros.filter(r => (String(r.asesor||'').trim() || '— Sin asesor —') === COM.filtroAsesor);
+  return COM.registros.filter(r => normAsesor_(r) === COM.filtroAsesor);
+}
+function basePrograma_(){
+  const b = baseAsesor_();
+  if (COM.filtroPrograma === '__ALL__') return b;
+  return b.filter(r => normPrograma_(r) === COM.filtroPrograma);
+}
+/* Registros visibles antes del filtro de estado (lo usa renderCards_). */
+function registrosVisibles_(){ return basePrograma_(); }
+/* Registros tras los TRES filtros (sin el buscador de texto). */
+function baseEstado_(){
+  const b = basePrograma_();
+  if (COM.filtroEstado === '__ALL__') return b;
+  return b.filter(r => r.estado === COM.filtroEstado);
 }
 
-/* ── Pastillas por estado ── */
-function renderPills_(){
-  const cont = $('#com-pills'); if (!cont) return;
-  const base = registrosVisibles_();
-  const counts = {}; base.forEach(r => counts[r.estado] = (counts[r.estado]||0)+1);
-  const estados = (COM.catalogo?.estados || []);
-  let html = pill_('__ALL__', 'Todos', base.length, '#263143');
-  estados.forEach(e => { if (counts[e.clave]) html += pill_(e.clave, e.label, counts[e.clave], e.color); });
-  cont.innerHTML = html;
-  $$('#com-pills .pill').forEach(p => p.addEventListener('click', ()=>{
-    COM.filtroEstado = p.dataset.estado; renderPills_(); renderCards_();
+function iconoPrograma_(nombre){
+  const p = (COM.catalogo?.programas || []).find(x => x.nombre === nombre);
+  return p && p.iconoUrl ? p.iconoUrl : '';
+}
+function estadoDef_(clave){
+  return (COM.catalogo?.estados || []).find(e => e.clave === clave) || null;
+}
+
+/* ── Opciones de cada hoja (con conteo, calculadas sobre su base) ── */
+function opcionesFiltro_(key){
+  if (key === 'asesor'){
+    const c = {};
+    COM.registros.forEach(r => { const k = normAsesor_(r); c[k] = (c[k]||0)+1; });
+    return Object.keys(c).sort((a,b)=>a.localeCompare(b))
+      .map(k => ({ valor:k, label:k, count:c[k], ic:'👤' }));
+  }
+  if (key === 'programa'){
+    const c = {};
+    baseAsesor_().forEach(r => { const k = normPrograma_(r); c[k] = (c[k]||0)+1; });
+    return Object.keys(c).sort((a,b)=>a.localeCompare(b))
+      .map(k => ({ valor:k, label:k, count:c[k], img: iconoPrograma_(k), ic:'🎓' }));
+  }
+  const c = {};
+  basePrograma_().forEach(r => { c[r.estado] = (c[r.estado]||0)+1; });
+  return (COM.catalogo?.estados || [])
+    .filter(e => c[e.clave])
+    .map(e => ({ valor:e.clave, label:e.label, count:c[e.clave], color:e.color }));
+}
+/* Total de la opción «Todos los X» de cada hoja. */
+function totalFiltro_(key){
+  if (key === 'asesor')   return COM.registros.length;
+  if (key === 'programa') return baseAsesor_().length;
+  return basePrograma_().length;
+}
+/* Conteo que muestra la pastilla ya seleccionada. */
+function conteoPill_(key){
+  if (key === 'asesor')   return baseAsesor_().length;
+  if (key === 'programa') return basePrograma_().length;
+  return baseEstado_().length;
+}
+
+/* ── Render de la fila de 3 pastillas ── */
+function renderFiltros_(){
+  const cont = $('#com-filters'); if (!cont) return;
+  const esComercial = String(currentUser?.rol||'').toUpperCase() === 'COMERCIAL';
+  if (esComercial) COM.filtroAsesor = '__ALL__';   // no puede filtrar por asesor
+
+  const defs = FILTROS_DEF.filter(f => !(f.key === 'asesor' && esComercial));
+  cont.innerHTML = defs.map(fpillHtml_).join('');
+  defs.forEach(f => $('#fp-'+f.key)?.addEventListener('click', ()=> abrirSheetFiltro_(f.key)));
+}
+
+function fpillHtml_(f){
+  const val = valFiltro_(f.key);
+  const on  = val !== '__ALL__';
+  let label = f.allLabel, color = f.color, icHtml = `<span class="fpill__ic">${f.ic}</span>`;
+
+  if (on){
+    if (f.key === 'estado'){
+      const e = estadoDef_(val);
+      label = e ? e.label : val;
+      color = e ? e.color : f.color;
+      icHtml = `<span class="fpill__dot"></span>`;
+    } else if (f.key === 'programa'){
+      label = val;
+      const img = iconoPrograma_(val);
+      if (img) icHtml = `<span class="fpill__ic"><img src="${esc_(img)}" alt=""></span>`;
+    } else {
+      label = nombreCortoAsesor_(val);
+    }
+  }
+  const titulo = on ? val : f.allLabel;             // tooltip con el valor completo
+  return `<button class="fpill ${on?'is-on':''}" id="fp-${f.key}" style="--fp:${color}"
+      title="${esc_(titulo)}" aria-haspopup="dialog">
+    ${icHtml}
+    <span class="fpill__label">${esc_(label)}</span>
+    <span class="fpill__count">${conteoPill_(f.key)}</span>
+    ${CHEVRON_SVG}
+  </button>`;
+}
+
+/* ── Hoja inferior con las opciones ── */
+function abrirSheetFiltro_(key){
+  const f = FILTROS_DEF.find(x => x.key === key); if (!f) return;
+  const sheet = $('#com-fsheet'), lista = $('#fsheet-list'); if (!sheet || !lista) return;
+  COM.sheetKey = key;
+  $('#fsheet-title').textContent = f.titulo;
+
+  const actual = valFiltro_(key);
+  let html = foptHtml_({ valor:'__ALL__', label:f.allLabel, count:totalFiltro_(key), ic:f.ic },
+                       actual === '__ALL__', true);
+  opcionesFiltro_(key).forEach(o => { html += foptHtml_(o, actual === o.valor, false); });
+  lista.innerHTML = html;
+  lista.scrollTop = 0;
+
+  $$('#fsheet-list .fopt').forEach(b => b.addEventListener('click', ()=>{
+    setFiltro_(key, b.dataset.valor);
+    cerrarSheetFiltro_();
+    renderFiltros_(); renderCards_();
   }));
+
+  sheet.classList.remove('hidden');
+  sheet.setAttribute('aria-hidden','false');
 }
-function pill_(clave, label, count, color){
-  const active = COM.filtroEstado === clave;
-  const style = active ? `style="background:${color}"` : '';
-  return `<button class="pill ${active?'active':''}" data-estado="${clave}" ${style}>
-    <span class="pill__dot" style="background:${color}"></span>${label}
-    <span class="pill__count">${count}</span></button>`;
+function foptHtml_(o, sel, esAll){
+  const ic = o.color   ? `<span class="fopt__dot" style="background:${o.color}"></span>`
+           : o.img     ? `<span class="fopt__ic"><img src="${esc_(o.img)}" alt=""></span>`
+           :             `<span class="fopt__ic">${o.ic || '•'}</span>`;
+  return `<button class="fopt ${sel?'is-sel':''} ${esAll?'is-all':''}" data-valor="${esc_(o.valor)}">
+    ${ic}
+    <span class="fopt__label">${esc_(o.label)}</span>
+    <span class="fopt__count">${o.count}</span>
+    <span class="fopt__check">✓</span>
+  </button>`;
 }
+function cerrarSheetFiltro_(){
+  const sheet = $('#com-fsheet'); if (!sheet) return;
+  sheet.classList.add('hidden');
+  sheet.setAttribute('aria-hidden','true');
+  COM.sheetKey = null;
+}
+document.addEventListener('click', (e)=>{ if (e.target.closest('[data-fsheet-close]')) cerrarSheetFiltro_(); });
+document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') cerrarSheetFiltro_(); });
 
 /* ── Tarjetas ── */
 function renderCards_(){
@@ -706,6 +868,7 @@ async function verComercial_(id){
           <div class="d-item full">${d('Correo', r.correo)}</div>
           ${d('Departamento', r.departamento)} ${d('Municipio', r.municipio)}
           ${d('Fuente', r.fuente)} ${d('Asesor', r.asesor)}
+          ${r.referido ? `<div class="d-item full">${d('Referidor(a)', r.referido)}</div>` : ''}
           ${d('Programa', r.programa)} ${d('Promo', r.promo)}
           ${d('Clave de acceso', r.claveAcceso)} ${d('Asesoría agendada', r.fechaHoraAgendada)}
           ${d('Fecha realizada', r.fechaAsesoria)} ${d('Registró', r.usuario)}
@@ -736,7 +899,7 @@ async function eliminarComercial_(r){
   if (!ok.isConfirmed) return;
   try{
     await apiPost('eliminarComercial', { id:r.id, usuarioId: currentUser.id });
-    await recargarComercial_();
+    await recargarComercial_(true, true);   // Fase 25: el apiPost ya mostró el loader
     Swal.fire({icon:'success', title:'Eliminado', timer:1000, showConfirmButton:false});
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo eliminar', text:String(e.message||e)}); }
 }
@@ -1144,6 +1307,53 @@ function asesoresParaSelect_(){
   return all.filter(a => String(a.rol).toUpperCase() === 'COMERCIAL');
 }
 
+/* ============================================================
+   FASE 25 (Ajuste 3) — ANTIDUPLICADOS POR WHATSAPP
+   ============================================================
+   En un registro NUEVO el único campo activo es WhatsApp. Al completar los
+   10 dígitos se consulta la columna F (WHATSAPP) de la hoja COMERCIAL:
+     • existe  → se informa el nombre del lead y NADA se habilita.
+     • no existe → se abre el resto del formulario.
+   Al EDITAR no aplica: todo va habilitado desde el inicio.
+   ============================================================ */
+const COM_CAMPOS_BLOQUEABLES = [
+  'f-nombres','f-apellidos','f-telefono','f-correo',
+  'f-departamento','f-municipio','f-fuente','f-referido','f-asesor',
+  'f-estado','f-programa','f-promo','f-agenda-btn','com-save'
+];
+function comBloquearCampos_(bloquear){
+  COM_CAMPOS_BLOQUEABLES.forEach(id => { const el = $('#'+id); if (el) el.disabled = !!bloquear; });
+}
+function setWaHint_(texto, tipo){
+  const h = $('#f-wa-hint'); if (!h) return;
+  h.textContent = texto || '';
+  h.style.color = tipo === 'err' ? '#dc2626' : (tipo === 'ok' ? '#16a34a' : '');
+  h.style.fontWeight = tipo ? '600' : '';
+}
+async function verificarWhatsapp_(wa){
+  if (COM.waCheck === wa) return;            // evita repetir la misma consulta
+  COM.waCheck = wa; COM.waOk = '';
+  setWaHint_('Verificando número…');
+  comBloquearCampos_(true);
+  try{
+    const res = await apiGet('buscarWhatsapp', { whatsapp: wa }, { silent:true });
+    if (res.existe){
+      setWaHint_(`⛔ Ya registrado: ${res.nombres} ${res.apellidos} (${res.id})`, 'err');
+      Swal.fire({ icon:'warning', title:'Lead ya registrado',
+        html:`El número <b>${wa}</b> ya pertenece a<br><b>${esc_(res.nombres)} ${esc_(res.apellidos)}</b> · ${res.id}` +
+             (res.asesor ? `<br><span style="font-size:13px;">Asesor: ${esc_(res.asesor)}</span>` : '') });
+      return;
+    }
+    COM.waOk = wa;
+    comBloquearCampos_(false);
+    setWaHint_('✅ Número disponible. Continúa el registro.', 'ok');
+    $('#f-nombres').focus();
+  }catch(e){
+    COM.waCheck = '';                        // permite reintentar
+    setWaHint_('No se pudo verificar el número. Corrige un dígito para reintentar.', 'err');
+  }
+}
+
 function abrirModalComercial_(r){
   COM.editId = r ? r.id : null;
   COM.origEstado = r ? r.estado : '';                 // Fase 23
@@ -1194,12 +1404,25 @@ function abrirModalComercial_(r){
   $('#f-whatsapp').value  = r ? r.whatsapp  : '';
   $('#f-telefono').value  = r ? r.telefono  : '';
   $('#f-correo').value    = r ? r.correo    : '';
+  $('#f-referido').value  = r ? (r.referido || '') : '';   // Fase 25
   const fhRaw = r && r.fechaHoraAgendadaRaw ? r.fechaHoraAgendadaRaw : '';
   $('#f-fecha-hora-agendada').value = fhRaw;
   $('#f-agenda-text').textContent = (r && r.fechaHoraAgendada) ? r.fechaHoraAgendada : 'Seleccionar fecha y hora';
 
   actualizarVisibilidadEstado_();
   actualizarVisibilidadAgenda_();
+  actualizarVisibilidadReferido_();          // Fase 25
+
+  // Fase 25 — modo antiduplicados SOLO en alta; al editar todo va habilitado.
+  COM.waCheck = ''; COM.waOk = '';
+  if (r){
+    comBloquearCampos_(false);
+    setWaHint_('');
+  } else {
+    comBloquearCampos_(true);
+    setWaHint_('Escribe los 10 dígitos para verificar si el lead ya existe.');
+  }
+
   $('#modal-comercial').classList.remove('hidden');
 }
 function cerrarModalComercial_(){ $('#modal-comercial').classList.add('hidden'); }
@@ -1214,6 +1437,13 @@ function actualizarVisibilidadEstado_(){
   const hayAsesor = !!$('#f-asesor').value;
   $('#fld-estado').style.display = hayAsesor ? '' : 'none';
 }
+/* Fase 25 (Ajuste 4) — "Nombre del Referidor(a)" solo si la fuente es Referido. */
+function actualizarVisibilidadReferido_(){
+  const esRef = String($('#f-fuente').value || '').trim().toLowerCase() === 'referido';
+  const box = $('#fld-referido');
+  if (box) box.style.display = esRef ? '' : 'none';
+  if (!esRef && $('#f-referido')) $('#f-referido').value = '';
+}
 function actualizarVisibilidadAgenda_(){
   const est = $('#f-estado').value;
   $('#fld-agenda').style.display = est === 'ASESORIA_AGENDADA' ? '' : 'none';
@@ -1226,8 +1456,30 @@ function actualizarVisibilidadAgenda_(){
 $('#f-departamento')?.addEventListener('change', e => poblarMunicipios_(e.target.value, ''));
 $('#f-asesor')?.addEventListener('change', actualizarVisibilidadEstado_);
 $('#f-estado')?.addEventListener('change', actualizarVisibilidadAgenda_);
-['f-nombres','f-apellidos'].forEach(id=> $('#'+id)?.addEventListener('input', e=>{ e.target.value = e.target.value.toUpperCase(); }));
+$('#f-fuente')?.addEventListener('change', actualizarVisibilidadReferido_);   // Fase 25
+
+/* Fase 25 (Ajuste 5) — mayúsculas SIN tildes ni ñ, espejo exacto de
+   upSinTildes_() del backend: lo que se ve es lo que se guarda.
+   'Ramírez Caño' → 'RAMIREZ CANO'. */
+const sinTildesJS_ = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[Ññ]/g,'N');
+['f-nombres','f-apellidos'].forEach(id=> $('#'+id)?.addEventListener('input', e=>{
+  const pos = e.target.selectionStart;
+  e.target.value = sinTildesJS_(e.target.value).toUpperCase();
+  try { e.target.setSelectionRange(pos, pos); } catch(_){}
+}));
+
 ['f-whatsapp','f-telefono'].forEach(id=> $('#'+id)?.addEventListener('input', e=>{ e.target.value = onlyDigits(e.target.value).slice(0,10); }));
+
+/* Fase 25 (Ajuste 3) — dispara la búsqueda al completar 10 dígitos (solo en ALTA).
+   Se registra DESPUÉS del listener de arriba, así el valor ya viene recortado. */
+$('#f-whatsapp')?.addEventListener('input', ()=>{
+  if (COM.editId) return;                                   // editando: no aplica
+  const wa = onlyDigits($('#f-whatsapp').value);
+  if (wa.length === 10) { verificarWhatsapp_(wa); return; }
+  COM.waCheck = ''; COM.waOk = '';
+  comBloquearCampos_(true);
+  setWaHint_('Escribe los 10 dígitos para verificar si el lead ya existe.');
+});
 
 $('#com-save')?.addEventListener('click', guardarComercial_);
 async function guardarComercial_(){
@@ -1237,7 +1489,8 @@ async function guardarComercial_(){
     whatsapp: $('#f-whatsapp').value, telefono: $('#f-telefono').value,
     correo: $('#f-correo').value,
     departamento: $('#f-departamento').value, municipio: $('#f-municipio').value,
-    fuente: $('#f-fuente').value, asesor: $('#f-asesor').value,
+    fuente: $('#f-fuente').value, referido: $('#f-referido').value,   // Fase 25
+    asesor: $('#f-asesor').value,
     estado: $('#f-asesor').value ? $('#f-estado').value : 'NUEVO_LEAD',
     fechaHoraAgendada: $('#f-fecha-hora-agendada').value,
     programa: $('#f-programa').value, promo: $('#f-promo').value,
@@ -1251,12 +1504,15 @@ async function guardarComercial_(){
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.correo.trim())) return Swal.fire({icon:'warning', title:'Correo no válido'});
   if (!body.departamento || !body.municipio) return Swal.fire({icon:'warning', title:'Selecciona departamento y municipio'});
   if (!body.fuente) return Swal.fire({icon:'warning', title:'Selecciona la fuente del lead'});
+  // Fase 25 — en alta, el número debe haber pasado la verificación antiduplicados.
+  if (!COM.editId && COM.waOk !== onlyDigits(body.whatsapp))
+    return Swal.fire({icon:'warning', title:'Verifica el WhatsApp', text:'El número debe validarse antes de guardar.'});
 
   try{
     if (COM.editId){ await apiPost('editarComercial', Object.assign({id:COM.editId}, body)); }
     else { await apiPost('crearComercial', body); }
     cerrarModalComercial_();
-    await recargarComercial_();
+    await recargarComercial_(true, true);   // Fase 25: el apiPost ya mostró el loader
     Swal.fire({icon:'success', title: COM.editId?'Actualizado':'Registrado', timer:1100, showConfirmButton:false});
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo guardar', text:String(e.message||e)}); }
 }
@@ -1327,7 +1583,7 @@ $('#acc-save')?.addEventListener('click', async ()=>{
     nombres: r.nombres, apellidos: r.apellidos,
     whatsapp: r.whatsapp, telefono: r.telefono, correo: r.correo,
     departamento: r.departamento, municipio: r.municipio,
-    fuente: r.fuente, asesor: r.asesor,
+    fuente: r.fuente, referido: r.referido || '', asesor: r.asesor,   // Fase 25: no perder el referidor
     estado: estado, programa: $('#a-programa').value, promo: $('#a-promo').value,
     fechaHoraAgendada: fh,
     reprogramada: $('#a-reprogramada')?.checked || false
@@ -1336,7 +1592,7 @@ $('#acc-save')?.addEventListener('click', async ()=>{
     $('#acc-save').disabled = true;
     await apiPost('editarComercial', body);
     cerrarModalAccion_();
-    await recargarComercial_();
+    await recargarComercial_(true, true);   // Fase 25: el apiPost ya mostró el loader
     Swal.fire({icon:'success', title:'Acción aplicada', timer:1000, showConfirmButton:false});
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo aplicar', text:String(e.message||e)}); }
   finally{ $('#acc-save').disabled = false; }
@@ -1515,6 +1771,11 @@ function renderCfgProgramas_(){
           </div>
         </div>
         <div class="cfg-field full"><label>Frase Motivacional</label><textarea id="pr-frase-${i}" rows="3" placeholder="Frase que acompaña el correo/WhatsApp de Asesoría Realizada (variable {frase})">${esc_(p.frase)}</textarea></div>
+        <div class="cfg-field full"><label>Datos adicionales para el pago</label>
+          <input id="pr-pago-${i}" type="text" value="${esc_(p.datosPago||'')}"
+                 placeholder="Ej: sponsor y plan (Essential, Premium, Diamond)" />
+          <div class="cfg-hint">Variable <b>{bloque_pago}</b> de la plantilla <b>PENDIENTE_PAGO</b>. Se agrega después de «fecha de nacimiento», precedida de coma. Vacío = no se envía nada.</div>
+        </div>
       </div>
       <div class="cfg-actions"><button class="btn btn-primary" id="pr-save-${i}">Guardar</button></div>
     </div>`).join('');
@@ -1524,7 +1785,8 @@ function renderCfgProgramas_(){
     $('#pr-save-'+i).addEventListener('click', async ()=>{
       try{
         const res = await apiPost('savePrograma', { usuarioId: currentUser.id, id:p.id,
-          precio: onlyDigits($('#pr-precio-'+i).value), frase: $('#pr-frase-'+i).value });
+          precio: onlyDigits($('#pr-precio-'+i).value), frase: $('#pr-frase-'+i).value,
+          datosPago: $('#pr-pago-'+i).value });                       // Fase 25
         CFG.data.programas = res;
         Swal.fire({icon:'success', title:'Programa guardado', timer:900, showConfirmButton:false});
       }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
