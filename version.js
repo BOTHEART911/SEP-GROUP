@@ -11,10 +11,12 @@
  * funcionamiento. Diseñado y desarrollado íntegramente por
  * Oscar Polanía.
  * ------------------------------------------------------------
- * FASE ACTUAL: Fase 24 — Comercial en vivo (Firebase) + fecha exacta agenda
+ * FASE ACTUAL: Fase 25.1 — Filtros de Comercial en 3 pastillas (Asesor ·
+ *   Programa · Estado) con hoja inferior de opciones.
+ *   Fase 25 — Loader silencioso · Antiduplicados WhatsApp · Referido
  * Sube este número en cada despliegue. La app lo lee sin caché:
  * si cambia, limpia caches y recarga automáticamente en todos
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.07.08.04";
+var APP_VERSION = "2026.07.09.02";
