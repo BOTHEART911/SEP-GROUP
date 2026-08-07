@@ -1,0 +1,123 @@
+/* ============================================================================
+ * CAPA 1 · MICRO-EFECTOS BASE  (SEP GROUP)
+ * ----------------------------------------------------------------------------
+ * QUÉ HACE
+ *   Presión con resorte al tocar botones, tiles del inicio, chips, teclado PIN
+ *   y botones de tarjeta; pestañas (login y configuración) con rebote; "pop"
+ *   con resorte al abrir los modales; entrada escalonada de las listas.
+ *
+ * INSTALACIÓN (una línea en el <head>, DESPUÉS de styles.css)
+ *   <link rel="stylesheet" href="css/capa-1-micro.css" />
+ *
+ * PAREJA
+ *   Ninguna. Archivo autónomo, sin JS.
+ *
+ * CLASES REALES DE ESTA APP QUE TOCA
+ *   .btn .tile .chip .act-btn .pin-key .modal-x .cfg-tab .login-tab
+ *   .bot-action .com-card .usr-card .cfg-card .dsh-card .arch-item .modal-card
+ *
+ * NOTAS
+ *   · No toca index.html, app.js ni styles.css. Se quita borrando la línea.
+ *   · Gana a styles.css solo por orden de carga (misma especificidad).
+ *   · La entrada de pantalla la lleva la CAPA 4; aquí solo van los controles y
+ *     las tarjetas de lista.
+ *   · Todo se apaga con "reducir movimiento" del sistema.
+ * ========================================================================== */
+
+/* ---- 1. Presión con resorte -------------------------------------------- */
+.btn,
+.tile,
+.chip,
+.act-btn,
+.pin-key,
+.modal-x,
+.cfg-tab,
+.login-tab,
+.bot-action {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .22s cubic-bezier(.2, .9, .25, 1.5),
+              background .18s ease,
+              box-shadow .22s ease,
+              color .18s ease;
+}
+
+.btn:active        { transform: scale(.955); }
+.tile:active       { transform: scale(.965); }
+.chip:active       { transform: scale(.955); }
+.act-btn:active    { transform: scale(.9); }
+.pin-key:active    { transform: scale(.9); }
+.modal-x:active    { transform: scale(.9); }
+.cfg-tab:active    { transform: scale(.96); }
+.login-tab:active  { transform: scale(.96); }
+.bot-action:active { transform: scale(.97); }
+
+/* Un control deshabilitado (mientras guarda) no debe "responder" al toque */
+.btn:disabled:active,
+.act-btn:disabled:active { transform: none; }
+
+/* ---- 2. Pestañas con rebote al activarse ------------------------------- */
+.login-tab.active,
+.cfg-tab.active { animation: sep1-tab-pop .34s cubic-bezier(.2, .9, .25, 1.5); }
+@keyframes sep1-tab-pop {
+  0%   { transform: scale(.92); }
+  55%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* ---- 3. "Pop" con resorte al abrir un modal ---------------------------- */
+.modal-overlay:not(.hidden) .modal-card {
+  animation: sep1-modal-in .38s cubic-bezier(.16, 1.02, .28, 1.02) both;
+}
+@keyframes sep1-modal-in {
+  0%   { opacity: 0; transform: translateY(18px) scale(.97); }
+  70%  { opacity: 1; transform: translateY(-3px) scale(1.004); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* ---- 4. Entrada escalonada de las listas -------------------------------- */
+/* Solo tarjetas de lista. Formularios y vistas de detalle no entran. */
+#com-cards .com-card,
+#usr-cards .usr-card,
+#arch-list .arch-item {
+  animation: sep1-item-in .36s cubic-bezier(.2, .8, .2, 1) both;
+}
+@keyframes sep1-item-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Escalonado hasta el 8º; del 9º en adelante entran ya visibles, para que el
+   final de una lista larga no tarde en aparecer. */
+#com-cards .com-card:nth-child(1), #usr-cards .usr-card:nth-child(1), #arch-list .arch-item:nth-child(1) { animation-delay: 0ms; }
+#com-cards .com-card:nth-child(2), #usr-cards .usr-card:nth-child(2), #arch-list .arch-item:nth-child(2) { animation-delay: 45ms; }
+#com-cards .com-card:nth-child(3), #usr-cards .usr-card:nth-child(3), #arch-list .arch-item:nth-child(3) { animation-delay: 90ms; }
+#com-cards .com-card:nth-child(4), #usr-cards .usr-card:nth-child(4), #arch-list .arch-item:nth-child(4) { animation-delay: 130ms; }
+#com-cards .com-card:nth-child(5), #usr-cards .usr-card:nth-child(5), #arch-list .arch-item:nth-child(5) { animation-delay: 165ms; }
+#com-cards .com-card:nth-child(6), #usr-cards .usr-card:nth-child(6), #arch-list .arch-item:nth-child(6) { animation-delay: 195ms; }
+#com-cards .com-card:nth-child(7), #usr-cards .usr-card:nth-child(7), #arch-list .arch-item:nth-child(7) { animation-delay: 220ms; }
+#com-cards .com-card:nth-child(8), #usr-cards .usr-card:nth-child(8), #arch-list .arch-item:nth-child(8) { animation-delay: 240ms; }
+#com-cards .com-card:nth-child(n + 9),
+#usr-cards .usr-card:nth-child(n + 9),
+#arch-list .arch-item:nth-child(n + 9) { animation: none; }
+
+/* ---- 5. Tarjetas fijas: elevación al pasar por encima (solo ratón) ------ */
+@media (hover: hover) {
+  .cfg-card, .dsh-card {
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .cfg-card:hover, .dsh-card:hover { transform: translateY(-2px); }
+}
+
+/* ---- 6. Respeto a "reducir movimiento" --------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .btn, .tile, .chip, .act-btn, .pin-key, .modal-x, .cfg-tab,
+  .login-tab, .bot-action {
+    transition: background .15s ease, color .15s ease;
+  }
+  .btn:active, .tile:active, .chip:active, .act-btn:active, .pin-key:active,
+  .modal-x:active, .cfg-tab:active, .login-tab:active, .bot-action:active { transform: none; }
+  .login-tab.active, .cfg-tab.active { animation: none; }
+  .modal-overlay:not(.hidden) .modal-card { animation: none; }
+  #com-cards .com-card, #usr-cards .usr-card, #arch-list .arch-item { animation: none; }
+  .cfg-card:hover, .dsh-card:hover { transform: none; }
+}

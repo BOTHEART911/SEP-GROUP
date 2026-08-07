@@ -1,0 +1,41 @@
+/* ============================================================================
+ * CAPA 4 · TRANSICIÓN LATERAL ENTRE PANTALLAS — estilo iOS  (parte CSS)
+ * ----------------------------------------------------------------------------
+ * QUÉ HACE
+ *   La pantalla nueva entra deslizándose desde la derecha; al volver atrás,
+ *   entra desde la izquierda. Sustituye al `viewIn` (subida + desvanecido) que
+ *   styles.css aplica a todas las vistas por igual.
+ *
+ * INSTALACIÓN (una línea en el <head>, DESPUÉS de styles.css)
+ *   <link rel="stylesheet" href="css/capa-4-transicion.css" />
+ *
+ * PAREJA
+ *   js/capa-4-transicion.js  (obligatoria: sin ella este CSS no hace nada)
+ *
+ * NOTAS
+ *   · Gana a `.view { animation: viewIn }` de styles.css por especificidad
+ *     (dos clases contra una), no por orden.
+ *   · Mientras dura la animación se recorta el desborde horizontal para que no
+ *     asome barra de scroll lateral; al terminar se quita.
+ *   · No toca modales, visor ni girador: solo la vista de fondo.
+ *   · Se apaga con "reducir movimiento" (lo controla el JS de la pareja).
+ * ========================================================================== */
+
+html.sep-tx-anim,
+html.sep-tx-anim body { overflow-x: hidden; }
+
+.view.sep-tx-in   { animation: sep4-in-right .26s cubic-bezier(.32, .72, 0, 1) both; }
+.view.sep-tx-back { animation: sep4-in-left  .26s cubic-bezier(.32, .72, 0, 1) both; }
+
+@keyframes sep4-in-right {
+  from { transform: translateX(22%); opacity: .35; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes sep4-in-left {
+  from { transform: translateX(-22%); opacity: .35; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view.sep-tx-in, .view.sep-tx-back { animation: none; }
+}

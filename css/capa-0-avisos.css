@@ -1,0 +1,31 @@
+/* ============================================================================
+ * CAPA 0 · AVISOS POR ENCIMA DE TODO
+ * ----------------------------------------------------------------------------
+ * QUÉ ARREGLA
+ *   El aviso "Enlace copiado" (y cualquier otro Swal.fire) NO se veía cuando
+ *   había un modal abierto. La causa: SweetAlert2 v11 pone su contenedor en
+ *   z-index 1060 por defecto, y en styles.css la pila de esta app es mucho más
+ *   alta: .modal-overlay 9000 · .iosp-overlay y .fsheet 9500 · .loader 12000 ·
+ *   chat flotante 12600. El aviso se disparaba bien, pero quedaba debajo.
+ *
+ * QUÉ HACE
+ *   Sube el contenedor de SweetAlert por encima de TODA la pila (13000), así
+ *   que el aviso se ve siempre, haya o no modal, visor o girador delante.
+ *
+ * INSTALACIÓN (una línea en el <head>, DESPUÉS de styles.css)
+ *   <link rel="stylesheet" href="css/capa-0-avisos.css" />
+ *
+ * PAREJA
+ *   Ninguna. Archivo autónomo, sin JS.
+ *
+ * NOTAS
+ *   · No toca index.html, app.js ni styles.css. Se quita borrando la línea.
+ *   · Si algún día se añade una capa nueva con z-index propio, debe quedar por
+ *     debajo de 13000 o el aviso volverá a taparse.
+ * ========================================================================== */
+
+.swal2-container { z-index: 13000 !important; }
+
+/* El backdrop del propio SweetAlert va justo debajo de su ventana, nunca
+   por debajo del modal que hay detrás (si no, se vería el escalón). */
+.swal2-container.swal2-backdrop-show { background: rgba(15, 23, 42, .38); }

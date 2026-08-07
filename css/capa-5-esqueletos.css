@@ -1,0 +1,98 @@
+/* ============================================================================
+ * CAPA 5 · ESQUELETOS DE CARGA  (parte CSS)
+ * ----------------------------------------------------------------------------
+ * QUÉ HACE
+ *   Dibuja las siluetas grises con brillo que sustituyen al girador mientras
+ *   llegan los datos de una vista. La forma de cada silueta imita la tarjeta
+ *   real que va a aparecer ahí.
+ *
+ * INSTALACIÓN (una línea en el <head>, DESPUÉS de styles.css)
+ *   <link rel="stylesheet" href="css/capa-5-esqueletos.css" />
+ *
+ * PAREJA
+ *   js/capa-5-esqueletos.js  (obligatoria: sin ella no se pinta nada)
+ *
+ * NOTAS
+ *   · Autónomo: usa las variables de color de la app si existen, con respaldo
+ *     propio si no.
+ *   · NO toca el girador global (#loader), que sigue saliendo en guardar y
+ *     subir. Solo ocupa el sitio de las LECTURAS.
+ *   · Con "reducir movimiento" se apaga el brillo y quedan bloques grises fijos.
+ * ========================================================================== */
+
+.sep-sk-wrap { display: block; }
+/* Si el contenedor de destino ya es una rejilla (#dsh-kpis va a 6 columnas,
+   #cfg-general a 2), la silueta debe ocupar la fila entera y no una celda. */
+.sep-sk-wrap { grid-column: 1 / -1; }
+
+.sep-sk-card {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border, #E3E9F2);
+  border-radius: var(--r-xl, 18px);
+  box-shadow: var(--sh-sm, 0 1px 2px rgba(16, 36, 30, .06));
+  padding: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  animation: sep5-entra .3s ease both;
+}
+.sep-sk-card:nth-child(2) { animation-delay: 60ms; }
+.sep-sk-card:nth-child(3) { animation-delay: 120ms; }
+.sep-sk-card:nth-child(4) { animation-delay: 180ms; }
+.sep-sk-card:nth-child(5) { animation-delay: 240ms; }
+@keyframes sep5-entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Bloque gris con brillo */
+.sep-sk {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+              var(--border, #E3E9F2) 25%, #F1F5FA 37%, var(--border, #E3E9F2) 63%);
+  background-size: 400% 100%;
+  animation: sep5-brillo 1.3s ease infinite;
+}
+@keyframes sep5-brillo {
+  0%   { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+/* Piezas */
+.sep-sk-top    { display: flex; align-items: center; gap: 12px; }
+.sep-sk-av     { width: 44px; height: 44px; border-radius: 50%; flex: none; }
+.sep-sk-id     { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.sep-sk-l      { height: 12px; }
+.sep-sk-l.tit  { height: 15px; border-radius: 7px; }
+.sep-sk-w95    { width: 95%; }
+.sep-sk-w80    { width: 80%; }
+.sep-sk-w60    { width: 60%; }
+.sep-sk-w45    { width: 45%; }
+.sep-sk-w30    { width: 30%; }
+.sep-sk-rows   { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.sep-sk-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.sep-sk-badge  { height: 24px; width: 108px; border-radius: 999px; }
+.sep-sk-acts   { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.sep-sk-btn    { height: 38px; flex: 1 1 84px; border-radius: 12px; }
+.sep-sk-ico    { height: 34px; width: 34px; border-radius: 10px; }
+.sep-sk-media  { height: 140px; border-radius: 14px; margin-top: 12px; }
+
+/* Rejilla de KPIs (tablero) y de campos (configuración) */
+.sep-sk-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.sep-sk-kpi   { height: 84px; border-radius: 16px; }
+.sep-sk-field { height: 62px; border-radius: 12px; }
+
+/* Franja de color a la izquierda, como la de las tarjetas de lead */
+.sep-sk-card.rayada { position: relative; padding-left: 20px; }
+.sep-sk-card.rayada::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+  background: var(--border, #E3E9F2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sep-sk { animation: none; background: var(--border, #E3E9F2); }
+  .sep-sk-card { animation: none; }
+}
