@@ -127,6 +127,7 @@
 
   /* ---- Mapa: acción de lectura → [contenedor, forma, cuántas] ------------ */
   var LECTURAS = {
+    comercialInit:        [['com-cards', 'lead', 4]],
     listComercial:        [['com-cards', 'lead', 4]],
     listUsuarios:         [['usr-cards', 'persona', 4]],
     verComercial:         [['com-detalle', 'detalle', 1]],
