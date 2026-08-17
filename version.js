@@ -134,4 +134,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.08.17.03";
+var APP_VERSION = "2026.08.17.04";
