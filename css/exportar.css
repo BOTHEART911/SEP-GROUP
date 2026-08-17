@@ -4,7 +4,7 @@
  * Usa las mismas piezas que el resto de la app (.modal-overlay, .modal-card,
  * .btn) y solo añade lo suyo. El modo oscuro va por html[data-tema="oscuro"],
  * igual que css/tema-oscuro.css. 
- * ========================================================================== */
+ * =========================================================================== */
 
 .exp-card { max-width: 980px; }
 
