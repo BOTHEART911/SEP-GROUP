@@ -1,8 +1,8 @@
-/* ============================================================
+/* =============================================================
  * SEP GROUP — SERVICE WORKER
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
  * Software propietario. Modificarlo anula la garantía de funcionamiento.
- * ------------------------------------------------------------
+ * -------------------------------------------------------------
  * v4 (07/08) — RENDIMIENTO
  *   Antes: network-first para TODO. Cada visita volvía a bajar por red las
  *   imágenes, el CSS y el JS; la caché solo servía de respaldo sin conexión.
