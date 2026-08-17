@@ -1,6 +1,6 @@
-/* ============================================================================
+/* =============================================================================
  * CAPA 5 · ESQUELETOS DE CARGA  (parte JS · SEP GROUP)
- * ----------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * QUÉ HACE
  *   Quita el girador de pantalla completa en las LECTURAS y pone en su lugar
  *   siluetas grises con la forma de lo que va a llegar. El girador sigue
