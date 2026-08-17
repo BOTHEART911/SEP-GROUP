@@ -1,6 +1,6 @@
-/* ============================================================================
+/* =============================================================================
  * AUDITORÍA DE PROGRAMAS · Configuración → Programas
- * ----------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * QUÉ HACE
  *   Después de que app.js pinta las tarjetas de Programas, marca EN ROJO lo
  *   que le falta a cada programa: qué variable está vacía, en qué plantilla
