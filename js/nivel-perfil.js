@@ -1,4 +1,4 @@
-/* ============================================================
+/* =============================================================
  * SEP GROUP — PERFIL DEL ESTUDIANTE (Fase 3 SEP · Entrega 5 · 17/08/2026)
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
  * Software propietario; cualquier modificación por terceros anula
