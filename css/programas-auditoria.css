@@ -1,0 +1,40 @@
+/* ============================================================================
+ * AUDITORÍA DE PROGRAMAS · estilos  (pareja de js/programas-auditoria.js)
+ * ========================================================================== */
+
+.apr-resumen {
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+  font-size: 13px; line-height: 1.5;
+}
+.apr-mal  { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.apr-bien { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.apr-linea { margin-top: 7px; }
+
+.apr-card {
+  background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626;
+  border-radius: 0 10px 10px 0; padding: 11px 13px; margin: 0 0 14px 0;
+}
+.apr-card__t { font-weight: 700; color: #991b1b; font-size: 13px; margin-bottom: 7px; }
+.apr-lista { margin: 0; padding-left: 18px; }
+.apr-lista li { font-size: 12.5px; color: #7f1d1d; line-height: 1.55; margin-bottom: 7px; }
+.apr-lista code {
+  background: rgba(220, 38, 38, .1); padding: 1px 5px; border-radius: 4px;
+  font-size: 11.5px; color: #991b1b;
+}
+.apr-tag { display: inline-block; font-size: 11.5px; padding: 2px 7px; border-radius: 999px; margin-top: 3px; }
+.apr-tag--rojo    { background: #dc2626; color: #fff; }
+.apr-tag--naranja { background: #f97316; color: #fff; }
+
+/* El recuadro del campo que está vacío */
+.apr-falta {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .1);
+}
+
+/* ============================ MODO OSCURO ============================ */
+html[data-tema="oscuro"] .apr-mal  { background: rgba(220,38,38,.12); border-color: #7f1d1d; color: #fca5a5; }
+html[data-tema="oscuro"] .apr-bien { background: rgba(22,163,74,.12); border-color: #166534; color: #86efac; }
+html[data-tema="oscuro"] .apr-card { background: rgba(220,38,38,.1); border-color: #7f1d1d; }
+html[data-tema="oscuro"] .apr-card__t { color: #fca5a5; }
+html[data-tema="oscuro"] .apr-lista li { color: #fecaca; }
+html[data-tema="oscuro"] .apr-lista code { background: rgba(220,38,38,.2); color: #fecaca; }

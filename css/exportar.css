@@ -1,0 +1,102 @@
+/* ============================================================================
+ * EXPORTAR · estilos del modal  (pareja de js/exportar.js)
+ * ----------------------------------------------------------------------------
+ * Usa las mismas piezas que el resto de la app (.modal-overlay, .modal-card,
+ * .btn) y solo añade lo suyo. El modo oscuro va por html[data-tema="oscuro"],
+ * igual que css/tema-oscuro.css.
+ * ========================================================================== */
+
+.exp-card { max-width: 980px; }
+
+.exp-paso { margin: 0 0 22px 0; }
+.exp-paso__t {
+  display: flex; align-items: center; gap: 9px;
+  font-weight: 700; font-size: 15px; color: #263143;
+  padding-bottom: 8px; margin-bottom: 12px;
+  border-bottom: 2px solid #eef1f5;
+}
+.exp-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #263143; color: #d6da09; font-size: 13px; font-weight: 700;
+}
+
+/* ---- Paso 1: las dos tarjetas de formato ---- */
+.exp-formatos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.exp-fmt {
+  display: flex; gap: 12px; text-align: left; align-items: flex-start;
+  padding: 14px; border: 2px solid #e3e7ee; border-radius: 12px;
+  background: #fff; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+.exp-fmt:hover { border-color: #c3ccd9; }
+.exp-fmt.on { border-color: #263143; box-shadow: 0 0 0 3px rgba(38,49,67,.08); }
+.exp-fmt__ic { font-size: 26px; line-height: 1; }
+.exp-fmt b { display: block; color: #16202e; font-size: 14px; margin-bottom: 3px; }
+.exp-fmt span { display: block; color: #8893a4; font-size: 12px; line-height: 1.45; }
+
+/* ---- Paso 2: alcance ---- */
+.exp-hered {
+  background: #f4f6f9; border-left: 3px solid #d6da09;
+  padding: 9px 12px; border-radius: 0 8px 8px 0;
+  font-size: 12.5px; color: #44546b; margin-bottom: 14px;
+}
+.exp-mini {
+  border: none; background: none; color: #0891b2;
+  font-size: 12px; text-decoration: underline; cursor: pointer; padding: 0 0 0 6px;
+}
+.exp-campo { margin-bottom: 10px; }
+.exp-campo label { display: block; font-size: 12px; color: #8893a4; margin-bottom: 5px; }
+.exp-sel {
+  width: 100%; padding: 9px 10px; border: 1px solid #d8dee8;
+  border-radius: 9px; background: #fff; color: #16202e; font-size: 13.5px;
+}
+.exp-atajos { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0 12px; }
+.exp-fechas { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.exp-fechas label { font-size: 12px; color: #8893a4; display: flex; align-items: center; gap: 7px; }
+.exp-fechas input {
+  padding: 7px 9px; border: 1px solid #d8dee8; border-radius: 8px;
+  background: #fff; color: #16202e; font-size: 13px;
+}
+
+.exp-filtro { margin-bottom: 14px; }
+.exp-filtro__t {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 12.5px; font-weight: 600; color: #44546b; margin-bottom: 7px;
+}
+.exp-cuenta { font-weight: 400; font-size: 11.5px; color: #8893a4; }
+.exp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.exp-chip {
+  border: 1px solid #dde3ec; background: #fff; color: #44546b;
+  border-radius: 999px; padding: 6px 11px; font-size: 12.5px;
+  cursor: pointer; transition: background .12s, border-color .12s, color .12s;
+}
+.exp-chip:hover { border-color: #a9b4c4; }
+.exp-chip i { font-style: normal; color: #a4aebd; font-size: 11px; margin-left: 3px; }
+.exp-chip.on { background: #263143; border-color: #263143; color: #fff; }
+.exp-chip.on i { color: #d6da09; }
+.exp-chip.vacia { opacity: .55; }
+
+/* ---- Pie ---- */
+.exp-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.exp-live { flex: 1; font-size: 12.5px; color: #44546b; min-width: 180px; }
+
+@media (max-width: 620px) {
+  .exp-formatos { grid-template-columns: 1fr; }
+  .exp-live { order: -1; width: 100%; flex: none; }
+}
+
+/* ============================ MODO OSCURO ============================ */
+html[data-tema="oscuro"] .exp-paso__t { color: #e6ebf2; border-bottom-color: #26313f; }
+html[data-tema="oscuro"] .exp-num { background: #d6da09; color: #16202e; }
+html[data-tema="oscuro"] .exp-fmt { background: #16202e; border-color: #2b3646; }
+html[data-tema="oscuro"] .exp-fmt.on { border-color: #d6da09; box-shadow: 0 0 0 3px rgba(214,218,9,.12); }
+html[data-tema="oscuro"] .exp-fmt b { color: #e6ebf2; }
+html[data-tema="oscuro"] .exp-fmt span { color: #8f9cae; }
+html[data-tema="oscuro"] .exp-hered { background: #16202e; color: #c3ccd9; }
+html[data-tema="oscuro"] .exp-sel,
+html[data-tema="oscuro"] .exp-fechas input { background: #16202e; border-color: #2b3646; color: #e6ebf2; }
+html[data-tema="oscuro"] .exp-filtro__t { color: #c3ccd9; }
+html[data-tema="oscuro"] .exp-chip { background: #16202e; border-color: #2b3646; color: #c3ccd9; }
+html[data-tema="oscuro"] .exp-chip.on { background: #d6da09; border-color: #d6da09; color: #16202e; }
+html[data-tema="oscuro"] .exp-chip.on i { color: #46500a; }
+html[data-tema="oscuro"] .exp-live { color: #c3ccd9; }
