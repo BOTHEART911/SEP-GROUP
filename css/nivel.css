@@ -1,0 +1,402 @@
+/* ============================================================
+ * SEP GROUP — VISTA NIVEL DE INGLÉS (Fase 3 SEP · Entrega 2)
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * ------------------------------------------------------------
+ * Va en su propio archivo a propósito: styles.css ya pesa y esta
+ * pantalla crece en las Entregas 3, 4 y 5. Todo lo que se puede
+ * reutilizar (tarjetas, pastillas, hoja inferior, KPIs) sale de
+ * styles.css; aquí solo está lo propio de esta vista.
+ * Usa las variables del tema, así el modo oscuro entra solo.
+ * ============================================================ */
+
+/* ── Tarjeta ─────────────────────────────────────────────── */
+.nive-card__top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.nive-card__top .com-card__head { flex: 1 1 auto; min-width: 0; }
+.nive-card__top .com-card__tag { flex: 0 0 auto; text-align: right; }
+
+/* Foto (o avatar genérico mientras la Entrega 4 no la suba) */
+.nive-foto {
+  flex: 0 0 auto;
+  width: 62px; height: 62px;
+  padding: 0; border: 0; border-radius: 50%;
+  overflow: hidden; cursor: zoom-in;
+  background: var(--bg-soft, #eef2f7);
+  box-shadow: 0 0 0 2px var(--card-bd, #e3e9f2), 0 2px 8px rgba(16, 24, 40, .12);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.nive-foto:hover { transform: scale(1.05); box-shadow: 0 0 0 2px #0891b2, 0 4px 14px rgba(16, 24, 40, .2); }
+.nive-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nive-foto--lg { width: 108px; height: 108px; }
+
+/* Franja del resultado */
+.nive-res {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  align-items: center;
+  margin: 10px 0 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--bg-soft, #f4f7fb);
+  border: 1px solid var(--card-bd, #e6ebf3);
+  font-size: 13px;
+}
+.nive-res__p { font-size: 15px; }
+.nive-res__p b { font-size: 18px; }
+.nive-res__p small { opacity: .6; font-size: 12px; }
+.nive-res__n,
+.nive-res__re,
+.nive-res__f,
+.nive-res__form {
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--card-bd, #e6ebf3);
+  color: var(--text-soft, #55617a);
+  font-weight: 600; font-size: 12px;
+}
+.nive-res__vacio { color: var(--text-soft, #8a94a8); font-style: italic; }
+.nive-res__form { margin-left: auto; }
+
+/* ── Ficha del modal ─────────────────────────────────────── */
+.nive-ficha {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 12px; margin-bottom: 12px;
+  border-radius: 14px;
+  background: var(--bg-soft, #f4f7fb);
+  border: 1px solid var(--card-bd, #e6ebf3);
+}
+.nive-ficha__datos {
+  flex: 1 1 auto; min-width: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px;
+}
+.nive-ficha__datos .full { grid-column: 1 / -1; }
+.nive-ficha__datos > div { min-width: 0; display: flex; flex-direction: column; }
+.nive-ficha__datos span {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-soft, #8a94a8); font-weight: 700;
+}
+.nive-ficha__datos b {
+  font-size: 13.5px; color: var(--text, #16202e);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Nivel calculado en vivo mientras se escribe el puntaje */
+.nive-nivel-auto {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--text-soft, #6b7280);
+  color: #fff; font-weight: 800; font-size: 16px;
+  text-align: center;
+  transition: background .18s ease;
+}
+
+/* ── Confirmación antes de enviar ────────────────────────── */
+.nive-conf { text-align: left; font-size: 14px; }
+.nive-conf__q { margin-bottom: 8px; }
+.nive-conf__p { font-size: 16px; margin-bottom: 8px; }
+.nive-conf__n {
+  display: inline-block; padding: 5px 12px; border-radius: 999px;
+  color: #fff; font-weight: 800; margin-bottom: 10px;
+}
+.nive-conf__d { color: #55617a; }
+.nive-conf__re { margin-top: 8px; color: #b45309; font-weight: 600; }
+
+/* ── Visor de la foto con zoom ───────────────────────────── */
+#nive-foto-marco {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 320px; max-height: 62vh;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--bg-soft, #10151c);
+  touch-action: none;
+}
+#nive-foto-img {
+  max-width: 100%; max-height: 60vh;
+  transform-origin: center center;
+  transition: transform .12s ease-out;
+  user-select: none; -webkit-user-drag: none;
+}
+.nive-zoom-bar {
+  display: flex; gap: 8px; align-items: center; justify-content: center;
+  margin-top: 10px; flex-wrap: wrap;
+}
+.nive-zoom-bar .btn { min-width: 44px; }
+#nive-zoom-nivel {
+  min-width: 62px; text-align: center;
+  font-weight: 800; color: var(--text-soft, #55617a);
+}
+#nive-foto-nota {
+  margin-top: 8px; text-align: center;
+  font-size: 12.5px; color: var(--text-soft, #8a94a8);
+}
+
+/* ── Vista Procesos ──────────────────────────────────────── */
+#view-procesos .menu-grid { margin-top: 4px; }
+
+@media (max-width: 560px) {
+  .nive-ficha { flex-direction: column; align-items: center; }
+  .nive-ficha__datos { grid-template-columns: 1fr; width: 100%; }
+  .nive-ficha__datos b { white-space: normal; }
+  .nive-res__form { margin-left: 0; }
+  .nive-card__top { flex-wrap: wrap; }
+  .nive-card__top .com-card__tag { text-align: left; }
+}
+
+/* ── Configuración › Nivel y SEA ─────────────────────────── */
+.nvl-tabla-wrap { overflow-x: auto; margin: 8px 0 10px; }
+.nvl-tabla { width: 100%; border-collapse: collapse; min-width: 520px; font-size: 13.5px; }
+.nvl-tabla th {
+  text-align: left; padding: 6px 8px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-soft, #8a94a8); font-weight: 800;
+  border-bottom: 1px solid var(--card-bd, #e6ebf3);
+}
+.nvl-tabla td { padding: 5px 6px; border-bottom: 1px solid var(--card-bd, #eef2f7); }
+.nvl-tabla input, .nvl-tabla select {
+  width: 100%; padding: 7px 9px;
+  border: 1px solid var(--card-bd, #dde4ee); border-radius: 9px;
+  background: var(--card-bg, #fff); color: var(--text, #16202e);
+  font-size: 13.5px;
+}
+.nvl-tabla td:nth-child(2) input,
+.nvl-tabla td:nth-child(3) input { max-width: 92px; text-align: center; }
+.nvl-tabla td:last-child { width: 44px; text-align: center; }
+.nvl-botones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.nvl-botones .btn-primary[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* ============================================================
+   ENTREGA 5 (17/08/2026) — APROBACIÓN, HOJA DE VIDA Y
+   FORMULARIO EN SOLO LECTURA
+   ------------------------------------------------------------
+   Regla de la casa: todo lo que sea fondo, texto o borde sale de
+   las variables del tema (--bg-card, --text-main, --border…), así
+   el modo oscuro entra solo. Los pocos colores con significado
+   propio (verde de completado, naranja de reabierto, rojo de
+   error) se escriben como tinte translúcido sobre el fondo, y
+   abajo del todo llevan su repaso para el tema oscuro.
+   ============================================================ */
+
+/* ── Marcas del perfil en la tarjeta ─────────────────────── */
+.nive-flag {
+  padding: 2px 9px; border-radius: 999px;
+  font-weight: 800; font-size: 12px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.nive-flag.reab { background: rgba(245, 158, 11, .16); color: #b45309; border-color: rgba(245, 158, 11, .45); }
+.nive-flag.corr { background: rgba(22, 163, 74, .14);  color: #15803d; border-color: rgba(22, 163, 74, .40); }
+
+/* Un botón apagado de verdad (antes esto lo hacía .is-pronto) */
+.act-btn[disabled],
+.nive-aprob__btns .btn[disabled] { opacity: .45; cursor: not-allowed; }
+.act-btn[disabled]:hover,
+.nive-aprob__btns .btn[disabled]:hover { opacity: .45; }
+
+/* ── Bloque "Aprobación del perfil" del modal ─────────────── */
+.nive-aprob__btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.nive-aprob__marca { margin-top: 8px; }
+.nive-aprob__reab {
+  margin-top: 10px; padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, .10);
+  border: 1px solid rgba(245, 158, 11, .40);
+  font-size: 13px; color: var(--text-main);
+}
+.nive-aprob__motivo { margin: 4px 0 4px; white-space: pre-wrap; }
+.nive-aprob__hv {
+  margin-top: 10px; padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--bg-soft); border: 1px solid var(--border);
+  font-size: 13px; color: var(--text-soft);
+}
+
+/* ── Avisos dentro de las confirmaciones (SweetAlert2) ────── */
+.nive-conf__ul { margin: 6px 0 8px 18px; padding: 0; text-align: left; }
+.nive-conf__ul li { margin-bottom: 4px; }
+.nive-avisos { margin: 8px 0 0 18px; padding: 0; text-align: left; font-size: 13px; }
+.nive-avisos li { margin-bottom: 4px; }
+.nive-aviso-amarillo {
+  margin-top: 10px; padding: 9px 11px;
+  border-radius: 10px; text-align: left; font-size: 13px;
+  background: rgba(245, 158, 11, .14);
+  border: 1px solid rgba(245, 158, 11, .45);
+  color: #b45309;
+}
+
+/* ============================================================
+   MODAL "VER FORMULARIO"  (.nfm-*)
+   ============================================================ */
+.nfm-cab {
+  padding: 12px; margin-bottom: 12px;
+  border-radius: 14px;
+  background: var(--bg-soft); border: 1px solid var(--border);
+}
+.nfm-cab__datos {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px;
+}
+.nfm-cab__datos .full { grid-column: 1 / -1; }
+.nfm-cab__datos > div { min-width: 0; display: flex; flex-direction: column; }
+.nfm-cab__datos span {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-muted); font-weight: 700;
+}
+.nfm-cab__datos b { font-size: 13.5px; color: var(--text-main); }
+
+/* Pastillas de estado */
+.nfm-pill {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 800; vertical-align: middle;
+  background: var(--bg-soft); color: var(--text-soft);
+  border: 1px solid var(--border);
+}
+.nfm-pill.ok   { background: rgba(22, 163, 74, .14);  color: #15803d; border-color: rgba(22, 163, 74, .40); }
+.nfm-pill.prog { background: rgba(37, 99, 235, .12);  color: #1d4ed8; border-color: rgba(37, 99, 235, .38); }
+.nfm-pill.pend { background: var(--bg-soft); color: var(--text-muted); }
+/* REABIERTO va en naranja: es el estado que obliga a hacer algo. */
+.nfm-pill.reab { background: rgba(245, 158, 11, .16); color: #b45309; border-color: #f59e0b; }
+.nfm-fecha { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+
+/* Un bloque del formulario */
+.nfm-bloque { margin-bottom: 10px; }
+.nfm-bloque .conta-bloque { margin-bottom: 0; }
+.nfm-bloque.is-sel .conta-bloque { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, .22); }
+.nfm-campos { padding: 12px 14px 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.nfm-campo { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.nfm-campo.full { grid-column: 1 / -1; }
+.nfm-l {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--text-muted); font-weight: 700;
+}
+.nfm-v { font-size: 13.5px; color: var(--text-main); font-weight: 600; white-space: pre-wrap; word-break: break-word; }
+.nfm-v.vacio, .nfm-tabla .vacio { color: var(--text-muted); font-weight: 600; }
+.nfm-grupo {
+  grid-column: 1 / -1; margin-top: 4px;
+  font-size: 12px; font-weight: 800; letter-spacing: .03em;
+  color: var(--text-soft); text-transform: uppercase;
+  border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+.nfm-aviso {
+  grid-column: 1 / -1;
+  font-size: 12.5px; color: var(--text-soft);
+  background: var(--bg-soft); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 10px;
+}
+.nfm-nota {
+  grid-column: 1 / -1;
+  font-size: 12.5px; border-radius: 10px; padding: 8px 10px;
+  background: var(--bg-soft); border: 1px solid var(--border); color: var(--text-main);
+}
+.nfm-nota--warn { background: rgba(245, 158, 11, .12); border-color: rgba(245, 158, 11, .45); color: #b45309; }
+.nfm-nota--ok   { background: rgba(22, 163, 74, .12);  border-color: rgba(22, 163, 74, .40);  color: #15803d; }
+.nfm-nota--reab { background: rgba(245, 158, 11, .12); border-color: #f59e0b; color: #b45309; white-space: pre-wrap; }
+.nfm-cab .nfm-nota { margin-top: 10px; }
+
+/* Píldoras de las habilidades (campos "chips") */
+.nfm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.nfm-chip {
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700;
+  background: var(--bg-soft); color: var(--text-main);
+  border: 1px solid var(--border-strong);
+}
+
+/* Tabla de las listas repetibles (experiencia, viajes, familia…) */
+.nfm-tabla-wrap { overflow-x: auto; }
+.nfm-tabla { width: 100%; border-collapse: collapse; min-width: 420px; font-size: 13px; }
+.nfm-tabla th {
+  text-align: left; padding: 6px 8px; white-space: nowrap;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--text-muted); font-weight: 800;
+  border-bottom: 1px solid var(--border);
+}
+.nfm-tabla td {
+  padding: 6px 8px; color: var(--text-main);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top; word-break: break-word;
+}
+.nfm-tabla tr:last-child td { border-bottom: 0; }
+
+.nfm-ver { align-self: flex-start; padding: 5px 12px; font-size: 12.5px; }
+
+/* Casilla para marcar un bloque que se va a reabrir. Va DEBAJO del
+   bloque y no dentro del título: metida en el título, tocarla
+   abriría y cerraría el bloque entero. */
+.nfm-pick {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 0 0; padding: 7px 12px;
+  border: 1px solid var(--border); border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background: var(--bg-soft);
+  font-size: 12.5px; font-weight: 700; color: var(--text-soft);
+  cursor: pointer;
+}
+.nfm-pick input { width: 17px; height: 17px; }
+.nfm-pick.off { opacity: .55; cursor: not-allowed; }
+.nfm-bloque.is-sel .nfm-pick { border-color: #f59e0b; color: #b45309; background: rgba(245, 158, 11, .10); }
+
+/* ── Pie de reapertura del modal del formulario ───────────── */
+.nfm-pie { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.nfm-pie label { margin: 2px 2px 0; }
+.nfm-pie textarea {
+  width: 100%; resize: vertical; min-height: 62px;
+  padding: 9px 11px; font: inherit; font-size: 13.5px;
+  border: 1.5px solid var(--border-strong); border-radius: 12px;
+  background: var(--bg-card); color: var(--text-main);
+}
+.nfm-pie__sel { font-size: 13px; color: var(--text-soft); }
+.nfm-pie__sel b { color: var(--text-main); font-size: 15px; }
+.nfm-chars { text-align: right; font-size: 11.5px; color: var(--text-muted); }
+.nfm-pie--off { opacity: .8; }
+.nfm-pie .btn[disabled],
+#nreab-ok[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* ── Modal corto de reapertura (#modal-nreab) ─────────────── */
+#modal-nreab textarea {
+  width: 100%; resize: vertical; min-height: 68px;
+  padding: 9px 11px; font: inherit; font-size: 13.5px;
+  border: 1.5px solid var(--border-strong); border-radius: 12px;
+  background: var(--bg-card); color: var(--text-main);
+}
+.nrb-lista { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 14px; }
+.nrb-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 12px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  font-size: 13.5px; color: var(--text-main); cursor: pointer;
+}
+.nrb-item:hover { border-color: var(--border-strong); }
+.nrb-item input { width: 17px; height: 17px; flex: 0 0 auto; }
+.nrb-item__t { flex: 1 1 auto; min-width: 0; font-weight: 700; }
+.nrb-item.is-sel { border-color: #f59e0b; background: rgba(245, 158, 11, .10); }
+
+/* ── Visor de la hoja de vida ─────────────────────────────── */
+#nive-visor-frame { width: 100%; height: min(74vh, 720px); border: 0; display: block; background: #111; }
+
+@media (max-width: 560px) {
+  .nfm-campos { grid-template-columns: 1fr; }
+  .nfm-cab__datos { grid-template-columns: 1fr; }
+  #nive-visor-frame { height: 70vh; }
+  .nive-aprob__btns .btn { flex: 1 1 100%; }
+}
+
+/* ============================================================
+   REPASO PARA EL MODO OSCURO
+   Solo lo que lleva color propio: sobre fondo oscuro, un
+   #b45309 o un #15803d no se leen.
+   ============================================================ */
+html[data-tema="oscuro"] .nive-flag.reab,
+html[data-tema="oscuro"] .nfm-pill.reab,
+html[data-tema="oscuro"] .nfm-nota--warn,
+html[data-tema="oscuro"] .nfm-nota--reab,
+html[data-tema="oscuro"] .nive-aviso-amarillo { background: rgba(251, 191, 36, .16); color: #fcd34d; }
+html[data-tema="oscuro"] .nive-flag.corr,
+html[data-tema="oscuro"] .nfm-pill.ok,
+html[data-tema="oscuro"] .nfm-nota--ok { background: rgba(52, 211, 153, .14); color: #6ee7a8; border-color: rgba(52, 211, 153, .45); }
+html[data-tema="oscuro"] .nfm-pill.prog { background: rgba(96, 165, 250, .16); color: #93c5fd; border-color: rgba(96, 165, 250, .45); }
+html[data-tema="oscuro"] .nive-aprob__reab { background: rgba(251, 191, 36, .10); color: var(--text-main); }
+html[data-tema="oscuro"] .nfm-bloque.is-sel .nfm-pick { background: rgba(251, 191, 36, .12); color: #fcd34d; }
+html[data-tema="oscuro"] .nrb-item.is-sel { background: rgba(251, 191, 36, .12); }
+html[data-tema="oscuro"] #nive-visor-frame { background: #0b1016; }
