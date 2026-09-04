@@ -1130,7 +1130,11 @@ var NPERFIL = (function () {
     verDocumento: verDocumento,
     aprobar: aprobar,
     regenerar: regenerar,
-    abrirReapertura: abrirReapertura
+    abrirReapertura: abrirReapertura,
+    /* FASE 4 · ENTREGA 6 — el visor de archivos (#nive-visor) ya vivía
+       aquí; ahora lo usa también NDOCS. Se expone en vez de escribir un
+       segundo visor con el mismo marco. */
+    visor: abrirVisor_
   };
 })();
 
