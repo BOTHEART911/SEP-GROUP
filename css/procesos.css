@@ -1,0 +1,172 @@
+/* ============================================================
+   SEP GROUP — RETIRADOS Y ASESOR DE PROCESOS
+   Fase 4 · Entrega 5 (03/09/2026)
+   ------------------------------------------------------------
+   © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+   Software propietario; cualquier modificación por terceros anula
+   la garantía de funcionamiento.
+   ------------------------------------------------------------
+   Hoja PROPIA a propósito: styles.css lo comparten Comercial,
+   Contador y Nivel de Inglés, y esto solo pinta lo de la Entrega 5.
+   Todo se apoya en las variables del tema (--bg-card, --text-soft,
+   --border…), así que el modo oscuro entra solo.
+   ============================================================ */
+
+/* ── El rojo del retiro (2.2 y 2.3) ─────────────────────────
+   Es el mismo rojo del resto de la app y no se escribe suelto en
+   cada sitio: vive aquí. */
+:root { --ret-rojo: #dc2626; }
+
+.conta-card--retirado,
+.nive-card--retirado {
+  border-color: rgba(220, 38, 38, .45);
+  background:
+    linear-gradient(0deg, rgba(220, 38, 38, .05), rgba(220, 38, 38, .05)),
+    var(--bg-card);
+}
+.conta-card--retirado .com-card__stripe,
+.nive-card--retirado .com-card__stripe { background: var(--ret-rojo) !important; }
+
+.conta-aviso--retiro {
+  background: rgba(220, 38, 38, .12);
+  color: var(--ret-rojo);
+  border: 1px solid rgba(220, 38, 38, .35);
+  font-weight: 800;
+}
+
+/* ── Interruptor "Retirados" del resumen ───────────────────── */
+.conta-kpi--retiro.is-on,
+.nive-ind.is-on {
+  background: var(--k);
+  color: #fff;
+  border-color: transparent;
+}
+.conta-kpi--retiro.is-on .conta-kpi__n,
+.conta-kpi--retiro.is-on .conta-kpi__t,
+.nive-ind.is-on .conta-kpi__n,
+.nive-ind.is-on .conta-kpi__t { color: #fff; }
+
+/* ── Tablero de Procesos (3.4) ──────────────────────────────
+   Va pegado al resumen de resultados, con un poco menos de aire
+   arriba para que se lean como dos filas de lo mismo. */
+.nive-proc-row { margin-top: -4px; }
+
+/* ── Bloque "Procesos" de la ficha del Contador ─────────────── */
+.conta-asesor {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.conta-asesor__nombre {
+  font-weight: 800; color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 6px 12px;
+}
+.conta-retiro {
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+}
+.conta-retiro.is-on {
+  background: rgba(220, 38, 38, .08);
+  border: 1px solid rgba(220, 38, 38, .3);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--ret-rojo);
+}
+.conta-retiro.is-on .conta-hint { color: var(--ret-rojo); opacity: .85; }
+
+/* ── Franja de Procesos en la tarjeta de Nivel de Inglés ───── */
+.nive-res__apr,
+.nive-res__ind,
+.nive-res__ofe,
+.nive-res__retiro {
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
+  font-size: .72rem; font-weight: 800;
+}
+.nive-res__apr { background: rgba(124, 58, 237, .12); color: #7c3aed; }
+.nive-res__apr.falta { background: var(--bg-soft); color: var(--text-soft); font-weight: 700; }
+.nive-res__ind { background: color-mix(in srgb, var(--k) 14%, transparent); color: var(--k); }
+.nive-res__ofe { background: var(--bg-soft); color: var(--text-soft); }
+.nive-res__retiro {
+  background: rgba(220, 38, 38, .14);
+  color: var(--ret-rojo);
+  border: 1px solid rgba(220, 38, 38, .35);
+}
+
+/* Navegadores sin color-mix (Safari viejo): el indicador se ve
+   igual de legible, solo sin el fondo tintado. */
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+  .nive-res__ind { background: var(--bg-soft); }
+}
+
+/* ============================================================
+   FASE 4 · ENTREGA 6 (04/09/2026) — DOCUMENTOS DEL PARTICIPANTE
+   ------------------------------------------------------------
+   Modal #modal-ndocs (js/nivel-docs.js). Los 10 documentos con sus
+   5 estados, la habilitación individual/masiva y el circuito de
+   corrección. Mismos tokens de la app: aquí no se inventa un color.
+   ============================================================ */
+.ndoc-intro { margin: 0 0 14px; }
+
+.ndoc { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+  margin-bottom: 10px; background: var(--bg-card); }
+
+.ndoc-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ndoc-n { flex: 1; min-width: 180px; font-weight: 700; color: var(--primary); font-size: .94rem; }
+.ndoc-pill { font-size: .74rem; font-weight: 800; color: #fff; padding: 4px 10px;
+  border-radius: 999px; white-space: nowrap; }
+
+.ndoc-chk { display: inline-flex; align-items: center; cursor: pointer; }
+.ndoc-chk input { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
+.ndoc-chk--no { width: 17px; height: 17px; }
+
+.ndoc-meta { margin-top: 6px; font-size: .8rem; color: var(--text-muted); }
+
+.ndoc-nota { margin-top: 9px; background: rgba(220, 38, 38, .07);
+  border: 1px solid rgba(220, 38, 38, .28); border-radius: 8px;
+  padding: 9px 11px; color: #8c1d1d; font-size: .85rem; line-height: 1.45; }
+
+.ndoc-acc { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+.ndoc-acc .act-btn { text-decoration: none; }
+.ndoc-file { display: none; }
+
+#ndocs-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+#ndocs-cuenta { margin-right: auto; }
+
+[data-tema="oscuro"] .ndoc-nota { color: #ffb4b4; background: rgba(220, 38, 38, .12); }
+
+/* ============================================================
+   FASE 4.1 (04/09/2026)
+   ============================================================
+   · La condición de apertura de cada documento (punto 2).
+   · El aviso que reemplaza al botón de reactivar (punto 5).
+   · .act-btn--ok, que la Entrega 6 usaba en el botón "Aprobar" del
+     panel de documentos y NUNCA se definió: quedaba con el estilo
+     gris de cualquier otro botón. */
+.ndoc-cond {
+  margin-top: 6px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.conta-hint--aviso {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, .14);
+  border: 1px dashed rgba(148, 163, 184, .5);
+  line-height: 1.35;
+}
+.act-btn--ok {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #bbf7d0 !important;
+  font-weight: 800;
+}
+.act-btn--ok:hover { background: #bbf7d0 !important; }
+html[data-tema="oscuro"] .act-btn--ok {
+  background: rgba(34, 197, 94, .18) !important;
+  color: #86efac !important;
+  border-color: rgba(34, 197, 94, .4) !important;
+}
