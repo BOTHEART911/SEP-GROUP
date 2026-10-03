@@ -3,6 +3,17 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTE 03/10/2026 — COMPATIBILIDAD DE FECHAS DE OFERTAS.
+ *   · Las fechas del participante son su DISPONIBILIDAD (desde /
+ *     hasta), no una fecha que deba caer dentro del rango de la
+ *     oferta. Puede aplicar si existe un inicio y una salida
+ *     válidos dentro de los rangos permitidos de la oferta.
+ *     La regla vive en Apps Script (OfertasEstudiante.gs,
+ *     oselFechasOk_); aquí solo cambian las ayudas de los dos
+ *     motivos en Configuración de ofertas.
+ *   Archivos tocados: js/ofertas.js, sw.js (caché v30) y, en Apps
+ *   Script, OfertasEstudiante.gs y Ofertas.gs.
+ * ------------------------------------------------------------
  * LOTE 09/09/2026 — DOS AJUSTES.
  *   · Vista Comercial: cuando un registro ya está INSCRITO, el
  *     ESTADO deja de poder editarse. Aplica al modal Editar y al
@@ -493,4 +504,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.09.09.01";
+var APP_VERSION = "2026.10.03.01";
