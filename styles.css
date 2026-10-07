@@ -1001,11 +1001,42 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
   display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:10px;
 }
 .conta-step{
+  position:relative;
   width:28px; height:28px; border-radius:50%; display:inline-flex;
   align-items:center; justify-content:center; font-size:14px;
-  background:rgba(100,116,139,.12); filter:grayscale(1); opacity:.55;
+  background:rgba(100,116,139,.12);
 }
-.conta-step.is-ok{ background:rgba(22,163,74,.16); filter:none; opacity:1; }
+.conta-step__ic{ filter:grayscale(1); opacity:.55; line-height:1; }
+.conta-step.is-ok{ background:rgba(22,163,74,.16); }
+.conta-step.is-ok .conta-step__ic{ filter:none; opacity:1; }
+/* FASE 5.1 · B — punto de "pago validado en banco" en la esquina del paso:
+   gris = comprobante sin validar; verde = validado en banco. */
+.conta-step__banco{
+  position:absolute; right:-2px; bottom:-2px; width:11px; height:11px; border-radius:50%;
+  background:#cbd5e1; border:2px solid var(--card-bg, #fff);
+}
+.conta-step__banco.is-ok{ background:#16a34a; }
+/* Proceso del participante (Contador y Nivel de Inglés). */
+.proc-chip{ display:inline-flex; align-items:center; gap:4px; font-weight:700; font-size:12px;
+  padding:2px 8px; border-radius:999px; background:rgba(100,116,139,.12); color:#334155; }
+.proc-chip--nuevo{ background:rgba(37,99,235,.12); color:#1d4ed8; }
+.proc-chip--repitente{ background:rgba(124,58,237,.12); color:#6d28d9; }
+.proc-chip--aplazado{ background:rgba(245,158,11,.16); color:#b45309; }
+.proc-chip--retirado{ background:rgba(220,38,38,.12); color:#b91c1c; }
+.proc-chip--pend{ background:rgba(100,116,139,.10); color:#64748b; }
+/* Pago validado en banco, por comprobante, en la ficha del Contador. */
+.cfz-banco{ display:flex; align-items:center; gap:6px; width:100%; font-size:12.5px; font-weight:600;
+  color:#64748b; cursor:pointer; padding-top:4px; border-top:1px dashed #e3e9f2; }
+.cfz-banco input{ width:16px; height:16px; accent-color:#16a34a; cursor:pointer; }
+.cfz-item.is-banco{ border-color:#86efac; background:#f0fdf4; }
+.cfz-item.is-banco .cfz-banco{ color:#15803d; }
+/* Gran total (oferta + programa completo), calculado en pantalla. */
+.conta-grantotal{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin:10px 0;
+  padding:12px 14px; border-radius:12px; background:rgba(37,99,235,.06); border:1px solid rgba(37,99,235,.18); }
+.conta-grantotal__t{ font-weight:800; font-size:13px; color:#1e3a8a; flex:1 1 100%; }
+.conta-grantotal__t small{ font-weight:600; color:#64748b; }
+.conta-grantotal__v{ display:inline-flex; align-items:baseline; gap:6px; font-size:16px; color:#0f172a; }
+.conta-grantotal__v small{ font-size:11px; font-weight:700; color:#64748b; }
 .conta-monto{
   margin-left:auto; font-weight:800; font-size:13px; color:var(--text-soft);
 }

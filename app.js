@@ -1694,7 +1694,30 @@ const COM_ESTADO_CANDADO_TXT = '🔒 El registro ya está INSCRITO: el estado no
 
 function comEstadoCandado_(estadoActual){
   if (String(estadoActual || '').toUpperCase() !== COM_ESTADO_CANDADO) return false;
-  return !(currentUser && currentUser.isDev);
+  /* FASE 5.1 · B — también exceptúa al SUPERUSUARIO (isSuper incluye
+     al DEV). Es la misma regla que ahora aplica el servidor en
+     editarComercial (comEstadoBloqueado_). */
+  return !(currentUser && (currentUser.isDev || currentUser.isSuper));
+}
+
+/* FASE 5.1 · B — Proceso del participante en las tarjetas de Contador
+   y de Nivel de Inglés (Nuevo / Aplazado / Repitente / Retirado). Lo
+   guarda el Contador; "Retirado" sale de la columna RETIRADO y manda
+   sobre lo demás. Los valores viejos de la lista ("New") se muestran
+   con el nombre de Javier. */
+const PROCESO_VISTA = {
+  NEW:        { t: 'Nuevo',       ic: '🆕', c: 'nuevo' },
+  NUEVO:      { t: 'Nuevo',       ic: '🆕', c: 'nuevo' },
+  APLAZADO:   { t: 'Aplazado',    ic: '⏸️', c: 'aplazado' },
+  REPITENTE:  { t: 'Repitente',   ic: '🔁', c: 'repitente' },
+  RETIRADO:   { t: 'Retirado',    ic: '🛑', c: 'retirado' },
+  'POR ASIGNAR': { t: 'Proceso por asignar', ic: '❔', c: 'pend' }
+};
+function procesoChipHtml_(proceso, retirado){
+  const k = retirado ? 'RETIRADO' : String(proceso || '').trim().toUpperCase();
+  if (!k) return '';
+  const v = PROCESO_VISTA[k] || { t: String(proceso).trim(), ic: '🔖', c: 'otro' };
+  return `<span class="proc-chip proc-chip--${v.c}" title="Proceso">${v.ic} ${esc_(v.t)}</span>`;
 }
 
 /* Deja el selector en solo lectura y explica por qué, sin tocar el

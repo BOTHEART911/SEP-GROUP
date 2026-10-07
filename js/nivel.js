@@ -641,6 +641,7 @@ function niveCardHtml_(r, i) {
           ${r.documento ? `<span>🆔 ${esc_(r.documento)}</span>` : ''}
           <span>📱 ${esc_(r.whatsapp)}</span>
           ${r.nacimiento ? `<span>🎂 ${esc_(r.nacimiento)}${niveEdad_(r.nacimiento) !== '' ? ' · ' + niveEdad_(r.nacimiento) + ' años' : ''}</span>` : ''}
+          ${procesoChipHtml_(r.proceso, r.retirado)}
         </div>
       </div>
       <div class="com-card__tag">

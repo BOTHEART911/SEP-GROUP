@@ -275,6 +275,38 @@ function contaMoneda_(v, simbolo) {
   const n = Number(v); if (isNaN(n)) return '';
   return (simbolo || '$ ') + n.toLocaleString('es-CO');
 }
+/* FASE 5.1 · B — número escrito por el Contador → número. COP no
+   lleva decimales ("6.000.000" = 6000000); USD acepta 2200.50 o
+   2200,50. Vacío = vacío (no se inventa un 0). */
+function contaNumTxt_(v, decimal) {
+  const t = String(v == null ? '' : v).trim();
+  if (!t) return '';
+  if (!decimal) { const d = t.replace(/\D/g, ''); return d ? Number(d) : ''; }
+  let x = t.replace(/[^\d.,]/g, '');
+  const ult = Math.max(x.lastIndexOf('.'), x.lastIndexOf(','));
+  if (ult >= 0 && x.length - ult - 1 <= 2) x = x.slice(0, ult).replace(/[.,]/g, '') + '.' + x.slice(ult + 1);
+  else x = x.replace(/[.,]/g, '');
+  const n = Number(x); return isNaN(n) ? '' : n;
+}
+function contaSuma_(a, b) {
+  if (a === '' && b === '') return '';
+  return (Number(a) || 0) + (Number(b) || 0);
+}
+function contaGranTotalHtml_(oUsd, pUsd, oCop, pCop) {
+  const usd = contaSuma_(contaNumTxt_(oUsd, true), contaNumTxt_(pUsd, true));
+  const cop = contaSuma_(contaNumTxt_(oCop, false), contaNumTxt_(pCop, false));
+  const fmtUsd = usd === '' ? '—' : 'US$ ' + Number(usd).toLocaleString('es-CO', { maximumFractionDigits: 2 });
+  const fmtCop = cop === '' ? '—' : contaMoneda_(cop);
+  return `<span class="conta-grantotal__t">🧮 Gran total <small>(oferta + programa completo)</small></span>
+    <span class="conta-grantotal__v"><b>${fmtUsd}</b><small>USD</small></span>
+    <span class="conta-grantotal__v"><b>${fmtCop}</b><small>COP</small></span>`;
+}
+function contaPintarGranTotal_() {
+  const v = id => (document.querySelector('#' + id) || {}).value || '';
+  const el = document.querySelector('#c-grantotal'); if (!el) return;
+  el.innerHTML = contaGranTotalHtml_(v('c-ofertaUsd'), v('c-totalUsd'), v('c-ofertaCop'), v('c-totalCop'));
+}
+
 function contaFechaTexto_(iso) {
   if (!iso) return '';
   const p = String(iso).split('-'); if (p.length < 3) return iso;
@@ -307,8 +339,14 @@ function renderContaCards_() {
   });
 }
 
-function contaPaso_(ok, ic, titulo) {
-  return `<span class="conta-step ${ok ? 'is-ok' : ''}" title="${esc_(titulo)}">${ic}</span>`;
+/* FASE 5.1 · B — `banco`: null = no hay comprobante (sin indicador);
+   true = pago validado en banco (punto verde); false = comprobante
+   cargado pero aún sin validar (punto gris). */
+function contaPaso_(ok, ic, titulo, banco) {
+  const b = (banco === true || banco === false)
+    ? `<i class="conta-step__banco${banco ? ' is-ok' : ''}" aria-hidden="true"></i>` : '';
+  const t = titulo + (banco === true ? ' · validado en banco' : banco === false ? ' · sin validar en banco' : '');
+  return `<span class="conta-step ${ok ? 'is-ok' : ''}" title="${esc_(t)}"><span class="conta-step__ic">${ic}</span>${b}</span>`;
 }
 
 function contaCardHtml_(r) {
@@ -361,16 +399,16 @@ function contaCardHtml_(r) {
       ${r.tipoPlan ? `<span>🎯 ${esc_(r.tipoPlan)}</span>` : ''}
       ${r.sponsor ? `<span>🤝 ${esc_(r.sponsor)}</span>` : ''}
       ${r.planPrograma ? `<span>📦 ${esc_(r.planPrograma)}</span>` : ''}
-      ${r.proceso ? `<span>🔖 ${esc_(r.proceso)}</span>` : ''}
+      ${procesoChipHtml_(r.proceso, r.retirado)}
       ${r.asesor ? `<span>👤 ${esc_(r.asesor)}</span>` : ''}
       ${r.asesorProcesos ? `<span>🧭 ${esc_(r.asesorProcesos)}</span>` : ''}
     </div>
     <div class="conta-steps">
-      ${contaPaso_(!!r.comprobanteUrl, '💳', 'Comprobante de inscripción')}
+      ${contaPaso_(!!r.comprobanteUrl, '💳', 'Comprobante de inscripción', r.comprobanteUrl ? !!r.bancoIns : null)}
       ${contaPaso_(!!r.contratoUrl, '📄', 'Contrato creado')}
       ${contaPaso_(!!r.contratoOk, '✅', 'Contrato validado')}
-      ${contaPaso_(!!r.pagoOferta, '💵', 'Pago de la oferta')}
-      ${contaPaso_(!!r.pagoTotal, '🏦', 'Pago total')}
+      ${contaPaso_(!!r.pagoOferta, '💵', 'Pago de la oferta', r.comprobanteOfertaUrl ? !!r.bancoOferta : null)}
+      ${contaPaso_(!!r.pagoTotal, '🏦', 'Pago total', r.comprobanteTotalUrl ? !!r.bancoTotal : null)}
       ${contaPaso_(!!r.pagoSevis, '🎓', 'Pago del SEVIS')}
       ${r.valorInscrip !== '' ? `<span class="conta-monto">${contaMoneda_(r.valorInscrip)}</span>` : ''}
     </div>
@@ -722,6 +760,9 @@ function contaParchar_(d) {
   if (!d || !d.n || !CONTA.todos) return false;
   const i = CONTA.todos.findIndex(x => x.n === d.n);
   if (i < 0) return false;
+  /* FASE 5.1 · B — las marcas de banco solo viajan cuando están puestas:
+     si se desmarcaron, hay que borrarlas antes de mezclar. */
+  ['bancoIns', 'bancoOferta', 'bancoTotal', 'bancoExtra'].forEach(k => { delete CONTA.todos[i][k]; });
   Object.assign(CONTA.todos[i], d);
   CONTA.registros = TEMP.filtrar(CONTA.todos);
   try { renderContaFiltros_(); renderContaCards_(); renderContaResumen_(); } catch (e) { return false; }
@@ -785,6 +826,7 @@ function abrirModalContador_(r) {
                   style="cursor:pointer;text-decoration:underline">Quitar</span></small></div>
         ${contaZonaHtml_('ins', 'Comprobante de pago de inscripción', {
           tipo: 'inscripcion', titulo: 'Comprobante de inscripción', urls: [r.comprobanteUrl],
+          banco: r.bancoIns ? [r.comprobanteUrl] : [],
           nota: 'Al guardar el comprobante el estudiante pasa a <b>INSCRITO</b>.' })}
       </div>
     </details>
@@ -829,7 +871,7 @@ function abrirModalContador_(r) {
         <div class="fld"><label>Valor oferta (COP)</label><input id="c-ofertaCop" type="text" inputmode="numeric" value="${r.ofertaCop}" /></div>
         ${contaZonaHtml_('ofe', 'Comprobante pago de oferta', {
           tipo: 'oferta', titulo: 'Comprobante de pago de oferta', opcional: true,
-          urls: [r.comprobanteOfertaUrl] })}
+          urls: [r.comprobanteOfertaUrl], banco: r.bancoOferta ? [r.comprobanteOfertaUrl] : [] })}
       </div>
     </details>
 
@@ -844,13 +886,18 @@ function abrirModalContador_(r) {
           <small class="conta-hint">${r.fechaTotal ? 'Pagado el ' + contaFechaTexto_(r.fechaTotal) : 'La fecha se pone sola'}</small></div>
         <div class="fld"><label>Método de pago total</label>${contaSelect_('c-metodoTotal', op.metodo, r.metodoTotal)}</div>
         <div class="fld"><label>Cuenta de banco total</label>${contaSelect_('c-cuentaTotal', op.cuenta, r.cuentaTotal)}</div>
-        <div class="fld"><label>Valor total (USD)</label><input id="c-totalUsd" type="text" inputmode="decimal" value="${r.totalUsd}" /></div>
-        <div class="fld"><label>Valor total (COP)</label><input id="c-totalCop" type="text" inputmode="numeric" value="${r.totalCop}" /></div>
+        <div class="fld"><label>Valor programa completo (USD)</label><input id="c-totalUsd" type="text" inputmode="decimal" value="${r.totalUsd}" /></div>
+        <div class="fld"><label>Valor programa completo (COP)</label><input id="c-totalCop" type="text" inputmode="numeric" value="${r.totalCop}" /></div>
         ${contaZonaHtml_('tot', 'Comprobante pago total', {
           tipo: 'total', titulo: 'Comprobante de pago total', opcional: true,
-          urls: [r.comprobanteTotalUrl] })}
+          urls: [r.comprobanteTotalUrl], banco: r.bancoTotal ? [r.comprobanteTotalUrl] : [] })}
       </div>
     </details>
+
+    <!-- FASE 5.1 · B — GRAN TOTAL (respuesta 5 de Javier): oferta +
+         programa completo, COP y USD por separado. Se calcula aquí con
+         lo que está escrito en los campos; no se guarda ni hay TRM. -->
+    <div class="conta-grantotal" id="c-grantotal" aria-live="polite">${contaGranTotalHtml_(r.ofertaUsd, r.totalUsd, r.ofertaCop, r.totalCop)}</div>
 
     <details class="conta-bloque">
       <summary>🎓 Bloque 4 · SEVIS y recargos</summary>
@@ -861,7 +908,7 @@ function abrirModalContador_(r) {
         <div class="fld"><label>Recargo por incumplimientos (USD)</label><input id="c-recargo" type="text" inputmode="decimal" value="${r.recargo}" /></div>
         ${contaZonaHtml_('ext', 'Comprobantes adicionales', {
           tipo: 'extra', titulo: 'Comprobante adicional', opcional: true, multiple: true,
-          urls: r.comprobantesExtra || [],
+          urls: r.comprobantesExtra || [], banco: r.bancoExtra || [],
           nota: 'Puedes cargar varios: se guardan todos en esta misma tarjeta.' })}
       </div>
     </details>
@@ -879,6 +926,9 @@ function abrirModalContador_(r) {
     </div>`;
 
   /* Cableado */
+  /* FASE 5.1 · B — el gran total se recalcula mientras se escribe. */
+  ['c-ofertaUsd', 'c-totalUsd', 'c-ofertaCop', 'c-totalCop'].forEach(idc =>
+    document.querySelector('#' + idc)?.addEventListener('input', contaPintarGranTotal_));
   document.querySelector('#c-proceso')?.addEventListener('change', e => {
     document.querySelector('#c-proceso-otro-fld').style.display = (e.target.value === 'Otro') ? '' : 'none';
   });
@@ -978,8 +1028,15 @@ const CFZ_MAX_MB = 5;
 function contaZonaInit_(id, cfg) {
   CFZ[id] = {
     tipo: cfg.tipo, multiple: !!cfg.multiple, titulo: cfg.titulo,
-    urls: (cfg.urls || []).map(u => String(u || '').trim()).filter(Boolean)
+    urls: (cfg.urls || []).map(u => String(u || '').trim()).filter(Boolean),
+    /* FASE 5.1 · B — URLs validadas en banco. Va por URL (no por
+       posición): si se reemplaza un archivo, el nuevo nace sin validar. */
+    banco: new Set((cfg.banco || []).map(u => String(u || '').trim()).filter(Boolean))
   };
+}
+function contaZonaBanco_(id) {
+  const z = CFZ[id]; if (!z) return [];
+  return z.urls.filter(u => z.banco.has(u));
 }
 
 function contaZonaHtml_(id, etiqueta, cfg) {
@@ -1010,7 +1067,7 @@ function contaZonaPintarLista_(id) {
   const z = CFZ[id]; if (!cont || !z) return;
   if (!z.urls.length) { cont.innerHTML = '<span class="cfz-vacio">Sin archivo cargado</span>'; return; }
   cont.innerHTML = z.urls.map((u, i) => `
-    <div class="cfz-item">
+    <div class="cfz-item${z.banco.has(u) ? ' is-banco' : ''}">
       <span class="cfz-item__ic">${/\.pdf(\?|$)/i.test(u) ? '📄' : '🧾'}</span>
       <span class="cfz-item__t">${esc_(z.titulo)}${z.multiple ? ' ' + (i + 1) : ''}</span>
       <span class="cfz-item__b">
@@ -1018,7 +1075,14 @@ function contaZonaPintarLista_(id) {
         <button type="button" class="act-btn" data-cfz="reemplazar" data-i="${i}">♻️ Reemplazar</button>
         ${z.multiple ? `<button type="button" class="act-btn act-btn--rojo" data-cfz="quitar" data-i="${i}">✕ Quitar</button>` : ''}
       </span>
+      <label class="cfz-banco"><input type="checkbox" data-cfz-banco="${i}"${z.banco.has(u) ? ' checked' : ''}/>
+        <span>🏦 Pago validado en banco</span></label>
     </div>`).join('');
+  cont.querySelectorAll('[data-cfz-banco]').forEach(c => c.addEventListener('change', () => {
+    const u = CFZ[id].urls[+c.dataset.cfzBanco]; if (!u) return;
+    if (c.checked) CFZ[id].banco.add(u); else CFZ[id].banco.delete(u);
+    c.closest('.cfz-item').classList.toggle('is-banco', c.checked);
+  }));
   cont.querySelectorAll('[data-cfz]').forEach(b => b.addEventListener('click', () => {
     const i = +b.dataset.i, url = CFZ[id].urls[i];
     if (b.dataset.cfz === 'ver') abrirVisorConta_(url, CFZ[id].titulo);
@@ -1449,7 +1513,22 @@ async function contaPegarEnDocumento_(ev) {
 }
 
 /* ── Guardar: un solo botón para los cuatro bloques ── */
+/* FASE 5.1 · B — escudo desde el primer toque: el botón queda ocupado
+   y un segundo toque no dispara otro guardado (antes el escudo era el
+   loader, que aparece a los 120 ms: un doble toque rápido mandaba dos
+   escrituras con rid distinto). */
 async function guardarContador_() {
+  if (CONTA.guardando) return;
+  CONTA.guardando = true;
+  const btn = document.querySelector('#conta-save');
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+  try { await guardarContadorUnaVez_(); }
+  finally {
+    CONTA.guardando = false;
+    if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+  }
+}
+async function guardarContadorUnaVez_() {
   const r = CONTA.actual; if (!r) return;
   const val = id => { const el = document.querySelector('#' + id); return el ? el.value : ''; };
   const chk = id => { const el = document.querySelector('#' + id); return el ? el.checked : false; };
@@ -1469,6 +1548,11 @@ async function guardarContador_() {
     comprobanteOfertaUrl: contaZonaUrl_('ofe'),
     comprobanteTotalUrl: contaZonaUrl_('tot'),
     comprobantesExtra: contaZonaUrls_('ext'),
+    /* FASE 5.1 · B — pago validado en banco, por comprobante. */
+    bancoIns:    contaZonaBanco_('ins').length > 0,
+    bancoOferta: contaZonaBanco_('ofe').length > 0,
+    bancoTotal:  contaZonaBanco_('tot').length > 0,
+    bancoExtra:  contaZonaBanco_('ext'),
 
     contratoOk: chk('c-contratoOk'),
     nombreDeudor: val('c-nombreDeudor'), cedulaDeudor: val('c-cedulaDeudor'),

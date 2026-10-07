@@ -3,6 +3,22 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.1 · ENTREGA B (07/10/2026) — COMERCIAL Y CONTADOR.
+ *   · Candado del estado INSCRITO también en el servidor; Superadmin
+ *     y Desarrollador sí lo cambian.
+ *   · Dashboard → Resultados: la fecha de inscripción es la que
+ *     registró el Contador.
+ *   · Proceso (Nuevo / Aplazado / Repitente / Retirado) en las
+ *     tarjetas de Contador y de Nivel de Inglés.
+ *   · Contador: "Valor programa completo" COP y USD, GRAN TOTAL
+ *     (oferta + programa) calculado en pantalla, y casilla "Pago
+ *     validado en banco" por comprobante (inscripción, oferta, pago
+ *     total y cada adicional) con punto verde en la tarjeta.
+ *   · Guardar del Contador con escudo desde el primer toque.
+ *   Archivos: app.js, js/contador.js, js/nivel.js, styles.css,
+ *   css/tema-oscuro.css, sw.js (caché v34). Apps Script: Comercial,
+ *   Contador, Dashboard, NivelVista, Temporadas + MIGRADOR_F51B.
+ * ------------------------------------------------------------
  * FASE 5.1 · ENTREGA A (07/10/2026) — TEMPORADAS (Programa + Año).
  *   · Selector de año en Comercial, Contador, Nivel de Inglés y Ofertas
  *     (por defecto el año activo; filtro local, sin viajes extra; un
@@ -543,4 +559,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.07.03";
+var APP_VERSION = "2026.10.07.04";
