@@ -153,7 +153,9 @@ async function cargarNivel_() {
   try {
     const d = await apiGet('nivelInit', { usuarioId: currentUser.id });
     NIVE.catalogo  = d.catalogo;
-    NIVE.registros = d.registros || [];
+    TEMP.set(d.temporadas); TEMP.montar('nivel');                  // FASE 5.1
+    NIVE.todos     = d.registros || [];
+    NIVE.registros = TEMP.filtrar(NIVE.todos);
     NIVE.cargado   = true;
     renderNiveFiltros_(); renderNiveCards_(); renderNiveResumen_();
   } catch (e) {
@@ -161,9 +163,17 @@ async function cargarNivel_() {
   }
 }
 
+/* FASE 5.1 — cambio de año: se recalcula lo visible, sin viajar. */
+TEMP.alCambiar(() => {
+  if (!NIVE.cargado || !NIVE.todos) return;
+  NIVE.registros = TEMP.filtrar(NIVE.todos);
+  try { renderNiveFiltros_(); renderNiveCards_(); renderNiveResumen_(); } catch (e) { console.error(e); }
+});
+
 async function recargarNivel_(silencioso) {
   try {
-    NIVE.registros = await apiGet('listNivel', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    NIVE.todos = await apiGet('listNivel', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    NIVE.registros = TEMP.filtrar(NIVE.todos);                      // FASE 5.1
     renderNiveFiltros_(); renderNiveCards_(); renderNiveResumen_();
   } catch (e) {
     if (!silencioso) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
@@ -783,8 +793,10 @@ async function niveInvitacion_(r) {
     /* Se actualiza en memoria y se repinta: no hace falta ir por toda
        la lista otra vez. */
     if (out && out.registro) {
+      /* FASE 5.1 — se parcha el MISMO objeto: así queda igual en la
+         lista visible y en la de todas las temporadas. */
       const i = NIVE.registros.findIndex(x => x.n === r.n);
-      if (i >= 0) NIVE.registros[i] = out.registro;
+      if (i >= 0) Object.assign(NIVE.registros[i], out.registro);
     } else {
       r.invitacion = marcar;
     }
@@ -822,7 +834,7 @@ async function niveCurso_(r) {
     });
     if (out && out.registro) {
       const i = NIVE.registros.findIndex(x => x.n === r.n);
-      if (i >= 0) NIVE.registros[i] = out.registro;
+      if (i >= 0) Object.assign(NIVE.registros[i], out.registro);   // FASE 5.1 — mismo objeto
     } else {
       r.curso = marcar;
     }

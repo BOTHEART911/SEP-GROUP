@@ -59,12 +59,37 @@ async function apiGet(action, params = {}, opts = {}){
     return j.data;
   } finally { if (!opts.silent) stopLoading(); }
 }
+/* FASE 5.1 (07/10/2026) — toda escritura lleva un id de petición (rid).
+   El backend guarda la respuesta por rid: si la red corta o Google
+   devuelve su 404 de echo, se reintenta UNA vez con el MISMO rid y la
+   acción no se repite (devuelve la misma respuesta). Nunca se
+   reintenta un error que dio el servidor. */
+function ridNuevo_(){
+  try { if (crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(_){}
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
 async function apiPost(action, body = {}, opts = {}){
   if (!opts.silent) startLoading();
   try{
     const url = API_BASE + '?action=' + encodeURIComponent(action);
-    const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
-    const j = await r.json();
+    const conRid = Object.assign({}, body, { rid: body.rid || opts.rid || ridNuevo_() });
+    const enviar = async () => {
+      const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(conRid) });
+      if (r.status === 404) { const e = new Error('echo404'); e.reintentar = true; throw e; }
+      let j;
+      try { j = await r.json(); } catch (_) { const e = new Error('RESPUESTA_NO_JSON'); e.reintentar = true; throw e; }
+      return j;
+    };
+    let j;
+    try { j = await enviar(); }
+    catch (e) {
+      /* Falla de red (TypeError de fetch) o el 404 de echo: un solo
+         reintento con el mismo rid. */
+      if (!(e && (e.reintentar || e instanceof TypeError || e.name === 'TypeError'))) throw e;
+      await new Promise(res => setTimeout(res, 800));
+      try { j = await enviar(); }
+      catch (_) { throw new Error('No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.'); }
+    }
     if(!j.ok) throw new Error(j.error || 'Error');
     return j.data;
   } finally { if (!opts.silent) stopLoading(); }
@@ -642,7 +667,10 @@ async function abrirComercial_(){
       const ini = await apiGet('comercialInit', { usuarioId: currentUser.id });
       COM.catalogo = ini.catalogo;
       COM.ubic     = ini.ubicaciones;
-      COM.registros = ini.registros;
+      /* FASE 5.1 — la vista ve solo la temporada elegida (filtro local). */
+      TEMP.set(ini.temporadas); TEMP.montar('comercial');
+      COM.todos     = ini.registros || [];
+      COM.registros = TEMP.filtrar(COM.todos);
       COM.sig       = JSON.stringify(ini.registros);
       renderFiltros_(); renderCards_();
     } else {
@@ -658,6 +686,14 @@ async function abrirComercial_(){
    igual en los tres refrescos de segundo plano: visibilitychange (volver a la
    pestaña del navegador), el sondeo cada 12 s y la señal de Firebase.
    `forzar` = repintar aunque la firma no haya cambiado (tras guardar/eliminar). */
+/* FASE 5.1 — al cambiar el año se recalcula lo visible, sin viajar. */
+TEMP.alCambiar(() => {
+  if (!COM.todos) return;
+  COM.registros = TEMP.filtrar(COM.todos);
+  COM.filtroAsesor = '__ALL__'; COM.filtroPrograma = '__ALL__'; COM.filtroEstado = '__ALL__';
+  renderFiltros_(); renderCards_();
+});
+
 async function recargarComercial_(silencioso, forzar){
   const registros = await apiGet('listComercial', { usuarioId: currentUser.id },
                                  { silent: !!silencioso });
@@ -665,7 +701,8 @@ async function recargarComercial_(silencioso, forzar){
   // En modo silencioso (sondeo en segundo plano) solo re-renderiza si algo
   // cambió realmente; así no se interrumpe el scroll/uso si no hay novedades.
   if (silencioso && !forzar && sig === COM.sig) return;
-  COM.registros = registros;
+  COM.todos = registros || [];
+  COM.registros = TEMP.filtrar(COM.todos);              // FASE 5.1
   COM.sig = sig;
   renderFiltros_(); renderCards_();     // Fase 25.1
 }
@@ -1700,7 +1737,15 @@ async function verificarWhatsapp_(wa){
     }
     COM.waOk = wa;
     comBloquearCampos_(false);
-    setWaHint_('✅ Número disponible. Continúa el registro.', 'ok');
+    /* FASE 5.1 — el número existe en una temporada ANTERIOR: no es un
+       lead repetido, es alguien que vuelve. Arranca de cero en la
+       temporada actual y el Contador lo verá Repitente al poner la cédula. */
+    if (res.anterior){
+      const a = res.anterior;
+      setWaHint_(`🔁 Participó en ${a.anio || 'otra temporada'} (${a.nombres} ${a.apellidos} · ${a.id}). Se registra como nuevo en ${res.anio}.`, 'ok');
+    } else {
+      setWaHint_('✅ Número disponible. Continúa el registro.', 'ok');
+    }
     $('#f-nombres').focus();
   }catch(e){
     COM.waCheck = '';                        // permite reintentar
@@ -2014,8 +2059,10 @@ function activarCfgTab_(name){
   /* 16/08/2026 — 'nivel' (Nivel y SEA) entra en esta lista: si falta, su
      pestaña se marca activa pero el panel se queda oculto y la
      Configuración se ve en blanco. */
-  ['general','programas','promos','agenda','plantillas','listas','nivel','avanzado'].forEach(p =>
+  ['general','programas','promos','agenda','plantillas','listas','nivel','temporadas','avanzado'].forEach(p =>
     $('#cfg-'+p)?.classList.toggle('hidden', p !== name));
+  /* FASE 5.1 — Temporadas se carga la primera vez que se abre la pestaña. */
+  if (name === 'temporadas' && typeof tcfgAbrir_ === 'function') tcfgAbrir_();
 }
 
 function field_(id, label, val, type, hint){

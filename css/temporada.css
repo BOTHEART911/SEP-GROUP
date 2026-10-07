@@ -1,0 +1,52 @@
+/* ============================================================
+ * SEP GROUP — TEMPORADA (Fase 5.1 · Entrega A)
+ * Selector de año en las cabeceras + Configuración → Temporadas.
+ * Usa las variables del tema: se ve bien en claro y en oscuro.
+ * ============================================================ */
+.temp-sel {
+  margin-left: auto;
+  appearance: none; -webkit-appearance: none;
+  background: rgba(255,255,255,.14);
+  color: inherit;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit; font-size: .82rem; font-weight: 700;
+  cursor: pointer;
+  max-width: 132px;
+}
+.temp-sel:focus-visible { outline: 2px solid var(--accent, #d6da09); outline-offset: 2px; }
+.temp-sel option { color: #263143; background: #fff; }
+.app-header .temp-sel + .app-header__icon { margin-left: 6px; }
+
+/* Configuración → Temporadas */
+.tcfg-lista { display: flex; flex-direction: column; gap: 14px; margin-top: 6px; }
+.tcfg-prog { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; background: var(--bg-card); }
+.tcfg-prog__nom { font-weight: 800; margin-bottom: 6px; color: var(--text-main, #263143); }
+.tcfg-row {
+  display: grid; grid-template-columns: 56px auto 1fr auto; align-items: center; gap: 10px;
+  padding: 6px 0; border-top: 1px dashed var(--border);
+}
+.tcfg-row:first-of-type { border-top: 0; }
+.tcfg-anio { font-weight: 800; font-variant-numeric: tabular-nums; }
+.tcfg-chip { font-size: .74rem; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.tcfg-chip--activa    { background: rgba(22,163,74,.14);  color: #15803d; }
+.tcfg-chip--abierta   { background: rgba(14,165,233,.14); color: #0369a1; }
+.tcfg-chip--archivada { background: rgba(100,116,139,.16); color: #475569; }
+.tcfg-cnt { font-size: .8rem; color: var(--text-muted); min-width: 0; }
+.tcfg-acc { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.tcfg-btn { background: var(--primary); color: #fff; border: 0; }
+.tcfg-btn--gris { background: transparent; color: var(--text-soft, #4a5568); border: 1px solid var(--border-strong, rgba(38,49,67,.25)); }
+.tcfg-check { display: flex; gap: 8px; align-items: center; font-weight: 600; cursor: pointer; }
+@media (max-width: 560px) {
+  .tcfg-row { grid-template-columns: 48px auto 1fr; }
+  .tcfg-acc { grid-column: 1 / -1; justify-content: flex-start; }
+}
+:root[data-tema="oscuro"] .tcfg-chip--activa    { color: #4ade80; }
+:root[data-tema="oscuro"] .tcfg-chip--abierta   { color: #7dd3fc; }
+:root[data-tema="oscuro"] .tcfg-chip--archivada { color: #cbd5e1; }
+
+/* Ficha del Contador: año y expedientes de otras temporadas */
+.conta-temp-badge { background: #334155; }
+.conta-temp-otra { background: #7c3aed; color: #fff; border: 0; cursor: pointer; font: inherit; }
+.conta-temp-otra:hover { filter: brightness(1.1); }

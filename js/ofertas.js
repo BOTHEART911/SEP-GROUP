@@ -112,7 +112,9 @@ async function cargarOfertas_() {
     const d = await apiGet('ofertasInit', { usuarioId: currentUser.id });
     OFE.catalogo  = d.catalogo;
     OFE.config    = d.config;
-    OFE.registros = d.registros || [];
+    TEMP.set(d.temporadas); TEMP.montar('ofertas');                // FASE 5.1
+    OFE.todos     = d.registros || [];
+    OFE.registros = TEMP.filtrar(OFE.todos);
     OFE.cargado   = true;
     renderOfeFiltros_(); renderOfeCards_(); renderOfeResumen_();
   } catch (e) {
@@ -120,9 +122,17 @@ async function cargarOfertas_() {
   }
 }
 
+/* FASE 5.1 — cambio de año: se recalcula lo visible, sin viajar. */
+TEMP.alCambiar(() => {
+  if (!OFE.cargado || !OFE.todos) return;
+  OFE.registros = TEMP.filtrar(OFE.todos);
+  try { renderOfeFiltros_(); renderOfeCards_(); renderOfeResumen_(); } catch (e) { console.error(e); }
+});
+
 async function recargarOfertas_(silencioso) {
   try {
-    OFE.registros = await apiGet('listOfertas', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    OFE.todos = await apiGet('listOfertas', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    OFE.registros = TEMP.filtrar(OFE.todos);                        // FASE 5.1
     renderOfeFiltros_(); renderOfeCards_(); renderOfeResumen_();
   } catch (e) {
     if (!silencioso) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
@@ -1528,7 +1538,7 @@ async function ofeLiberarSeleccion_(p, alTerminar) {
 function ofeParcharRegistro_(reg) {
   if (!reg || !OFE.cargado) return;
   const i = OFE.registros.findIndex(x => x.id === reg.id);
-  if (i >= 0) OFE.registros[i] = Object.assign({}, OFE.registros[i], reg);
+  if (i >= 0) Object.assign(OFE.registros[i], reg);   // FASE 5.1 — mismo objeto en la lista visible y en la de todos los años
   else return;
   try { renderOfeFiltros_(); renderOfeCards_(); renderOfeResumen_(); } catch (e) { /* no-op */ }
 }

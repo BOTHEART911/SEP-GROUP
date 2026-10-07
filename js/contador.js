@@ -67,7 +67,9 @@ async function cargarContador_() {
   try {
     const d = await apiGet('contadorInit', { usuarioId: currentUser.id });
     CONTA.catalogo  = d.catalogo;
-    CONTA.registros = d.registros || [];
+    TEMP.set(d.temporadas); TEMP.montar('contador');               // FASE 5.1
+    CONTA.todos     = d.registros || [];
+    CONTA.registros = TEMP.filtrar(CONTA.todos);
     CONTA.cargado   = true;
     renderContaFiltros_(); renderContaCards_(); renderContaResumen_();
   } catch (e) {
@@ -75,12 +77,20 @@ async function cargarContador_() {
   }
 }
 
+/* FASE 5.1 — cambio de año: se recalcula lo visible, sin viajar. */
+TEMP.alCambiar(() => {
+  if (!CONTA.cargado || !CONTA.todos) return;
+  CONTA.registros = TEMP.filtrar(CONTA.todos);
+  try { renderContaFiltros_(); renderContaCards_(); renderContaResumen_(); } catch (e) { console.error(e); }
+});
+
 async function recargarContador_(silencioso) {
   try {
     /* Fase 4 — el refresco de fondo va SILENCIOSO de verdad: sin esto
        salía el girador (y ahora saldría el esqueleto) encima de datos
        que ya están pintados. */
-    CONTA.registros = await apiGet('listContador', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    CONTA.todos = await apiGet('listContador', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    CONTA.registros = TEMP.filtrar(CONTA.todos);                    // FASE 5.1
     renderContaFiltros_(); renderContaCards_(); renderContaResumen_();
   } catch (e) {
     if (!silencioso) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
@@ -693,6 +703,31 @@ async function contaCambiarAsesor_(r) {
   }
 }
 
+/* FASE 5.1 — temporada de la ficha y, si la cédula participó en otros
+   años, accesos a esos expedientes (solo consulta). Sale de la lista
+   que ya está en memoria: cero viajes. */
+function contaTemporadaHtml_(r) {
+  const doc = String(r.documento || '').replace(/\D/g, '');
+  const otras = doc.length >= 5 ? (CONTA.todos || []).filter(x =>
+    String(x.documento || '').replace(/\D/g, '') === doc && x.n !== r.n && x.anio && x.anio !== r.anio) : [];
+  otras.sort((a, b) => Number(b.anio) - Number(a.anio));
+  return (r.anio ? `<span class="com-badge conta-temp-badge">📅 ${esc_(r.anio)}</span>` : '') +
+    otras.map(o => `<button type="button" class="com-badge conta-temp-otra" data-conta-otra="${o.n}"
+      title="Abrir el expediente de ${esc_(o.anio)} (solo consulta)">🔁 ${esc_(o.anio)} · N° ${o.n}</button>`).join('');
+}
+
+/* FASE 5.1 — tras guardar se parcha la fila en memoria con la ficha que
+   devuelve el servidor (un solo viaje; antes se recargaba la lista). */
+function contaParchar_(d) {
+  if (!d || !d.n || !CONTA.todos) return false;
+  const i = CONTA.todos.findIndex(x => x.n === d.n);
+  if (i < 0) return false;
+  Object.assign(CONTA.todos[i], d);
+  CONTA.registros = TEMP.filtrar(CONTA.todos);
+  try { renderContaFiltros_(); renderContaCards_(); renderContaResumen_(); } catch (e) { return false; }
+  return true;
+}
+
 function abrirModalContador_(r) {
   CONTA.actual = r;
   const op = CONTA.catalogo?.opciones || {};
@@ -702,7 +737,13 @@ function abrirModalContador_(r) {
   document.querySelector('#conta-modal-sub').innerHTML =
     `<span class="com-badge" style="background:${r.etapaColor}">${r.etapaIc} ${esc_(r.etapaLabel)}</span>
      <span class="com-badge" style="background:${r.estadoColor}">${esc_(r.estadoLabel)}</span>
-     ${r.claveAcceso ? `<span class="conta-clave">🔑 ${esc_(r.claveAcceso)}</span>` : ''}`;
+     ${r.claveAcceso ? `<span class="conta-clave">🔑 ${esc_(r.claveAcceso)}</span>` : ''}
+     ${contaTemporadaHtml_(r)}`;
+  /* FASE 5.1 — abrir la ficha de otra temporada (solo consulta). */
+  document.querySelectorAll('#conta-modal-sub [data-conta-otra]').forEach(b => b.addEventListener('click', () => {
+    const otra = (CONTA.todos || []).find(x => String(x.n) === b.dataset.contaOtra);
+    if (otra) abrirModalContador_(otra);
+  }));
 
   document.querySelector('#conta-modal-body').innerHTML = `
     ${contaBloqueProcesos_(r)}
@@ -1460,7 +1501,10 @@ async function guardarContador_() {
   try {
     const out = await apiPost('guardarContador', body);
     cerrarModalContador_();
-    await recargarContador_(true);
+    if (!contaParchar_(out)) await recargarContador_(true);          // FASE 5.1 — un viaje
+    /* FASE 5.1 — Repitente automático: la cédula ya participó en otro año. */
+    const avisoRep = out.repitenteAuto
+      ? `<br><small>🔁 Esta cédula ya participó en otra temporada: el Proceso quedó en <b>${esc_(out.repitenteAuto)}</b>.</small>` : '';
     if (out.silencio) {
       /* AJUSTE 1 — se guardó todo, pero el estudiante no se enteró. */
       Swal.fire({ icon: 'success', title: 'Guardado en silencio',
@@ -1493,6 +1537,8 @@ async function guardarContador_() {
         Swal.fire({ icon: 'warning', title: 'Contrato validado, pero sin aviso',
           html: `El check quedó guardado, pero el mensaje no salió.<br><small>${esc_(a.motivo || '')}</small>` });
       }
+    } else if (avisoRep) {
+      Swal.fire({ icon: 'success', title: 'Guardado', html: avisoRep.replace('<br>', '') });
     } else {
       Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
     }

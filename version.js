@@ -3,6 +3,20 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.1 · ENTREGA A (07/10/2026) — TEMPORADAS (Programa + Año).
+ *   · Selector de año en Comercial, Contador, Nivel de Inglés y Ofertas
+ *     (por defecto el año activo; filtro local, sin viajes extra; un
+ *     solo año para toda la sesión).
+ *   · Configuración → Temporadas (Superadmin): crear, activar, reabrir,
+ *     archivar y mover un registro de temporada.
+ *   · Registro Comercial: un WhatsApp de una temporada anterior ya no
+ *     bloquea (es alguien que vuelve); avisa en qué año participó.
+ *   · Contador: año en la ficha, accesos a los expedientes de otros
+ *     años de la misma cédula, aviso de Repitente automático y guardado
+ *     en un solo viaje (la fila se parcha en memoria).
+ *   · Toda escritura lleva rid y un solo reintento seguro ante fallas
+ *     de red o el 404 de echo de Google.
+ * ------------------------------------------------------------
  * AJUSTE 07/10/2026 (2) — APLICADO AL SPONSOR (pedido de Javier).
  *   · Ofertas de Empleo → Participantes: filtro Todos · Aplicado al
  *     Sponsor · No aplicado al Sponsor, con su conteo, y distintivo en
@@ -529,4 +543,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.07.02";
+var APP_VERSION = "2026.10.07.03";
