@@ -1141,7 +1141,7 @@ function ofePartFilaHtml_(p) {
   const rech = (p.estado === 'CANCELADA' && p.rechazoMotivo)
     ? `<div class="ofe-part__exc">🚫 Rechazada por el participante: ${esc_(p.rechazoMotivo)}</div>` : '';
 
-  const sp = ofePartSponsor_(p);
+  const sp = ofePartEstadoSp_(p);
   const spChip = sp === 'si'
     ? `<span class="ofe-sp ofe-sp--si" title="${esc_(p.aplicadaFecha ? 'Aplicado el ' + p.aplicadaFecha + (p.aplicadaPor ? ' por ' + p.aplicadaPor : '') : 'Aplicado al Sponsor')}">✅ Aplicado al Sponsor</span>`
     : (sp === 'no' ? `<span class="ofe-sp ofe-sp--no">⏳ Pendiente Sponsor</span>` : '');
@@ -1186,14 +1186,14 @@ const OFE_SP_FILTROS = [
   { k: 'no',    label: '⏳ No aplicado al Sponsor' }
 ];
 
-function ofePartSponsor_(p) {
+function ofePartEstadoSp_(p) {
   if (!p || OFE_SP_FUERA.indexOf(p.estado) >= 0) return '';
   return (p.aplicadaFecha || p.estado === 'APLICADA') ? 'si' : 'no';
 }
 
 function ofePartFiltroSpHtml_(lista) {
   const n = { todos: lista.length, si: 0, no: 0 };
-  lista.forEach(p => { const s = ofePartSponsor_(p); if (s) n[s]++; });
+  lista.forEach(p => { const s = ofePartEstadoSp_(p); if (s) n[s]++; });
   const on = OFE.part.filtroSp || 'todos';
   return `<div class="ofe-spf" role="group" aria-label="Filtrar por aplicación al Sponsor">
     ${OFE_SP_FILTROS.map(f => `<button type="button" class="ofe-spf__b${f.k === on ? ' is-on' : ''}"
@@ -1203,7 +1203,7 @@ function ofePartFiltroSpHtml_(lista) {
 
 function ofePartFiltrar_(lista) {
   const f = OFE.part.filtroSp || 'todos';
-  return f === 'todos' ? lista : lista.filter(p => ofePartSponsor_(p) === f);
+  return f === 'todos' ? lista : lista.filter(p => ofePartEstadoSp_(p) === f);
 }
 
 function renderParticipantes_() {
@@ -1894,7 +1894,7 @@ window.__sepOfertas = {
   partCabecera: ofePartCabecera_,
   partFilaHtml: ofePartFilaHtml_,
   partRender: renderParticipantes_,
-  partSponsor: ofePartSponsor_,
+  partEstadoSp: ofePartEstadoSp_,
   partParchar: ofePartParchar_,
   partBuscador: renderPartBuscador_,
   textoAviso: ofeTextoAviso_
