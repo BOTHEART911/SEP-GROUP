@@ -1105,7 +1105,7 @@ function ofePartFilaHtml_(p) {
   if (p.puede.aplicarSponsor) acciones.push(`<button class="btn btn-ghost" data-pact="sponsor" data-id="${esc_(p.id)}">📤 Aplicada al Sponsor</button>`);
   if (p.puede.agendar)   acciones.push(`<button class="btn btn-ghost" data-pact="entrevista" data-id="${esc_(p.id)}">🗓️ ${p.entrevista.fecha ? 'Reprogramar' : 'Agendar'} entrevista</button>`);
   if (p.puede.resultado) acciones.push(`<button class="btn btn-ghost" data-pact="resultado" data-id="${esc_(p.id)}">⚖️ Resultado</button>`);
-  if (p.puede.habilitar) acciones.push(`<button class="btn btn-ghost" data-pact="habilitar" data-id="${esc_(p.id)}">🔓 Habilitar selección</button>`);
+  if (p.puede.habilitar) acciones.push(`<button class="btn btn-ghost" data-pact="habilitar" data-id="${esc_(p.id)}">🔓 Liberar selección</button>`);
   /* AJUSTE 09/09/2026 — devolver el cupo de un NO APROBADO cuya oferta
      tenía la política "el cupo se pierde". Quién lo ve lo decide el
      backend (puede.liberarCupo), no esta pantalla. */
@@ -1125,7 +1125,7 @@ function ofePartFilaHtml_(p) {
   const exc = p.excepcion
     ? `<div class="ofe-part__exc">⚠️ Excepción administrativa: ${esc_(p.motivoExcepcion)}</div>` : '';
   const hab = p.motivoHabilitacion
-    ? `<div class="ofe-part__exc">🔓 Habilitada de nuevo: ${esc_(p.motivoHabilitacion)}</div>` : '';
+    ? `<div class="ofe-part__exc">🔓 Liberada por Procesos${p.habilitadaPor ? ' (' + esc_(p.habilitadaPor) + ')' : ''}: ${esc_(p.motivoHabilitacion)}</div>` : '';
 
   /* FASE 4.1 — la propuesta que espera respuesta del participante:
      hasta cuándo, y cuánto le queda. Mientras esté así no hay botones
@@ -1418,26 +1418,84 @@ async function ofePartResultado_(p) {
   await ofePartLlamar_('resultadoEntrevista', Object.assign({ id: p.id }, r.value), 'Resultado registrado');
 }
 
-async function ofePartHabilitar_(p) {
+/* 07/10/2026 (pedido de Javier) — LIBERAR SELECCIÓN.
+   Mientras el participante tiene oferta elegida, en su portal solo ve
+   esa; este botón es lo único que le devuelve el catálogo. Es la misma
+   acción del servidor de siempre (habilitarSeleccion): el cupo vuelve
+   a la oferta, queda en el historial y la auditoría, y al participante
+   le llega el correo "ya puedes volver a escoger" (plantilla
+   OFERTA_LIBERADA, editable en Configuración → Plantillas).
+   No confundir con "Liberar cupo" (09/09), que es para el NO APROBADO.
+   Sirve a los dos caminos: la lista de participantes de la oferta y
+   la ficha del participante en Nivel de Inglés.                    */
+async function ofeLiberarSeleccion_(p, alTerminar) {
   const r = await Swal.fire({
-    icon: 'warning', title: 'Habilitar nuevamente la selección', width: 600,
+    icon: 'warning', title: 'Liberar la selección', width: 600,
     html: `<div style="text-align:left;font-size:14px">
-        <p>${esc_(p.nombre)} volverá a poder escoger oferta y se recalculan todas sus validaciones.</p>
-        <label>Motivo (obligatorio)</label>
+        <p><b>${esc_(p.nombre || '')}</b> · ${esc_(p.empleador || '')} — ${esc_(p.posicion || '')}</p>
+        <p>Su oferta elegida se cancela, <b>el cupo vuelve a la oferta</b> y en su portal
+           vuelve a ver todas las ofertas para escoger de nuevo. Le llega un correo
+           avisándole que ya puede volver a escoger.</p>
+        <label>Motivo (obligatorio, queda en el historial)</label>
         <textarea id="sw-hab-m" class="swal2-textarea"></textarea>
-        <label style="display:block;margin-top:8px">
-          <input type="checkbox" id="sw-hab-c" ${p.politicaCupo === 'Yes' ? 'checked' : ''}>
-          Devolver el cupo a la oferta</label>
       </div>`,
-    showCancelButton: true, confirmButtonText: 'Habilitar', cancelButtonText: 'Cancelar',
+    showCancelButton: true, confirmButtonText: '🔓 Liberar selección', cancelButtonText: 'Cancelar',
     preConfirm: () => {
       const m = document.querySelector('#sw-hab-m').value.trim();
       if (m.length < 5) { Swal.showValidationMessage('Escribe el motivo (mínimo 5 caracteres).'); return false; }
-      return { motivo: m, devolverCupo: document.querySelector('#sw-hab-c').checked };
+      return { motivo: m };
     }
   });
   if (!r.isConfirmed) return;
-  await ofePartLlamar_('habilitarSeleccion', Object.assign({ id: p.id }, r.value), 'Selección habilitada');
+  let d;
+  try {
+    d = await apiPost('habilitarSeleccion', { usuarioId: currentUser.id, id: p.id, motivo: r.value.motivo });
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'No se pudo liberar', text: String(e.message || e) });
+    return;
+  }
+  /* Una vista, un viaje: la respuesta trae la fila de la selección y la
+     de la oferta ya actualizadas; se parchan en memoria. Si el backend
+     todavía es el anterior (sin esas filas), se recarga como antes. */
+  if (d && d.seleccion && d.registro) {
+    ofeParcharRegistro_(d.registro);
+    if (typeof alTerminar === 'function') alTerminar(d);
+  } else {
+    if (typeof alTerminar === 'function') alTerminar(null);
+    await recargarOfertas_(true);
+  }
+  Swal.fire({ icon: 'success', title: 'Selección liberada',
+    text: 'Ya puede volver a escoger. ' + (d && d.aviso && d.aviso.cola
+      ? 'El correo de aviso sale en los próximos minutos.' : ofeTextoAviso_(d && d.aviso)),
+    timer: 2600, showConfirmButton: false });
+}
+
+/* Parcha una oferta en la lista que ya está en memoria y repinta solo
+   las tarjetas y el resumen (sin volver al servidor). */
+function ofeParcharRegistro_(reg) {
+  if (!reg || !OFE.cargado) return;
+  const i = OFE.registros.findIndex(x => x.id === reg.id);
+  if (i >= 0) OFE.registros[i] = Object.assign({}, OFE.registros[i], reg);
+  else return;
+  try { renderOfeFiltros_(); renderOfeCards_(); renderOfeResumen_(); } catch (e) { /* no-op */ }
+}
+
+async function ofePartHabilitar_(p) {
+  return ofeLiberarSeleccion_(p, d => {
+    if (!OFE.part || !OFE.part.datos) return;
+    if (!d) { recargarParticipantes_(true); return; }
+    const pd = OFE.part.datos;
+    const i = (pd.participantes || []).findIndex(x => x.id === d.seleccion.id);
+    if (i >= 0) pd.participantes[i] = d.seleccion;
+    if (d.registro.cupos) {
+      pd.cupos = Object.assign({}, pd.cupos, d.registro.cupos);
+      pd.cupos.reservados = pd.participantes.filter(x => x.cupoReservado).length;
+      pd.cupos.consumidos = Math.max(0, (pd.cupos.ocupados || 0) - pd.cupos.reservados);
+    }
+    pd.conteo = {};
+    pd.participantes.forEach(x => { pd.conteo[x.estado] = (pd.conteo[x.estado] || 0) + 1; });
+    renderParticipantes_();
+  });
 }
 
 /* AJUSTE 09/09/2026 — LIBERAR EL CUPO (en silencio)
@@ -1532,9 +1590,15 @@ function renderOfertasDeParticipante_() {
     ? `<div class="ofe-part__no">🚫 Este participante todavía no puede tomar ofertas:
         <ul>${d.puertas.map(m => `<li>${esc_(m.texto)}</li>`).join('')}</ul></div>` : '';
 
+  /* 07/10/2026 — con oferta elegida el participante solo ve esa en su
+     portal; desde aquí también se le puede liberar (mismo diálogo y
+     misma acción que en la lista de participantes de la oferta). */
   const mia = d.mia
     ? `<div class="ofe-part__ent">📌 Ya tiene <b>${esc_(d.mia.empleador)}</b> — ${esc_(d.mia.posicion)}
-        (${esc_(d.mia.estadoLabel)}). Para cambiarla, habilítale la selección desde la oferta.</div>` : '';
+        (${esc_(d.mia.estadoLabel)}). En su portal solo ve esta oferta.
+        ${d.mia.puede && d.mia.puede.habilitar
+          ? `<div style="margin-top:8px"><button class="btn btn-ghost" id="ofe-pp-liberar">🔓 Liberar selección</button></div>`
+          : ''}</div>` : '';
 
   const filas = (d.ofertas || []).map(o => {
     const veredicto = o.cumple
@@ -1573,6 +1637,24 @@ function renderOfertasDeParticipante_() {
 
   cont.querySelectorAll('[data-pofe]').forEach(b =>
     b.addEventListener('click', () => asignarOfertaAParticipante_(b.getAttribute('data-pofe'))));
+  document.querySelector('#ofe-pp-liberar')?.addEventListener('click', () => {
+    const mia = Object.assign({ nombre: d.participante.nombre }, d.mia);
+    ofeLiberarSeleccion_(mia, r => {
+      if (!OFE.part || OFE.part.modo !== 'participante') return;
+      if (!r) { recargarOfertasDeParticipante_(true); return; }
+      /* Parche en memoria: ya no tiene oferta activa y esa oferta sumó
+         el cupo que devolvió. */
+      const pd = OFE.part.datos;
+      pd.mia = null;
+      const o = (pd.ofertas || []).find(x => x.id === r.registro.id);
+      if (o && r.registro.cupos) {
+        o.cuposLibres = r.registro.cupos.libres;
+        o.cuposTotal = r.registro.cupos.total;
+        o.estado = r.registro.estado; o.estadoLabel = r.registro.estadoLabel; o.estadoColor = r.registro.estadoColor;
+      }
+      renderOfertasDeParticipante_();
+    });
+  });
 }
 
 async function asignarOfertaAParticipante_(ofertaId) {

@@ -3,6 +3,22 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTE 07/10/2026 — LIBERAR SELECCIÓN (pedido de Javier).
+ *   · Cuando un participante ya eligió oferta, en su portal deja de
+ *     ver el catálogo: solo ve la suya. Para que vuelva a escoger,
+ *     Procesos usa el botón "🔓 Liberar selección" (antes "Habilitar
+ *     selección"), en Ofertas → Participantes y ahora también en la
+ *     ficha del participante en Nivel de Inglés. Motivo obligatorio,
+ *     el cupo vuelve SIEMPRE a la oferta, queda en el historial y en
+ *     Auditoría, y al participante le llega el correo "ya puedes
+ *     volver a escoger" (plantilla OFERTA_LIBERADA). No confundir con
+ *     "🎟️ Liberar cupo", que es para el NO APROBADO.
+ *   · Tras liberar, la pantalla ya no vuelve a pedir la oferta ni sus
+ *     participantes: parcha en memoria lo que responde el servidor.
+ *   Archivos tocados: js/ofertas.js, sw.js (caché v31) y, en Apps
+ *   Script, OfertasEstudiante.gs, OfertasProceso.gs, OfertasPdf.gs,
+ *   Seguimientos.gs y Código.gs.
+ * ------------------------------------------------------------
  * AJUSTE 03/10/2026 — COMPATIBILIDAD DE FECHAS DE OFERTAS.
  *   · Las fechas del participante son su DISPONIBILIDAD (desde /
  *     hasta), no una fecha que deba caer dentro del rango de la
@@ -504,4 +520,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.03.01";
+var APP_VERSION = "2026.10.07.01";
