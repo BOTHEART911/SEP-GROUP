@@ -3,6 +3,15 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTE 07/10/2026 (2) — APLICADO AL SPONSOR (pedido de Javier).
+ *   · Ofertas de Empleo → Participantes: filtro Todos · Aplicado al
+ *     Sponsor · No aplicado al Sponsor, con su conteo, y distintivo en
+ *     cada tarjeta (✅ Aplicado al Sponsor / ⏳ Pendiente Sponsor).
+ *     Filtro local, sin viajes extra. Canceladas, no aprobadas y
+ *     pendientes de confirmación no entran al filtro.
+ *   · Tras Aplicada al Sponsor, entrevista o resultado, la tarjeta se
+ *     parcha en memoria y el filtro se conserva (antes: dos recargas).
+ * ------------------------------------------------------------
  * AJUSTE 07/10/2026 — LIBERAR SELECCIÓN (pedido de Javier).
  *   · Cuando un participante ya eligió oferta, en su portal deja de
  *     ver el catálogo: solo ve la suya. Para que vuelva a escoger,
@@ -520,4 +529,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.07.01";
+var APP_VERSION = "2026.10.07.02";

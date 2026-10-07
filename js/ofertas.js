@@ -1141,6 +1141,11 @@ function ofePartFilaHtml_(p) {
   const rech = (p.estado === 'CANCELADA' && p.rechazoMotivo)
     ? `<div class="ofe-part__exc">🚫 Rechazada por el participante: ${esc_(p.rechazoMotivo)}</div>` : '';
 
+  const sp = ofePartSponsor_(p);
+  const spChip = sp === 'si'
+    ? `<span class="ofe-sp ofe-sp--si" title="${esc_(p.aplicadaFecha ? 'Aplicado el ' + p.aplicadaFecha + (p.aplicadaPor ? ' por ' + p.aplicadaPor : '') : 'Aplicado al Sponsor')}">✅ Aplicado al Sponsor</span>`
+    : (sp === 'no' ? `<span class="ofe-sp ofe-sp--no">⏳ Pendiente Sponsor</span>` : '');
+
   return `<article class="ofe-part__card" data-pid="${esc_(p.id)}">
     <div class="ofe-part__top">
       <div>
@@ -1150,6 +1155,7 @@ function ofePartFilaHtml_(p) {
       <span class="ofe-badge" style="background:${p.estadoColor};">${p.estadoIc} ${esc_(p.estadoLabel)}</span>
     </div>
     <div class="ofe-part__meta">
+      ${spChip}
       <span>${p.origen === 'SEP' ? '🏛️' : '🙋'} ${esc_(p.origenLabel)}</span>
       <span>📅 ${esc_(p.fecha)} ${esc_(p.hora)}</span>
       <span>🎟️ ${p.cupoReservado ? 'cupo reservado'
@@ -1161,6 +1167,45 @@ function ofePartFilaHtml_(p) {
   </article>`;
 }
 
+/* ============================================================
+   AJUSTE 07/10/2026 — APLICADO AL SPONSOR (pedido de Javier)
+   ============================================================
+   Regla única (la usan el distintivo de la tarjeta y el filtro):
+   · FUERA del filtro (sin distintivo, solo salen en "Todos"):
+     CANCELADA, NO_APROBADA y PENDIENTE_CONFIRMACION — no hay nada
+     que aplicar ahí: o ya terminó o el participante aún no acepta.
+   · APLICADO: tiene fecha de aplicación al Sponsor (APLICADA_FECHA),
+     siga en APLICADA o ya haya pasado a entrevista o aprobado.
+   · PENDIENTE: cualquier otra fila viva sin esa fecha (hoy, las
+     SELECCIONADA; también una entrevista agendada sin aplicar).
+   Filtro local sobre lo que ya llegó: cero viajes al servidor.   */
+const OFE_SP_FUERA = ['CANCELADA', 'NO_APROBADA', 'PENDIENTE_CONFIRMACION'];
+const OFE_SP_FILTROS = [
+  { k: 'todos', label: 'Todos' },
+  { k: 'si',    label: '✅ Aplicado al Sponsor' },
+  { k: 'no',    label: '⏳ No aplicado al Sponsor' }
+];
+
+function ofePartSponsor_(p) {
+  if (!p || OFE_SP_FUERA.indexOf(p.estado) >= 0) return '';
+  return (p.aplicadaFecha || p.estado === 'APLICADA') ? 'si' : 'no';
+}
+
+function ofePartFiltroSpHtml_(lista) {
+  const n = { todos: lista.length, si: 0, no: 0 };
+  lista.forEach(p => { const s = ofePartSponsor_(p); if (s) n[s]++; });
+  const on = OFE.part.filtroSp || 'todos';
+  return `<div class="ofe-spf" role="group" aria-label="Filtrar por aplicación al Sponsor">
+    ${OFE_SP_FILTROS.map(f => `<button type="button" class="ofe-spf__b${f.k === on ? ' is-on' : ''}"
+      data-spf="${f.k}" aria-pressed="${f.k === on}">${f.label} <span>${n[f.k]}</span></button>`).join('')}
+  </div>`;
+}
+
+function ofePartFiltrar_(lista) {
+  const f = OFE.part.filtroSp || 'todos';
+  return f === 'todos' ? lista : lista.filter(p => ofePartSponsor_(p) === f);
+}
+
 function renderParticipantes_() {
   const cont = document.querySelector('#ofe-part-body');
   const d = OFE.part.datos;
@@ -1168,13 +1213,21 @@ function renderParticipantes_() {
 
   if (OFE.part.pantalla === 'buscar') { renderPartBuscador_(); return; }
 
-  const lista = d.participantes;
+  const todos = d.participantes || [];
+  const lista = ofePartFiltrar_(todos);
   const cuerpo = lista.length
     ? lista.map(ofePartFilaHtml_).join('')
-    : `<p class="muted center" style="padding:22px 0">Todavía no hay participantes en esta oferta.</p>`;
+    : `<p class="muted center" style="padding:22px 0">${todos.length
+        ? 'Nadie en esta oferta cumple ese filtro.'
+        : 'Todavía no hay participantes en esta oferta.'}</p>`;
 
-  cont.innerHTML = ofePartCabecera_() + `<div class="ofe-part__list">${cuerpo}</div>`;
+  cont.innerHTML = ofePartCabecera_() + (todos.length ? ofePartFiltroSpHtml_(todos) : '')
+    + `<div class="ofe-part__list">${cuerpo}</div>`;
 
+  cont.querySelectorAll('[data-spf]').forEach(b => b.addEventListener('click', () => {
+    OFE.part.filtroSp = b.getAttribute('data-spf');
+    renderParticipantes_();
+  }));
   document.querySelector('#ofe-part-aplicar')?.addEventListener('click', () => {
     OFE.part.pantalla = 'buscar'; OFE.part.resultados = []; OFE.part.buscado = '';
     renderParticipantes_();
@@ -1530,14 +1583,40 @@ async function ofePartLiberarCupo_(p) {
   }
 }
 
+/* AJUSTE 07/10/2026 — los tres guardados (Aplicada al Sponsor,
+   entrevista y resultado) ya devuelven la fila (`seleccion`): se
+   parcha en memoria y se repinta con el filtro que estaba puesto,
+   sin las dos lecturas de antes. Solo el resultado puede mover los
+   cupos (política de la oferta): ese refresca de fondo, sin bloquear. */
+let ofePartGuardando_ = false;
+
+function ofePartParchar_(sel) {
+  const pd = OFE.part && OFE.part.datos;
+  if (!pd || !sel) return false;
+  const i = (pd.participantes || []).findIndex(x => x.id === sel.id);
+  if (i < 0) return false;
+  pd.participantes[i] = sel;
+  pd.conteo = {};
+  pd.participantes.forEach(x => { pd.conteo[x.estado] = (pd.conteo[x.estado] || 0) + 1; });
+  renderParticipantes_();
+  return true;
+}
+
 async function ofePartLlamar_(accion, datos, titulo) {
+  if (ofePartGuardando_) return;
+  ofePartGuardando_ = true;
   try {
     const d = await apiPost(accion, Object.assign({ usuarioId: currentUser.id }, datos));
-    await recargarParticipantes_(true);
-    await recargarOfertas_(true);
+    const parchado = ofePartParchar_(d && d.seleccion);
+    if (!parchado || accion === 'resultadoEntrevista') {
+      recargarParticipantes_(true);
+      recargarOfertas_(true);
+    }
     Swal.fire({ icon: 'success', title: titulo, text: ofeTextoAviso_(d && d.aviso) });
   } catch (e) {
     Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: String(e.message || e) });
+  } finally {
+    ofePartGuardando_ = false;
   }
 }
 
@@ -1815,6 +1894,8 @@ window.__sepOfertas = {
   partCabecera: ofePartCabecera_,
   partFilaHtml: ofePartFilaHtml_,
   partRender: renderParticipantes_,
+  partSponsor: ofePartSponsor_,
+  partParchar: ofePartParchar_,
   partBuscador: renderPartBuscador_,
   textoAviso: ofeTextoAviso_
 };

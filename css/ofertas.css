@@ -294,3 +294,29 @@ html[data-tema="oscuro"] .ofe-part__aviso--info {
 .ofe-cont--mal { color: #dc2626; font-weight: 700; }
 .ofe-input--mal { border-color: #dc2626 !important; }
 .btn--off { opacity: .5; cursor: not-allowed; }
+
+/* ============================================================
+   AJUSTE 07/10/2026 — APLICADO AL SPONSOR
+   Filtro de tres botones en Participantes y distintivo en la
+   tarjeta. Colores translúcidos: valen igual en claro y oscuro.
+   ============================================================ */
+.ofe-spf { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.ofe-spf__b {
+  border: 1px solid var(--line, #e6e9ee); background: transparent; color: inherit;
+  border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.ofe-spf__b span {
+  min-width: 20px; padding: 0 6px; border-radius: 999px; font-size: 11.5px;
+  background: rgba(100, 116, 139, .15); text-align: center;
+}
+.ofe-spf__b.is-on { background: var(--primary, #1d4ed8); border-color: var(--primary, #1d4ed8); color: #fff; }
+.ofe-spf__b.is-on span { background: rgba(255, 255, 255, .25); }
+@media (max-width: 520px) { .ofe-spf__b { flex: 1 1 100%; justify-content: space-between; } }
+
+.ofe-sp { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+.ofe-sp--si { background: rgba(22, 163, 74, .14); color: #15803d; }
+.ofe-sp--no { background: rgba(217, 119, 6, .14); color: #b45309; }
+html[data-tema="oscuro"] .ofe-sp--si { color: #4ade80; }
+html[data-tema="oscuro"] .ofe-sp--no { color: #fbbf24; }
+html[data-tema="oscuro"] .ofe-spf__b.is-on { color: var(--on-primary, #101822); }
