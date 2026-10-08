@@ -303,6 +303,13 @@ function visDs2019Celda_(r) {
     (dis ? `<small class="vis-falta">Falta ${esc_(falta.join(' y '))}</small>` : '');
 }
 
+/* 5.3-A — avance del participante en su módulo Visa (pasos 1 a 6). */
+function visPasosV_(r) {
+  if (r.pasosV == null) return '';
+  const n = Number(r.pasosV) || 0;
+  return `<small class="vis-pasosv${n === 6 ? ' is-ok' : ''}" title="Pasos del módulo Visa que completó el participante en su portal">Portal ${n}/6</small>`;
+}
+
 /* 5.2-C — Documentación consular: lista o qué le falta (lo dice el backend). */
 function visConsularCelda_(r) {
   if (r.consular) return '<span class="vis-tag is-ok" title="Cumple las 7 condiciones">✅ Lista</span>';
@@ -361,7 +368,7 @@ function visFilaHtml_(r) {
     <td class="g2">${visCheck_(r, 'spon')}</td>
     <td class="g2">${visDs2019Celda_(r)}</td>
     <td class="g2">${visLeida_(r.ds2019, r.ds2019F, r.ds2019Q, 'Se marca cuando SEP aprueba el DS-2019 en Mis documentos')}</td>
-    <td class="g1">${visCheck_(r, 'ase')}</td>
+    <td class="g1">${visCheck_(r, 'ase')}${visPasosV_(r)}</td>
     <td class="g1">${visCheck_(r, 'pre')}</td>
     <td class="g3 vis-cons">${visConsularCelda_(r)}</td>
     <td class="g3">${visCarpetaCelda_(r)}</td>

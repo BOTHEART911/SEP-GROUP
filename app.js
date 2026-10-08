@@ -2393,6 +2393,12 @@ function renderCfgProgramas_(){
                  placeholder="https://…" />
           <div class="cfg-hint">Variable <b>{oferta_empleo_summer}</b> de la plantilla <b>APROBADO_INGLES</b> (dónde ve el estudiante las ofertas disponibles).</div>
         </div>
+        <div class="cfg-field full"><label>🛂 Videos del módulo Visa (portal del participante)</label>
+          <div class="cfg-hint" style="margin:0 0 8px">Solo YouTube, subidos como <b>No listado</b> (con "Privado" no se pueden ver dentro del portal). El participante ve el video dentro de la app, nunca el enlace.</div>
+          ${['Paso 1 · Pago y agendamiento','Paso 2 · DS-160 Real','Paso 3 · Documentos para la Embajada','Paso 4 · Preparación para la Embajada','Paso 5 · Preguntas frecuentes','Paso 6 · Resultados y siguientes pasos'].map((t,k)=>`
+          <input id="pr-vvisa-${i}-${k}" type="url" value="${esc_((p.videosVisa||[])[k]||'')}" placeholder="${t} — https://youtu.be/…" style="margin-bottom:6px" />`).join('')}
+          <input id="pr-vpre-${i}" type="url" value="${esc_(p.videoPreArrival||'')}" placeholder="Pre-Arrival — https://youtu.be/…" />
+        </div>
         <div class="cfg-field full"><label>ID de Plantilla Hoja de Vida</label>
           <div class="brochure-line">
             <input id="pr-hv-${i}" type="text" value="${esc_(p.plantillaHvId||'')}"
@@ -2445,9 +2451,15 @@ function renderCfgProgramas_(){
       if (!url){ Swal.fire({icon:'info', title:'Sin plantilla', text:'Este programa todavía no tiene ID de plantilla de hoja de vida.'}); return; }
       window.open(url, '_blank', 'noopener');
     });
-    $('#pr-save-'+i).addEventListener('click', async ()=>{
+    $('#pr-save-'+i).addEventListener('click', async (ev)=>{
+      /* 5.3-A — escudo: botón ocupado desde el primer toque. */
+      const btnG = ev.currentTarget;
+      if (btnG.dataset.ocupado) return;
+      btnG.dataset.ocupado = '1'; btnG.disabled = true;
       try{
         const res = await apiPost('savePrograma', { usuarioId: currentUser.id, id:p.id,
+          videosVisa: [0,1,2,3,4,5].map(k => ($('#pr-vvisa-'+i+'-'+k)||{}).value || ''),   // Fase 5.3
+          videoPreArrival: ($('#pr-vpre-'+i)||{}).value || '',                              // Fase 5.3
           precio: onlyDigits($('#pr-precio-'+i).value), frase: $('#pr-frase-'+i).value,
           datosPago: $('#pr-pago-'+i).value,                          // Fase 25
           videoUrl: $('#pr-video-'+i).value,                          // Fase 3 CONTRATO
@@ -2460,6 +2472,7 @@ function renderCfgProgramas_(){
         CFG.data.programas = res;
         Swal.fire({icon:'success', title:'Programa guardado', timer:900, showConfirmButton:false});
       }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+      finally{ delete btnG.dataset.ocupado; btnG.disabled = false; }
     });
     // Subir/reemplazar BROCHURE
     $('#pr-file-'+i).addEventListener('change', async (ev)=>{

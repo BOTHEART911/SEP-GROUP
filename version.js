@@ -3,6 +3,13 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.3 · ENTREGA A (08/10/2026) — MÓDULO VISA DEL PARTICIPANTE.
+ *   · Configuración → Programas: los 6 videos del módulo Visa y el del
+ *     Pre-Arrival (solo YouTube, No listado). Guardar con escudo.
+ *   · Panel de Visas: debajo de Asesoría Visa, "Portal n/6" = pasos
+ *     que el participante ya completó en su módulo Visa.
+ *   Archivos: app.js, js/visas.js, css/visas.css, version.js, sw.js (caché v44).
+ * ------------------------------------------------------------
  * UNA SOLA RECARGA POR VERSIÓN (08/10/2026).
  *   · El aviso de versión nueva ya no puede recargar la app en bucle
  *     cuando el navegador guarda version.js viejo (app.js, checkVersion).
@@ -630,4 +637,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.03";
+var APP_VERSION = "2026.10.08.04";

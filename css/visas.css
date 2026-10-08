@@ -99,3 +99,8 @@ html[data-tema="oscuro"] .vis-res--proceso_admin, html[data-tema="oscuro"] .vis-
 
 /* La vista usa todo el ancho disponible en PC (la tabla es ancha). */
 #view-visas .container--ancho { max-width: min(1680px, 100%); }
+
+/* 5.3-A — avance del participante en su módulo Visa */
+.vis-pasosv { display:block; margin-top:3px; font-size:11px; font-weight:700; color:var(--text-soft); white-space:nowrap; }
+.vis-pasosv.is-ok { color:#15803d; }
+html[data-tema="oscuro"] .vis-pasosv.is-ok { color:#4ade80; }
