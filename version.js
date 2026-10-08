@@ -3,6 +3,15 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.2 · ENTREGA C (08/10/2026) — DOCUMENTACIÓN CONSULAR Y RESULTADO.
+ *   · Panel de Visas: columna Documentación (lista o qué condición
+ *     falta), ☐ Carpeta entregada (solo con la documentación lista) y
+ *     Resultado consular (Pendiente, Aprobada, Negada, Proceso
+ *     Administrativo, Verificación de redes) con quién y cuándo.
+ *   · Indicadores Doc. consular lista, En Embajada y Visa aprobada.
+ *   · Estados 8 a 14 del participante encendidos desde el backend.
+ *   Archivos: js/visas.js, css/visas.css, version.js, sw.js (caché v42).
+ * ------------------------------------------------------------
  * FASE 5.2 · ENTREGA B (08/10/2026) — PANEL DE VISAS.
  *   · Procesos → Visas: tabla tipo Excel con edición en la fila
  *     (DS-160 interno, Sistema de Visa + clave oculta, Pago de Visa,
@@ -616,4 +625,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.01";
+var APP_VERSION = "2026.10.08.02";

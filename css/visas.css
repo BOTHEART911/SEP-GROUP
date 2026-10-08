@@ -27,6 +27,7 @@
 .vis-tabla thead .vis-grupos th { height: 31px; box-sizing: border-box; text-transform: uppercase; letter-spacing: .03em; font-size: 11px; }
 .vis-tabla thead th.g1 { background: color-mix(in srgb, #2563eb 9%, var(--bg-soft)); }
 .vis-tabla thead th.g2 { background: color-mix(in srgb, #0d9488 9%, var(--bg-soft)); }
+.vis-tabla thead th.g3 { background: color-mix(in srgb, #7c3aed 10%, var(--bg-soft)); }
 
 .vis-tabla .vis-sticky {
   position: sticky; left: 0; z-index: 2; text-align: left; white-space: normal;
@@ -68,6 +69,16 @@
 .vis-falta { display: block; font-size: 10.5px; color: var(--text-muted); }
 .vis-clave { min-width: 120px; }
 
+/* 5.2-C — Consular */
+.vis-cons { min-width: 150px; }
+.vis-falta--lista { text-align: left; white-space: normal; line-height: 1.35; margin-top: 2px; }
+.vis-sel { min-width: 170px; cursor: pointer; }
+.vis-sel:disabled { cursor: not-allowed; }
+.vis-sel.is-on { font-weight: 700; }
+.vis-res--aprobada { border-color: #16a34a; color: #15803d; }
+.vis-res--negada { border-color: #b91c1c; color: #b91c1c; }
+.vis-res--proceso_admin, .vis-res--verif_redes { border-color: #ca8a04; color: #a16207; }
+
 .vis-tabla tr.is-ocupado td, .vis-tabla tr.is-ocupado th { cursor: progress; }
 .vis-tabla tr.is-ocupado td { background: color-mix(in srgb, #2563eb 5%, var(--bg-card)); }
 .vis-tabla tr.is-inactivo .vis-nom { color: var(--text-muted); }
@@ -82,6 +93,9 @@
 html[data-tema="oscuro"] .vis-chk.is-on small { color: #4ade80; }
 html[data-tema="oscuro"] .vis-tag.is-ok { color: #4ade80; }
 html[data-tema="oscuro"] .vis-in { color-scheme: dark; }
+html[data-tema="oscuro"] .vis-res--aprobada { color: #4ade80; }
+html[data-tema="oscuro"] .vis-res--negada { color: #f87171; }
+html[data-tema="oscuro"] .vis-res--proceso_admin, html[data-tema="oscuro"] .vis-res--verif_redes { color: #facc15; }
 
 /* La vista usa todo el ancho disponible en PC (la tabla es ancha). */
 #view-visas .container--ancho { max-width: min(1680px, 100%); }

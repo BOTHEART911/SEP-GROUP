@@ -1,5 +1,5 @@
 /* =============================================================
- * SEP GROUP — PANEL DE VISAS (Fase 5 · Subfase 5.2 · Entrega B)
+ * SEP GROUP — PANEL DE VISAS (Fase 5 · Subfase 5.2 · Entregas B y C)
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
  * Software propietario; cualquier modificación por terceros anula
  * la garantía de funcionamiento.
@@ -17,6 +17,10 @@
  *   · Clave del Sistema de Visa: oculta; la ven y la escriben PROCESOS
  *     y SUPERUSUARIO, con registro (verClave, la misma pieza de la
  *     clave del portal académico).
+ *   · 5.2-C: Documentación consular lista (automática, el backend dice
+ *     qué condición falta), ☐ Carpeta entregada (solo con la
+ *     documentación lista; el candado real está en el backend) y
+ *     Resultado consular (solo SEP, con quién y cuándo).
  *
  * RENDIMIENTO (reglas de la casa)
  *   · Una vista, un viaje (visasInit: catálogo + lista, fmt=2 + gzip).
@@ -122,7 +126,11 @@ const VIS_TOPS = [
   { clave: 'SOLICITAR',   label: 'DS-2019 por solicitar',     ic: '📨', color: '#2563eb', f: r => r.ds2019Puede && !r.ds2019Sol && !r.ds2019 },
   { clave: 'ESPERA',      label: 'DS-2019 en espera',         ic: '⏳', color: '#7c3aed', f: r => r.ds2019Sol && !r.ds2019 },
   { clave: 'CITA',        label: 'Cita agendada',             ic: '🗓️', color: '#d97706', f: r => !!r.cita },
-  { clave: 'ASESORIA',    label: 'Asesoría pendiente',        ic: '🎓', color: '#0d9488', f: r => !!r.cita && !r.ase }
+  { clave: 'ASESORIA',    label: 'Asesoría pendiente',        ic: '🎓', color: '#0d9488', f: r => !!r.cita && !r.ase },
+  /* 5.2-C */
+  { clave: 'CONSULAR',    label: 'Doc. consular lista',       ic: '🗂️', color: '#0f766e', f: r => !!r.consular && !r.carpeta },
+  { clave: 'EMBAJADA',    label: 'En Embajada',               ic: '🏛️', color: '#1e40af', f: r => !!r.carpeta && (!r.resultado || r.resultado === 'PENDIENTE') },
+  { clave: 'APROBADA',    label: 'Visa aprobada',             ic: '🛂', color: '#16a34a', f: r => r.resultado === 'APROBADA' }
 ];
 
 function visVeTodos_() { return !!(VIS.catalogo && VIS.catalogo.permisos && VIS.catalogo.permisos.verTodos); }
@@ -295,6 +303,33 @@ function visDs2019Celda_(r) {
     (dis ? `<small class="vis-falta">Falta ${esc_(falta.join(' y '))}</small>` : '');
 }
 
+/* 5.2-C — Documentación consular: lista o qué le falta (lo dice el backend). */
+function visConsularCelda_(r) {
+  if (r.consular) return '<span class="vis-tag is-ok" title="Cumple las 7 condiciones">✅ Lista</span>';
+  const cat = (VIS.catalogo && VIS.catalogo.consular) || [];
+  const faltan = (r.consularFaltan || []).map(k => (cat.find(c => c.k === k) || { l: k }).l);
+  return `<span class="vis-tag is-pend" title="${esc_('Falta: ' + faltan.join(', '))}">⏳ Faltan ${faltan.length}</span>
+    <small class="vis-falta vis-falta--lista">${faltan.map(esc_).join('<br>')}</small>`;
+}
+function visCarpetaCelda_(r) {
+  if (r.carpeta) {
+    return visCheck_(r, 'carpeta', !!r.resultado, 'Carpeta entregada') +
+      (r.resultado ? '<small class="vis-falta">Quita el resultado para desmarcarla</small>' : '');
+  }
+  return visCheck_(r, 'carpeta', !r.consular, r.consular ? 'Lista para entregar' : 'Requiere la documentación consular lista') +
+    (r.consular ? '' : '<small class="vis-falta">Requiere doc. lista</small>');
+}
+function visResultadoCelda_(r) {
+  const ops = (VIS.catalogo && VIS.catalogo.resultados) || [];
+  const dis = VIS.ocupado[r.id] || !r.carpeta;
+  const v = r.resultado || '';
+  const tip = v ? ('Registrado por ' + (r.resultadoQ || '—') + ' · ' + (r.resultadoF || '')) : (r.carpeta ? 'Sin registrar' : 'Se registra con la carpeta entregada');
+  return `<select class="vis-in vis-sel${v ? ' is-on vis-res--' + v.toLowerCase() : ''}" data-vk="resultado" title="${esc_(tip)}"${dis ? ' disabled' : ''}>
+      <option value="">— Sin registrar —</option>
+      ${ops.map(o => `<option value="${esc_(o.k)}"${o.k === v ? ' selected' : ''}>${esc_(o.ic + ' ' + o.l)}</option>`).join('')}
+    </select>${v && r.resultadoF ? `<small class="vis-falta">${esc_((r.resultadoQ || '') + ' · ' + visFechaCorta_(r.resultadoF))}</small>` : ''}`;
+}
+
 function visFilaHtml_(r) {
   const oc = VIS.ocupado[r.id];
   return `<tr data-vid="${esc_(r.id)}" class="${oc ? 'is-ocupado' : ''}${r.inactivo ? ' is-inactivo' : ''}">
@@ -328,6 +363,9 @@ function visFilaHtml_(r) {
     <td class="g2">${visLeida_(r.ds2019, r.ds2019F, r.ds2019Q, 'Se marca cuando SEP aprueba el DS-2019 en Mis documentos')}</td>
     <td class="g1">${visCheck_(r, 'ase')}</td>
     <td class="g1">${visCheck_(r, 'pre')}</td>
+    <td class="g3 vis-cons">${visConsularCelda_(r)}</td>
+    <td class="g3">${visCarpetaCelda_(r)}</td>
+    <td class="g3">${visResultadoCelda_(r)}</td>
   </tr>`;
 }
 
@@ -345,6 +383,7 @@ const VIS_CABECERA = `<thead>
     <th colspan="3" class="g2">Sponsor y DS-2019</th>
     <th class="g1">Asesoría Visa</th>
     <th class="g1">Pre-Arrival</th>
+    <th colspan="3" class="g3">Consular</th>
   </tr>
   <tr>
     <th>Teléfono</th><th>Correo</th><th>Nacimiento</th><th>Pasaporte</th><th>Sponsor</th>
@@ -358,6 +397,8 @@ const VIS_CABECERA = `<thead>
     <th class="g2">☐ Docs Sponsor</th><th class="g2">☐ Solicitado</th><th class="g2" title="Leído de Mis documentos">☑ Recibido (doc)</th>
     <th class="g1">☐ Completada</th>
     <th class="g1">☐ Completado</th>
+    <th class="g3" title="Automática: DS-2019, SEVIS, DS-160 Real con N°, pago Completado y validado, Verificación Académica y Asesoría">Documentación</th>
+    <th class="g3">☐ Carpeta entregada</th><th class="g3" title="Solo SEP lo registra">Resultado</th>
   </tr></thead>`;
 
 function visPintarTabla_() {
@@ -395,6 +436,7 @@ document.addEventListener('change', e => {
   const r = visFilaDe_(el); if (!r) return;
   const k = el.dataset.vk;
   if (el.type === 'checkbox') { visGuardar_(r, { [k]: !!el.checked }); return; }
+  if (k === 'resultado') { visResultado_(r, visTxt_(el.value)); return; }
   let v = visTxt_(el.value);
   if (el.type === 'datetime-local') v = v.replace('T', ' ').slice(0, 16);
   if (el.type === 'text') { v = v.toUpperCase().replace(/[\s-]/g, ''); el.value = v; }
@@ -444,6 +486,21 @@ async function visGuardar_(r, cambios) {
     visRepintarFila_(id);
     visPintarTop_();
   }
+}
+
+/* 5.2-C — el resultado consular cambia lo que ve el participante: se
+   confirma antes (el escudo empieza en visGuardar_). */
+async function visResultado_(r, v) {
+  if (v === visTxt_(r.resultado)) return;
+  const op = ((VIS.catalogo && VIS.catalogo.resultados) || []).find(o => o.k === v);
+  const c = await Swal.fire({ icon: 'question',
+    title: v ? 'Registrar resultado consular' : 'Quitar el resultado consular',
+    html: '<b>' + esc_(r.nombres + ' ' + r.apellidos) + '</b><br>' +
+      (v ? 'Resultado: <b>' + esc_(op ? op.l : v) + '</b>. Quedará registrado con tu nombre y la hora, y el participante lo verá.'
+         : 'El participante vuelve a quedar en Embajada Americana.'),
+    showCancelButton: true, confirmButtonText: v ? 'Registrar' : 'Quitar', cancelButtonText: 'Cancelar' });
+  if (!c.isConfirmed) { visRepintarFila_(r.id); return; }
+  return visGuardar_(r, { resultado: v });
 }
 
 /* Parche en memoria: la fila trae todo lo que pinta el panel. */
@@ -513,4 +570,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Puerta para las pruebas automatizadas. */
 window.__sepVisas = { VIS, abrirVisas_, visPintarTodo_, visVisibles_, visSalir_, visParchar_, visGuardar_,
-                      visFilaHtml_, VIS_TOPS };
+                      visFilaHtml_, VIS_TOPS, visResultado_ };
