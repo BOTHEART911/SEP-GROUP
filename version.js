@@ -3,6 +3,18 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * RENDIMIENTO (07/10/2026) — LECTURAS, PESO Y MEDICIÓN.
+ *   · Las respuestas grandes viajan comprimidas (gzip) y las listas de
+ *     Comercial y Contador en columnas: Contador baja de 839 KB a un
+ *     listado ligero; la ficha completa llega al abrirla (se pinta
+ *     primero lo que ya se sabe de la fila) y los archivos de la
+ *     tarjeta se traen al tocarlos.
+ *   · Los tiempos de cada pantalla viajan a la hoja MEDICION pegados a
+ *     la siguiente lectura (sin viajes extra).
+ *   Archivos: app.js, js/contador.js, version.js, sw.js (caché v38).
+ *   Apps Script: Lectura.gs (nuevo), Medicion.gs, Código, Contador,
+ *   Seguimientos, Bot, Agenda y OfertasProceso.
+ * ------------------------------------------------------------
  * FASE 5.2 · ENTREGA A (07/10/2026) — VERIFICACIÓN ACADÉMICA.
  *   · Procesos → Verificación Académica: filtros Pendiente / Pendiente
  *     de consentimiento / Revisado, Asesor, Sponsor y Año; datos del
@@ -581,4 +593,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.07.07";
+var APP_VERSION = "2026.10.07.08";

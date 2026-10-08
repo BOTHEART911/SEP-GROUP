@@ -65,7 +65,7 @@ async function abrirContador_() {
 
 async function cargarContador_() {
   try {
-    const d = await apiGet('contadorInit', { usuarioId: currentUser.id });
+    const d = await apiGet('contadorInit', { usuarioId: currentUser.id, lig: '1' });   // 07/10 — listado ligero
     CONTA.catalogo  = d.catalogo;
     estPartCargar_(d.catalogo && d.catalogo.estadosPart);         // FASE 5.1 · D
     TEMP.set(d.temporadas); TEMP.montar('contador');               // FASE 5.1
@@ -90,7 +90,7 @@ async function recargarContador_(silencioso) {
     /* Fase 4 — el refresco de fondo va SILENCIOSO de verdad: sin esto
        salía el girador (y ahora saldría el esqueleto) encima de datos
        que ya están pintados. */
-    CONTA.todos = await apiGet('listContador', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    CONTA.todos = await apiGet('listContador', { usuarioId: currentUser.id, lig: '1' }, { silent: !!silencioso });
     CONTA.registros = TEMP.filtrar(CONTA.todos);                    // FASE 5.1
     renderContaFiltros_(); renderContaCards_(); renderContaResumen_();
   } catch (e) {
@@ -337,7 +337,34 @@ function renderContaCards_() {
     card.querySelector('[data-act="eliminar"]')?.addEventListener('click', () => eliminarInscripcion_(r));
     card.querySelectorAll('[data-ver]').forEach(b =>
       b.addEventListener('click', () => abrirVisorConta_(b.dataset.ver, b.dataset.titulo)));
+    card.querySelectorAll('[data-campo]').forEach(b =>
+      b.addEventListener('click', () => contaVerArchivo_(r, b.dataset.campo, Number(b.dataset.i), b.dataset.titulo, b)));
   });
+}
+
+/* 07/10/2026 — LISTADO LIGERO. La fila de la lista trae lo que pinta la
+   tarjeta; la ficha completa (datos, URLs, historiales) se pide UNA vez
+   al abrirla y se queda en la fila. */
+async function contaFilaCompleta_(r) {
+  if (!r || !r.lig) return r;
+  const f = await apiGet('verContador', { usuarioId: currentUser.id, n: r.n }, { silent: true });
+  Object.keys(f || {}).forEach(k => { r[k] = f[k]; });
+  delete r.lig;
+  return r;
+}
+async function contaVerArchivo_(r, campo, i, titulo, btn) {
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
+  try {
+    const f = await contaFilaCompleta_(r);
+    const v = f[campo];
+    const url = Array.isArray(v) ? v[i] : v;
+    if (typeof url === 'string' && url) abrirVisorConta_(url, titulo);
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'No se pudo abrir el archivo', text: String(e.message || e) });
+  } finally {
+    if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
+  }
 }
 
 /* FASE 5.1 · B — `banco`: null = no hay comprobante (sin indicador);
@@ -366,16 +393,21 @@ function contaCardHtml_(r) {
       : `<span class="conta-aviso">💼 Oferta confirmada: ${esc_(r.ofertaConfirmada.empleador)}</span>`);
   }
 
+  /* 07/10/2026 — en el listado ligero el archivo viaja como 1 (hay
+     archivo): el botón lleva el campo y la URL se trae al tocarlo. */
   const archivos = [];
-  if (r.comprobanteUrl) archivos.push(`<button class="act-btn" data-ver="${esc_(r.comprobanteUrl)}" data-titulo="Comprobante de inscripción">🧾 Comprobante</button>`);
-  if (r.contratoUrl)    archivos.push(`<button class="act-btn" data-ver="${esc_(r.contratoUrl)}" data-titulo="Contrato firmado">📄 Contrato</button>`);
-  if (r.documentoUrl)   archivos.push(`<button class="act-btn" data-ver="${esc_(r.documentoUrl)}" data-titulo="Documento del estudiante">🆔 Documento</button>`);
-  if (r.cedulaUrl)      archivos.push(`<button class="act-btn" data-ver="${esc_(r.cedulaUrl)}" data-titulo="Cédula del deudor solidario">🧑‍🤝‍🧑 Cédula deudor</button>`);
+  const btnArch = (campo, i, url, titulo, txt) => (typeof url === 'string' && url)
+    ? `<button class="act-btn" data-ver="${esc_(url)}" data-titulo="${titulo}">${txt}</button>`
+    : `<button class="act-btn" data-campo="${campo}" data-i="${i}" data-titulo="${titulo}">${txt}</button>`;
+  if (r.comprobanteUrl) archivos.push(btnArch('comprobanteUrl', -1, r.comprobanteUrl, 'Comprobante de inscripción', '🧾 Comprobante'));
+  if (r.contratoUrl)    archivos.push(btnArch('contratoUrl', -1, r.contratoUrl, 'Contrato firmado', '📄 Contrato'));
+  if (r.documentoUrl)   archivos.push(btnArch('documentoUrl', -1, r.documentoUrl, 'Documento del estudiante', '🆔 Documento'));
+  if (r.cedulaUrl)      archivos.push(btnArch('cedulaUrl', -1, r.cedulaUrl, 'Cédula del deudor solidario', '🧑‍🤝‍🧑 Cédula deudor'));
   /* FASE 5 — los tres comprobantes opcionales. */
-  if (r.comprobanteOfertaUrl) archivos.push(`<button class="act-btn" data-ver="${esc_(r.comprobanteOfertaUrl)}" data-titulo="Comprobante de pago de oferta">💵 Comp. oferta</button>`);
-  if (r.comprobanteTotalUrl)  archivos.push(`<button class="act-btn" data-ver="${esc_(r.comprobanteTotalUrl)}" data-titulo="Comprobante de pago total">🏦 Comp. pago total</button>`);
+  if (r.comprobanteOfertaUrl) archivos.push(btnArch('comprobanteOfertaUrl', -1, r.comprobanteOfertaUrl, 'Comprobante de pago de oferta', '💵 Comp. oferta'));
+  if (r.comprobanteTotalUrl)  archivos.push(btnArch('comprobanteTotalUrl', -1, r.comprobanteTotalUrl, 'Comprobante de pago total', '🏦 Comp. pago total'));
   (r.comprobantesExtra || []).forEach((u, i) =>
-    archivos.push(`<button class="act-btn" data-ver="${esc_(u)}" data-titulo="Comprobante adicional ${i + 1}">📎 Adicional ${i + 1}</button>`));
+    archivos.push(btnArch('comprobantesExtra', i, u, 'Comprobante adicional ' + (i + 1), '📎 Adicional ' + (i + 1))));
 
   /* FASE 4 · ENTREGA 5 · 2.2 — identificación en rojo. */
   if (r.retirado) {
@@ -801,12 +833,37 @@ function contaParchar_(d) {
      si se desmarcaron, hay que borrarlas antes de mezclar. */
   ['bancoIns', 'bancoOferta', 'bancoTotal', 'bancoExtra'].forEach(k => { delete CONTA.todos[i][k]; });
   Object.assign(CONTA.todos[i], d);
+  if (!d.lig) delete CONTA.todos[i].lig;                           // 07/10 — ya es la ficha completa
   CONTA.registros = TEMP.filtrar(CONTA.todos);
   try { renderContaFiltros_(); renderContaCards_(); renderContaResumen_(); } catch (e) { return false; }
   return true;
 }
 
-function abrirModalContador_(r) {
+/* 07/10/2026 — cabecera antes que datos: con la fila ligera se abre el
+   modal con lo que ya se sabe y la ficha completa llega en un viaje. */
+async function abrirModalContador_(r) {
+  if (!r || !r.lig) return abrirModalContadorCompleto_(r);
+  const pedido = CONTA.abriendo = r.n;
+  CONTA.actual = null;
+  document.querySelector('#conta-modal-title').textContent = 'N° ' + r.n + ' · ' + r.nombres + ' ' + r.apellidos;
+  document.querySelector('#conta-modal-sub').innerHTML =
+    `<span class="com-badge" style="background:${r.etapaColor}">${r.etapaIc} ${esc_(r.etapaLabel)}</span>`;
+  document.querySelector('#conta-modal-body').innerHTML =
+    '<div class="sep-sk-rows" role="status" aria-label="Cargando la ficha"><span class="sep-sk sep-sk-field"></span><span class="sep-sk sep-sk-field"></span><span class="sep-sk sep-sk-field"></span></div>';
+  document.querySelector('#modal-contador').classList.remove('hidden');
+  try {
+    const f = await contaFilaCompleta_(r);
+    if (CONTA.abriendo !== pedido || document.querySelector('#modal-contador').classList.contains('hidden')) return;
+    abrirModalContadorCompleto_(f);
+  } catch (e) {
+    if (CONTA.abriendo !== pedido) return;
+    cerrarModalContador_();
+    Swal.fire({ icon: 'error', title: 'No se pudo abrir la ficha', text: String(e.message || e) });
+  }
+}
+
+function abrirModalContadorCompleto_(r) {
+  CONTA.abriendo = r && r.n;
   CONTA.actual = r;
   const op = CONTA.catalogo?.opciones || {};
   const procesoCerrado = (op.proceso || []).indexOf(r.proceso) >= 0 || !r.proceso;

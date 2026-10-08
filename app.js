@@ -48,17 +48,57 @@ function stopLoading(){ if (loadingCount===0) return; loadingCount--; if (loadin
 /* ================== API (text/plain evita preflight CORS) ==================
    opts.silent = true  → no muestra el spinner global (para refrescos en
    segundo plano como el polling del chat). */
+/* 07/10/2026 — RESPUESTA COMPRIMIDA Y MEDICIÓN.
+   · z=1: si el navegador sabe abrir gzip (DecompressionStream), el
+     servidor manda las respuestas grandes comprimidas ({ok, gz}) y aquí
+     se abren. Sin soporte no se pide y todo viaja como antes.
+   · Tiempos de pantalla: cada lectura anota ruta, ms y KB; viajan
+     pegados a la siguiente lectura (_mf) a la hoja MEDICION, sin viajes
+     propios. Siempre lo lento (≥ 3 s); del resto 1 de 3. */
+const API_GZ = (typeof DecompressionStream === 'function');
+const MED_PEND = [];
+function medAnotarFront_(ruta, ms, kb, det){
+  if (ms < 3000 && Math.random() >= 1/3) return;
+  if (MED_PEND.length >= 8) MED_PEND.shift();
+  MED_PEND.push([ruta, Math.round(ms), Math.round(kb * 10) / 10, det || '']);
+}
+async function apiAbrirGz_(b64){
+  const bin = atob(b64), u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  const flujo = new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return JSON.parse(await new Response(flujo).text());
+}
+/* Listas grandes en columnas (fmt=2): { fmt:2, c:[campos], f:[[...]] }.
+   Se rehidratan a objetos; un null es "campo que la fila no trae". */
+const API_FMT2 = { comercialInit: 1, listComercial: 1, contadorInit: 1, listContador: 1 };
+function apiRehidratar_(x){
+  const conv = v => (v && v.fmt === 2 && Array.isArray(v.c) && Array.isArray(v.f))
+    ? v.f.map(f => { const o = {}; for (let i = 0; i < v.c.length; i++) if (f[i] !== null) o[v.c[i]] = f[i]; return o; })
+    : v;
+  if (!x || typeof x !== 'object') return x;
+  if (x.fmt === 2) return conv(x);
+  if (x.registros && x.registros.fmt === 2) x.registros = conv(x.registros);
+  return x;
+}
 async function apiGet(action, params = {}, opts = {}){
   if (!opts.silent) startLoading();
+  const t0 = performance.now();
   try{
     const url = new URL(API_BASE);
-    url.search = new URLSearchParams({ action, ...params }).toString();
+    const extra = {};
+    if (API_GZ) extra.z = '1';
+    if (API_FMT2[action]) extra.fmt = '2';
+    if (MED_PEND.length) extra._mf = JSON.stringify(MED_PEND.splice(0, MED_PEND.length));
+    url.search = new URLSearchParams({ action, ...params, ...extra }).toString();
     /* FASE 5.2-A — opts.signal: la vista que pidió la lectura la puede
        cortar al salir (AbortController). Las escrituras no lo usan. */
     const r = await fetch(url.toString(), opts.signal ? { method:'GET', signal: opts.signal } : { method:'GET' });
-    const j = await r.json();
+    const txt = await r.text();
+    let j = JSON.parse(txt);
+    if (j && j.gz) j = await apiAbrirGz_(j.gz);
+    medAnotarFront_(action, performance.now() - t0, txt.length / 1024, j && j.ok === false ? 'error' : '');
     if(!j.ok) throw new Error(j.error || 'Error');
-    return j.data;
+    return apiRehidratar_(j.data);
   } finally { if (!opts.silent) stopLoading(); }
 }
 /* FASE 5.1 (07/10/2026) — toda escritura lleva un id de petición (rid).
