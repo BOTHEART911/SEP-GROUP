@@ -302,6 +302,19 @@ async function checkVersion(){
       return;
     }
     if (v !== APP_VERSION_LOADED){
+      /* 08/10/2026 — UNA sola recarga por versión. El <script> de
+         version.js puede llegar de la caché HTTP del navegador (GitHub
+         Pages la guarda ~10 min) con el número viejo mientras la red ya
+         trae el nuevo: sin este freno la app se recargaba en bucle
+         (medido: un equipo hizo ~800 recargas en 6 min tras publicar). */
+      let ya = '';
+      try { ya = sessionStorage.getItem('sepRecargaVer') || ''; } catch(_){}
+      if (ya === v){
+        APP_VERSION_LOADED = v;
+        $$('.app-version-line').forEach(el => el.textContent = 'Versión ' + v);
+        return;
+      }
+      try { sessionStorage.setItem('sepRecargaVer', v); } catch(_){}
       try{ const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); }catch(_){}
       location.reload();
     }

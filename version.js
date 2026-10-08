@@ -3,6 +3,11 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * UNA SOLA RECARGA POR VERSIÓN (08/10/2026).
+ *   · El aviso de versión nueva ya no puede recargar la app en bucle
+ *     cuando el navegador guarda version.js viejo (app.js, checkVersion).
+ *   Archivos: app.js, version.js, sw.js (caché v43).
+ * ------------------------------------------------------------
  * FASE 5.2 · ENTREGA C (08/10/2026) — DOCUMENTACIÓN CONSULAR Y RESULTADO.
  *   · Panel de Visas: columna Documentación (lista o qué condición
  *     falta), ☐ Carpeta entregada (solo con la documentación lista) y
@@ -625,4 +630,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.02";
+var APP_VERSION = "2026.10.08.03";
