@@ -3,6 +3,18 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.2 · ENTREGA A (07/10/2026) — VERIFICACIÓN ACADÉMICA.
+ *   · Procesos → Verificación Académica: filtros Pendiente / Pendiente
+ *     de consentimiento / Revisado, Asesor, Sponsor y Año; datos del
+ *     participante, secciones 6 y 7 del formulario, certificados con
+ *     Ver / Aprobar / Rechazar, notas internas y resultado (Aprobado /
+ *     Rechazado / Aprobado condicionalmente + consentimiento firmado).
+ *   · La clave del portal académico sale oculta: se ve a pedido y queda
+ *     registrado quién la vio.
+ *   Archivos: index.html, app.js, js/verif.js, css/verif.css,
+ *   img/verificacion.svg, js/capa-5-esqueletos.js, sw.js (caché v37).
+ *   Apps Script: VerifAcademica.gs (nuevo), Código + MIGRADOR_F52A.
+ * ------------------------------------------------------------
  * FASE 5.1 · ENTREGA D (07/10/2026) — MOTOR DE 18 ESTADOS.
  *   · Estado actual + acción futura en las tarjetas de Contador y de
  *     Nivel de Inglés (y en la ficha del Contador). La definición de
@@ -569,4 +581,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.07.06";
+var APP_VERSION = "2026.10.07.07";

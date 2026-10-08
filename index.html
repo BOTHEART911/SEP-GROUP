@@ -59,6 +59,8 @@
   <link rel="stylesheet" href="css/procesos.css" />
   <!-- FASE 5.1 · A (07/10/2026) — selector de temporada y Configuración → Temporadas -->
   <link rel="stylesheet" href="css/temporada.css" />
+  <!-- FASE 5.2 · A (07/10/2026) — Verificación Académica -->
+  <link rel="stylesheet" href="css/verif.css" />
   <!-- MODO OSCURO · ANTIPARPADEO (11/08)
        Deja puesto data-tema ANTES del primer pintado; si no, la app
        nace clara y parpadea a oscuro al cargar el JS. Sin elección
@@ -953,6 +955,12 @@
           <div class="menu-tile__title">Nivel de Inglés</div>
           <div class="menu-tile__desc">Resultado Prueba IA</div>
         </button>
+        <!-- FASE 5.2 · Entrega A (07/10/2026) — Verificación Académica -->
+        <button class="menu-tile" id="proc-tile-verif">
+          <img src="img/verificacion.svg" alt="Verificación Académica" loading="lazy" />
+          <div class="menu-tile__title">Verificación Académica</div>
+          <div class="menu-tile__desc">Revisión de estudios</div>
+        </button>
         <!-- FASE 4 · Entrega 1 (03/09/2026) -->
         <button class="menu-tile" id="proc-tile-ofertas">
           <img src="img/job.png" alt="Ofertas de Empleo" loading="lazy" />
@@ -1013,6 +1021,64 @@
       </div>
     </div>
   </section>
+
+  <!-- FASE 5.2 · Entrega A (07/10/2026) — VERIFICACIÓN ACADÉMICA -->
+  <section id="view-verif" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="procesos" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Verificación Académica</h1>
+      <button class="app-header__icon" id="veri-refresh" title="Actualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </header>
+
+    <div class="container">
+      <div class="conta-kpis veri-tops" id="veri-resumen"></div>
+      <div class="com-toolbar">
+        <div class="search-bar">
+          <svg class="search-bar__ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="veri-search" type="search" placeholder="Buscar por nombre, documento, N° o correo…" autocomplete="off" />
+        </div>
+      </div>
+      <div class="filters-row" id="veri-filters"></div>
+      <div id="veri-cards" class="com-cards"></div>
+      <div id="veri-empty" class="com-empty hidden">
+        <p style="font-weight:700;color:var(--text-soft);">Sin participantes con ese filtro</p>
+        <p class="muted">Aquí aparecen quienes ya tienen el <b>formulario SEP aprobado</b> en Nivel de Inglés.</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="veri-fsheet" class="fsheet hidden" aria-hidden="true">
+    <div class="fsheet__scrim" data-veri-fsheet-close></div>
+    <div class="fsheet__panel" role="dialog" aria-modal="true" aria-labelledby="veri-fsheet-title">
+      <div class="fsheet__grip"></div>
+      <div class="fsheet__head">
+        <h3 id="veri-fsheet-title">Filtrar</h3>
+        <button class="fsheet__x" data-veri-fsheet-close aria-label="Cerrar">✕</button>
+      </div>
+      <div class="fsheet__list" id="veri-fsheet-list"></div>
+    </div>
+  </div>
+
+  <div id="modal-veri" class="modal-overlay hidden">
+    <div class="modal-card modal-card--xl">
+      <div class="modal-head">
+        <div>
+          <h2 id="veri-det-title">Verificación Académica</h2>
+          <div id="veri-det-sub" class="conta-sub"></div>
+        </div>
+        <button id="veri-det-close" class="modal-x" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="veri-det-datos"></div>
+        <div id="veri-det-res"></div>
+        <div id="veri-det-body"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Hoja inferior de filtros de Nivel de Inglés -->
   <div id="nive-fsheet" class="fsheet hidden" aria-hidden="true">
@@ -1293,6 +1359,8 @@
   <!-- DOCUMENTOS DEL PARTICIPANTE (04/09 · Fase 4 · Entrega 6)
        También después de js/nivel.js: es quien lo llama. -->
   <script src="js/nivel-docs.js"></script>
+  <!-- FASE 5.2 · Entrega A — Verificación Académica -->
+  <script src="js/verif.js"></script>
 
   <!-- FASE 4 · Entrega 1 (03/09/2026) — Ofertas de empleo -->
   <script src="js/ofertas.js"></script>

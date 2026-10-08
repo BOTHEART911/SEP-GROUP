@@ -53,7 +53,9 @@ async function apiGet(action, params = {}, opts = {}){
   try{
     const url = new URL(API_BASE);
     url.search = new URLSearchParams({ action, ...params }).toString();
-    const r = await fetch(url.toString(), { method:'GET' });
+    /* FASE 5.2-A — opts.signal: la vista que pidió la lectura la puede
+       cortar al salir (AbortController). Las escrituras no lo usan. */
+    const r = await fetch(url.toString(), opts.signal ? { method:'GET', signal: opts.signal } : { method:'GET' });
     const j = await r.json();
     if(!j.ok) throw new Error(j.error || 'Error');
     return j.data;
@@ -132,6 +134,8 @@ function showView(id){
     if (id === 'ofertas') ofeLiveOn_();
     else ofeLiveOff_();
   }
+  // FASE 5.2-A: al salir de Verificación Académica se corta su lectura.
+  if (id !== 'verif' && typeof veriSalir_ === 'function') veriSalir_();
 }
 
 /* FASE 5 — URL del Doc de Google de la plantilla del contrato.

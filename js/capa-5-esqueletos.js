@@ -184,6 +184,9 @@
     buscarParticipantes:     [['ofe-part-body', 'lead', 3]],
     ofertasParaParticipante: [['ofe-part-body', 'lead', 3]],
     docsParticipante:        [['ndocs-body', 'bloque', 4]],
+    /* FASE 5.2-A — Verificación Académica: lista y detalle con silueta. */
+    verifInit:               [['veri-resumen', 'kpis', 1], ['veri-cards', 'lead', 4]],
+    verifDetalle:            [['veri-det-body', 'bloque', 3]],
     /* Lecturas de fondo: sin girador y sin silueta (no pintan contenedor) */
     bootstrap: [],
     me: [],
@@ -193,7 +196,8 @@
 
   /* Avisos de "no hay nada" que deben esconderse mientras se pinta la silueta */
   var VACIOS = { 'com-cards': 'com-empty', 'usr-cards': 'usr-empty', 'conta-cards': 'conta-empty',
-                 'nive-cards': 'nive-empty', 'ofe-cards': 'ofe-empty' };
+                 'nive-cards': 'nive-empty', 'ofe-cards': 'ofe-empty',
+                 'veri-cards': 'veri-empty' };
 
   /* ---- Pintar / retirar -------------------------------------------------- */
   function pintar(plan) {

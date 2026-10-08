@@ -1,0 +1,85 @@
+/* =============================================================
+ * SEP GROUP — VERIFICACIÓN ACADÉMICA (Fase 5.2 · Entrega A)
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * Usa los tokens de styles.css (claro y oscuro) y las piezas que ya
+ * existen: .com-card, .conta-kpi, .fpill, .ndoc, .act-btn.
+ * ============================================================= */
+
+.veri-top.is-on { box-shadow: 0 0 0 2px var(--k), 0 6px 16px rgba(15, 23, 42, .10); }
+.veri-falta { color: var(--text-muted); font-style: italic; }
+
+.veri-card__res { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 6px; }
+.veri-sello {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700;
+  padding: 4px 10px; border-radius: 999px; color: var(--k);
+  background: color-mix(in srgb, var(--k) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--k) 35%, transparent);
+}
+.veri-nota-ic { font-size: 12px; color: var(--text-soft); padding: 4px 8px; border-radius: 999px; background: var(--bg-soft); }
+
+/* ---------- detalle ---------- */
+.veri-datos {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 14px;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-soft);
+  margin-bottom: 12px;
+}
+.veri-dato { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.veri-dato__l { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+.veri-dato__v { font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; }
+
+.veri-sec { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: var(--bg-card); }
+.veri-sec__t { margin: 0 0 10px; font-size: 14.5px; color: var(--text-main); }
+.veri-sec__t small { font-weight: 500; color: var(--text-muted); }
+.veri-meta { font-size: 12.5px; color: var(--text-soft); margin: 6px 0 0; }
+
+.veri-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.veri-opt {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px;
+  border-radius: 10px; border: 1.5px solid var(--border-strong); font-weight: 600; font-size: 13.5px;
+  min-height: 40px; user-select: none;
+}
+.veri-opt input { accent-color: var(--k); width: 16px; height: 16px; }
+.veri-opt.is-on { border-color: var(--k); background: color-mix(in srgb, var(--k) 10%, transparent); color: var(--k); }
+
+.veri-consent {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 12px;
+  border-radius: 10px; border: 1.5px dashed #ca8a04; font-weight: 700; cursor: pointer; min-height: 40px;
+}
+.veri-consent input { width: 18px; height: 18px; accent-color: #16a34a; }
+.veri-consent.is-on { border-style: solid; border-color: #16a34a; color: #15803d; }
+
+.veri-valida { margin: 10px 0 0; font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--bg-soft); color: var(--text-soft); }
+.veri-valida.is-ok { background: color-mix(in srgb, #16a34a 12%, transparent); color: #15803d; font-weight: 700; }
+
+#veri-notas {
+  width: 100%; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--border-strong);
+  padding: 10px 12px; font: inherit; background: var(--bg-card); color: var(--text-main); resize: vertical;
+}
+.veri-notas-pie { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.veri-cargando { color: var(--text-muted); font-size: 13px; }
+
+.veri-campo { display: grid; grid-template-columns: minmax(140px, 38%) 1fr; gap: 10px; padding: 8px 0; border-top: 1px dashed var(--border); }
+.veri-campo:first-of-type { border-top: 0; }
+.veri-campo__l { font-size: 12.5px; color: var(--text-soft); }
+.veri-campo__v { font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; min-width: 0; }
+.veri-chip { display: inline-block; margin: 0 6px 6px 0; padding: 3px 9px; border-radius: 999px; background: var(--bg-soft); font-size: 12px; }
+.veri-tabla-w { overflow-x: auto; }
+.veri-tabla { border-collapse: collapse; font-size: 12.5px; min-width: 100%; }
+.veri-tabla th, .veri-tabla td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; vertical-align: top; }
+.veri-tabla th { background: var(--bg-soft); font-weight: 700; }
+.veri-oculta { letter-spacing: .15em; }
+.veri-clave { padding: 2px 8px; border-radius: 6px; background: var(--bg-soft); font-size: 13px; }
+.veri-link { border: 0; background: none; color: #2563eb; font-weight: 700; cursor: pointer; padding: 4px 6px; font-size: 12.5px; }
+.veri-link:disabled { opacity: .5; cursor: default; }
+.veri-cert { margin-bottom: 8px; }
+
+#modal-veri.is-ocupado .modal-body { cursor: progress; }
+
+@media (max-width: 560px) {
+  .veri-campo { grid-template-columns: 1fr; gap: 2px; }
+}
+
+html[data-tema="oscuro"] .veri-link { color: #93c5fd; }
+html[data-tema="oscuro"] .veri-consent.is-on { color: #4ade80; border-color: #4ade80; }
+html[data-tema="oscuro"] .veri-valida.is-ok { color: #4ade80; }
+html[data-tema="oscuro"] .veri-sello { filter: brightness(1.6); }
