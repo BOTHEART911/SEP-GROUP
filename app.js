@@ -3581,6 +3581,7 @@ const USR_FOTO_FALLBACK = 'img/usuarios.webp';
    enlace": el equipo los ve con su cuenta de Google (el correo de
    USUARIOS) y el participante con el suyo. La nota va bajo cada visor. */
 function notaVisorPrivado_(){
+  return '';   /* Pausado 07/10/2026: los documentos siguen como estaban (con enlace). */
   const c = (currentUser && currentUser.email) ? String(currentUser.email).trim() : '';
   return '🔒 Documento privado: se abre con tu cuenta de Google del equipo' + (c ? ' (' + c + ')' : '') +
          '. Si ves «Necesitas acceso», toca ↗ Abrir e inicia sesión con ese correo. ' +
