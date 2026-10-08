@@ -3,6 +3,19 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.5 · ENTREGA C (08/10/2026) — DASHBOARD, ESCALA SEA Y VER FORMULARIO
+ * EN TARJETAS (cero tablas).
+ *   · Dashboard comercial: Rendimiento por asesor y Ventas por programa
+ *     en tarjetas (anillo de conversión, leads/asesorías/inscripciones,
+ *     ventas y su participación) + tarjeta de total; silueta "minis".
+ *   · Configuración › Nivel y SEA: cada nivel es una tarjeta editable con
+ *     la regla 0–9 de su tramo; escudo en "Guardar escala".
+ *   · Nivel de Inglés › Ver formulario: listas repetibles en tarjetas,
+ *     también en edición (➕ / ✕ por registro).
+ *   Archivos: app.js, styles.css, js/nivel-perfil.js, css/nivel.css,
+ *   css/tema-oscuro.css, js/capa-5-esqueletos.js,
+ *   css/capa-5-esqueletos.css, version.js, sw.js (caché v52).
+ * ------------------------------------------------------------
  * FASE 5.5 · ENTREGA B (08/10/2026) — VISAS Y VERIFICACIÓN EN TARJETAS.
  *   · Panel de Visas sin tabla: cada participante es una tarjeta con
  *     anillo de pasos, estado, siguiente paso y 14 bloques legibles
@@ -705,4 +718,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.11";
+var APP_VERSION = "2026.10.08.12";

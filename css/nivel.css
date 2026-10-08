@@ -155,24 +155,32 @@
 }
 
 /* ── Configuración › Nivel y SEA ─────────────────────────── */
-.nvl-tabla-wrap { overflow-x: auto; margin: 8px 0 10px; }
-.nvl-tabla { width: 100%; border-collapse: collapse; min-width: 520px; font-size: 13.5px; }
-.nvl-tabla th {
-  text-align: left; padding: 6px 8px;
-  font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
-  color: var(--text-soft, #8a94a8); font-weight: 800;
-  border-bottom: 1px solid var(--border, #e6ebf3);
+/* 5.5-C (08/10/2026) — CERO TABLAS: cada nivel de la escala es una tarjeta. */
+.nvl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; margin: 8px 0 10px; }
+.nvl-card {
+  position: relative; min-width: 0; border-radius: 12px; padding: 10px 12px 10px 16px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--g) 35%, var(--border, #e6ebf3));
+  background: color-mix(in srgb, var(--g) 5%, var(--bg-card, #fff));
+  display: flex; flex-direction: column; gap: 8px;
 }
-.nvl-tabla td { padding: 5px 6px; border-bottom: 1px solid var(--border, #eef2f7); }
-.nvl-tabla input, .nvl-tabla select {
-  width: 100%; padding: 7px 9px;
+.nvl-card__stripe { position: absolute; top: 0; left: 0; bottom: 0; width: 5px; background: var(--g); }
+.nvl-card__top { display: flex; align-items: center; gap: 8px; }
+.nvl-card__n { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft, #8a94a8); }
+.nvl-card__res { flex: 1; min-width: 0; font-size: 12px; font-weight: 800; color: var(--g); overflow-wrap: anywhere; }
+.nvl-card__x { flex: none; }
+.nvl-campo { display: flex; flex-direction: column; gap: 3px; min-width: 0; margin: 0; font-weight: inherit; }
+.nvl-campo > span { font-size: 11px; font-weight: 700; color: var(--text-soft, #8a94a8); }
+.nvl-card__rango { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nvl-campo--res { grid-column: 1 / -1; }
+.nvl-card input, .nvl-card select {
+  width: 100%; padding: 7px 9px; min-height: 38px; box-sizing: border-box;
   border: 1px solid var(--border, #dde4ee); border-radius: 9px;
-  background: var(--bg-card, #fff); color: var(--text-main, #16202e);
-  font-size: 13.5px;
+  background: var(--bg-card, #fff); color: var(--text-main, #16202e); font-size: 13.5px;
 }
-.nvl-tabla td:nth-child(2) input,
-.nvl-tabla td:nth-child(3) input { max-width: 92px; text-align: center; }
-.nvl-tabla td:last-child { width: 44px; text-align: center; }
+.nvl-min, .nvl-max { text-align: center; }
+.nvl-regla { position: relative; height: 8px; border-radius: 999px; background: var(--bg-soft, #eef2f7); overflow: hidden; }
+.nvl-regla__t { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--g); }
+.nvl-regla__esc { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted, #94a3b8); margin-top: -4px; }
 .nvl-botones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .nvl-botones .btn-primary[disabled] { opacity: .5; cursor: not-allowed; }
 
@@ -279,7 +287,7 @@
   color: var(--text-muted); font-weight: 700;
 }
 .nfm-v { font-size: 13.5px; color: var(--text-main); font-weight: 600; white-space: pre-wrap; word-break: break-word; }
-.nfm-v.vacio, .nfm-tabla .vacio { color: var(--text-muted); font-weight: 600; }
+.nfm-v.vacio { color: var(--text-muted); font-weight: 600; }
 .nfm-grupo {
   grid-column: 1 / -1; margin-top: 4px;
   font-size: 12px; font-weight: 800; letter-spacing: .03em;
@@ -311,22 +319,16 @@
   border: 1px solid var(--border-strong);
 }
 
-/* Tabla de las listas repetibles (experiencia, viajes, familia…) */
-.nfm-tabla-wrap { overflow-x: auto; }
-.nfm-tabla { width: 100%; border-collapse: collapse; min-width: 420px; font-size: 13px; }
-.nfm-tabla th {
-  text-align: left; padding: 6px 8px; white-space: nowrap;
-  font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
-  color: var(--text-muted); font-weight: 800;
-  border-bottom: 1px solid var(--border);
-}
-.nfm-tabla td {
-  padding: 6px 8px; color: var(--text-main);
-  border-bottom: 1px solid var(--border);
-  vertical-align: top; word-break: break-word;
-}
-.nfm-tabla tr:last-child td { border-bottom: 0; }
-
+/* 5.5-C (08/10/2026) — Listas repetibles (experiencia, viajes, familia…):
+   una tarjeta por registro, etiqueta → valor, sin scroll horizontal. */
+.nfm-filas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 8px; }
+.nfm-fila { min-width: 0; border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: 10px; background: var(--bg-card); padding: 7px 10px 9px; }
+.nfm-fila__h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--text-soft); }
+.nfm-fila__h span { min-width: 0; overflow-wrap: anywhere; }
+.nfm-fila__h b { flex: none; font-size: 10.5px; letter-spacing: 0; text-transform: none; padding: 1px 8px; border-radius: 999px; background: var(--bg-soft); color: var(--text-soft); }
+.nfm-fila__b { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 130px), 1fr)); gap: 6px 12px; margin-top: 6px; }
+.nfm-par { display: flex; flex-direction: column; gap: 2px; min-width: 0; margin: 0; font-weight: inherit; }
+.nfm-par .nfm-v { font-size: 13px; }
 .nfm-ver { align-self: flex-start; padding: 5px 12px; font-size: 12.5px; }
 
 /* Casilla para marcar un bloque que se va a reabrir. Va DEBAJO del
@@ -461,12 +463,12 @@ html[data-tema="oscuro"] .nfm-pill.edit { background: rgba(214, 218, 9, .18); co
 }
 .nfm-chip-op.on { background: rgba(214, 218, 9, .22); border-color: rgba(214, 218, 9, .7); font-weight: 700; }
 
-.nfm-tabla--edit td { padding: 4px; }
-.nfm-tabla--edit input, .nfm-tabla--edit select, .nfm-tabla--edit textarea {
-  width: 100%; min-width: 110px; padding: 6px 8px; border-radius: 6px;
+.nfm-fila--edit input, .nfm-fila--edit select, .nfm-fila--edit textarea {
+  width: 100%; min-width: 0; padding: 6px 8px; border-radius: 6px; box-sizing: border-box;
   border: 1px solid var(--border, #d9dee6); background: var(--bg-card, #fff);
   color: var(--text-main); font: inherit;
 }
+.nfm-fila--edit .nfm-fila__b { grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); }
 .nfm-fila-x {
   border: 0; background: transparent; color: #dc2626; font-size: 1rem; cursor: pointer; padding: 2px 6px;
 }

@@ -1448,14 +1448,34 @@ function dashDonut_(canvasId, centerId, legendId, items, centerLabel){
       <span class="nm">${esc_(i.label)}</span><span class="vl">${i.valor}</span><span class="pc">${i.pct}%</span></div>`).join('');
 }
 
+/* 5.5-C (08/10/2026) — CERO TABLAS: cada asesor es una tarjeta del
+   lenguaje de Seguimiento (franja, anillo de conversión y sus 3 cifras
+   con texto completo). El total va en una tarjeta resaltada al final. */
+function dashPct_(v){ const n = Number(v) || 0; return (Math.round(n * 100) / 100).toLocaleString('es-CO'); }
+/* Color de franja de tarjeta: la paleta sin el azul marino (#263143), que
+   en modo oscuro desaparece contra el fondo. */
+function dashColorTarj_(i){ const p = DASH_PALETA.slice(1); return p[i % p.length]; }
+function dashRendCard_(b, i, total){
+  const sin = b.asesor === '(Sin asesor)';
+  const color = total ? 'var(--primary)' : (sin ? '#9ca3af' : dashColorTarj_(i + 1));
+  const conv = Math.max(0, Math.min(100, Number(b.conversion) || 0));
+  const cifra = (ic, v, t) => `<span class="dsh-m"><i aria-hidden="true">${ic}</i><b>${Number(v || 0).toLocaleString('es-CO')}</b><em>${t}</em></span>`;
+  return `<article class="dsh-mc${total ? ' dsh-mc--total' : ''}" style="--e:${color}">
+    <span class="dsh-mc__stripe"></span>
+    <div class="dsh-mc__top">
+      <div class="dsh-mc__head"><h4 class="dsh-mc__name">${total ? 'Total del equipo' : esc_(b.asesor)}</h4>
+        <span class="dsh-mc__sub">${total ? 'Todo el equipo · ' : (sin ? 'Leads sin asesor · ' : '')}Conversión <b>${dashPct_(b.conversion)} %</b></span></div>
+      <div class="seg-ring dsh-ring" style="--p:${conv}" role="img" aria-label="Conversión ${dashPct_(conv)} %" title="Conversión: inscripciones / leads"><b>${Math.round(conv)}<small>%</small></b></div>
+    </div>
+    <div class="dsh-mc__cifras">${cifra('👥', b.leads, 'Leads')}${cifra('📅', b.asesorias, 'Asesorías')}${cifra('✅', b.inscripciones, 'Inscripciones')}</div>
+  </article>`;
+}
 function dashRenderRend_(d){
-  const rows = (d.rendimiento||[]).map(b=>`<tr>
-    <td><span class="dsh-nm-dot"><i style="background:${b.asesor==='(Sin asesor)'?'#9ca3af':DASH_PALETA[2]}"></i>${esc_(b.asesor)}</span></td>
-    <td>${b.leads}</td><td>${b.asesorias}</td><td>${b.inscripciones}</td><td>${b.conversion}%</td></tr>`).join('');
+  const items = d.rendimiento || [];
   const t = d.rendimientoTotal || { leads:0, asesorias:0, inscripciones:0, conversion:0 };
-  $('#dsh-rend').innerHTML = `<table><thead><tr><th>Asesor</th><th>Leads</th><th>Ases.</th><th>Insc.</th><th>Conv.</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="5" style="color:var(--text-muted)">Sin datos</td></tr>'}</tbody>
-    <tfoot><tr><td>Total</td><td>${t.leads}</td><td>${t.asesorias}</td><td>${t.inscripciones}</td><td>${t.conversion}%</td></tr></tfoot></table>`;
+  $('#dsh-rend').innerHTML = items.length
+    ? `<div class="dsh-mcs">${items.map((b, i) => dashRendCard_(b, i, false)).join('')}${dashRendCard_(t, 0, true)}</div>`
+    : '<p class="muted dsh-vacio">Sin datos en este rango.</p>';
 }
 
 function dashRenderEstados_(d){
@@ -1483,13 +1503,29 @@ function dashRenderInscPrograma_(d){
   });
 }
 
+/* 5.5-C — Ventas por programa en tarjetas: inscritos, ventas y la
+   barra con la participación del programa en las ventas del rango. */
+function dashVentaCard_(x, i, tot, total){
+  const color = total ? 'var(--primary)' : dashColorTarj_(i);
+  const part = (!total && tot > 0) ? Math.round((Number(x.ventas) || 0) / tot * 1000) / 10 : 100;
+  return `<article class="dsh-mc dsh-mc--venta${total ? ' dsh-mc--total' : ''}" style="--e:${color}">
+    <span class="dsh-mc__stripe"></span>
+    <div class="dsh-mc__top">
+      <div class="dsh-mc__head"><h4 class="dsh-mc__name">${total ? 'Total' : esc_(x.programa)}</h4>
+        <span class="dsh-mc__sub">${total ? 'Todos los programas' : `<b>${part.toLocaleString('es-CO')} %</b> de las ventas`}</span></div>
+      <span class="dsh-mc__pill" title="Inscritos">✅ ${Number(x.inscritos || 0).toLocaleString('es-CO')} ${Number(x.inscritos) === 1 ? 'inscrito' : 'inscritos'}</span>
+    </div>
+    <div class="dsh-mc__money">💰 ${dashMoney_(x.ventas || 0)}</div>
+    ${total ? '' : `<div class="dsh-mc__bar" title="${part.toLocaleString('es-CO')} % de las ventas"><span style="width:${part}%"></span></div>`}
+  </article>`;
+}
 function dashRenderVentas_(d){
   const items = d.ventasPorPrograma || [];
   const t = d.ventasPorProgramaTotal || { inscritos:0, ventas:0 };
-  const rows = items.map(x=>`<tr><td>${esc_(x.programa)}</td><td style="text-align:center;font-weight:600">${x.inscritos}</td><td>${dashMoney_(x.ventas)}</td></tr>`).join('');
-  $('#dsh-ventas').innerHTML = `<table><thead><tr><th>Programa</th><th style="text-align:center">Inscritos</th><th>Ventas</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="3" style="color:var(--text-muted)">Sin inscripciones</td></tr>'}</tbody>
-    <tfoot><tr><td>Total</td><td style="text-align:center">${t.inscritos}</td><td>${dashMoney_(t.ventas)}</td></tr></tfoot></table>`;
+  const tot = Number(t.ventas) || items.reduce((s, x) => s + (Number(x.ventas) || 0), 0);
+  $('#dsh-ventas').innerHTML = items.length
+    ? `<div class="dsh-mcs">${items.map((x, i) => dashVentaCard_(x, i, tot, false)).join('')}${dashVentaCard_(t, 0, tot, true)}</div>`
+    : '<p class="muted dsh-vacio">Sin inscripciones en este rango.</p>';
 }
 
 function dashRenderAlertas_(d){
@@ -2989,28 +3025,44 @@ function renderCfgNivel_(){
 
 function cfgNivelPintar_(){
   const cont = $('#cfg-nivel'); if (!cont) return;
-  const filas = CFG.escala.map((e,i)=>`
-    <tr data-i="${i}">
-      <td><input type="text" class="nvl-nombre" value="${esc_(e.nivel)}" placeholder="Nombre del nivel" /></td>
-      <td><input type="text" class="nvl-min" inputmode="decimal" value="${cfgNumTxt_(e.min)}" /></td>
-      <td><input type="text" class="nvl-max" inputmode="decimal" value="${cfgNumTxt_(e.max)}" /></td>
-      <td><select class="nvl-grupo">${CFG_NIVEL_GRUPOS.map(g=>
-            `<option value="${g.valor}"${g.valor===e.grupo?' selected':''}>${g.label}</option>`).join('')}</select></td>
-      <td><button type="button" class="act-btn act-btn--rojo" data-nvldel="${i}" title="Quitar este nivel">✕</button></td>
-    </tr>`).join('');
+  /* 5.5-C (08/10/2026) — CERO TABLAS: cada nivel es una tarjeta con su
+     franja del resultado, la regla 0–9 con su tramo pintado y los mismos
+     campos de siempre (mismas clases: cfgNivelLeer_ los lee igual). */
+  const grupoDe = v => CFG_NIVEL_GRUPOS.find(g => g.valor === v) || CFG_NIVEL_GRUPOS[2];
+  const filas = CFG.escala.map((e,i)=>{
+    const g = grupoDe(e.grupo);
+    const ini = isFinite(e.min) ? Math.max(0, Math.min(9, e.min)) : 0;
+    const fin = isFinite(e.max) ? Math.max(ini, Math.min(9, e.max)) : ini;
+    return `
+    <article class="nvl-card" data-i="${i}" style="--g:${g.color}">
+      <span class="nvl-card__stripe"></span>
+      <div class="nvl-card__top">
+        <span class="nvl-card__n">Nivel ${i+1}</span>
+        <span class="nvl-card__res">${esc_(g.label)}</span>
+        <button type="button" class="act-btn act-btn--rojo nvl-card__x" data-nvldel="${i}" title="Quitar este nivel" aria-label="Quitar el nivel ${i+1}">✕</button>
+      </div>
+      <label class="nvl-campo nvl-campo--nom"><span>Nombre del nivel</span>
+        <input type="text" class="nvl-nombre" value="${esc_(e.nivel)}" placeholder="Nombre del nivel" /></label>
+      <div class="nvl-card__rango">
+        <label class="nvl-campo"><span>Desde (incluido)</span><input type="text" class="nvl-min" inputmode="decimal" value="${cfgNumTxt_(e.min)}" /></label>
+        <label class="nvl-campo"><span>Hasta (excluido)</span><input type="text" class="nvl-max" inputmode="decimal" value="${cfgNumTxt_(e.max)}" /></label>
+        <label class="nvl-campo nvl-campo--res"><span>Resultado</span><select class="nvl-grupo">${CFG_NIVEL_GRUPOS.map(gr=>
+            `<option value="${gr.valor}"${gr.valor===e.grupo?' selected':''}>${gr.label}</option>`).join('')}</select></label>
+      </div>
+      <div class="nvl-regla" role="img" aria-label="Tramo de ${cfgNumTxt_(e.min) || '—'} a ${cfgNumTxt_(e.max) || '—'} sobre 9.00">
+        <span class="nvl-regla__t" style="left:${ini/9*100}%;width:${(fin-ini)/9*100}%"></span>
+      </div>
+      <div class="nvl-regla__esc"><span>0</span><span>4.5</span><span>9.00</span></div>
+    </article>`;
+  }).join('');
 
   cont.innerHTML = `
     <div class="cfg-card">
       <h3 class="cfg-card__title">Nivel y puntaje SEA</h3>
-      <p class="cfg-card__sub">Con esta tabla la app traduce el <b>Puntaje SEA</b> del SET a un <b>nivel de inglés</b>
+      <p class="cfg-card__sub">Con esta escala la app traduce el <b>Puntaje SEA</b> del SET a un <b>nivel de inglés</b>
         y decide qué mensaje se le envía al estudiante. Cada rango va de <b>Desde</b> (incluido) a <b>Hasta</b>
         (excluido); el último llega hasta 9.00. No pueden quedar huecos ni rangos montados.</p>
-      <div class="nvl-tabla-wrap">
-        <table class="nvl-tabla">
-          <thead><tr><th>Nivel</th><th>Desde</th><th>Hasta</th><th>Resultado</th><th></th></tr></thead>
-          <tbody id="nvl-body">${filas}</tbody>
-        </table>
-      </div>
+      <div class="nvl-cards" id="nvl-body">${filas}</div>
       <div id="nvl-aviso" class="cfg-hint"></div>
       <div class="nvl-botones">
         <button type="button" class="btn btn-ghost" id="nvl-add">➕ Agregar nivel</button>
@@ -3019,8 +3071,8 @@ function cfgNivelPintar_(){
       </div>
     </div>`;
 
-  $('#nvl-body')?.addEventListener('input', ()=>{ cfgNivelLeer_(); cfgNivelRevisar_(); });
-  $('#nvl-body')?.addEventListener('change', ()=>{ cfgNivelLeer_(); cfgNivelRevisar_(); });
+  $('#nvl-body')?.addEventListener('input', (ev)=>{ cfgNivelLeer_(); cfgNivelRevisar_(); cfgNivelVivo_(ev.target.closest('.nvl-card')); });
+  $('#nvl-body')?.addEventListener('change', (ev)=>{ cfgNivelLeer_(); cfgNivelRevisar_(); cfgNivelVivo_(ev.target.closest('.nvl-card')); });
   $$('[data-nvldel]').forEach(b => b.addEventListener('click', ()=>{
     cfgNivelLeer_();
     const i = +b.dataset.nvldel;
@@ -3067,9 +3119,23 @@ function cfgNivelPintar_(){
   cfgNivelRevisar_();
 }
 
-/* Lee la tabla al objeto (para no perder lo escrito al repintar). */
+/* 5.5-C — al escribir, la tarjeta se ajusta sola (color del resultado y
+   tramo de la regla) sin repintar: no se pierde el cursor. */
+function cfgNivelVivo_(card){
+  if (!card) return;
+  const e = (CFG.escala || [])[+card.dataset.i]; if (!e) return;
+  const g = CFG_NIVEL_GRUPOS.find(x => x.valor === e.grupo) || CFG_NIVEL_GRUPOS[2];
+  card.style.setProperty('--g', g.color);
+  const res = card.querySelector('.nvl-card__res'); if (res) res.textContent = g.label;
+  const t = card.querySelector('.nvl-regla__t'); if (!t) return;
+  const ini = isFinite(e.min) ? Math.max(0, Math.min(9, e.min)) : 0;
+  const fin = isFinite(e.max) ? Math.max(ini, Math.min(9, e.max)) : ini;
+  t.style.left = (ini / 9 * 100) + '%'; t.style.width = ((fin - ini) / 9 * 100) + '%';
+}
+
+/* Lee las tarjetas al objeto (para no perder lo escrito al repintar). */
 function cfgNivelLeer_(){
-  const filas = $$('#nvl-body tr');
+  const filas = $$('#nvl-body .nvl-card');
   CFG.escala = filas.map(tr => ({
     nivel: tr.querySelector('.nvl-nombre').value.trim(),
     min:   cfgNum_(tr.querySelector('.nvl-min').value),
@@ -3123,9 +3189,14 @@ function cfgNivelRevisar_(){
 }
 
 async function guardarEscalaSea_(){
+  /* 5.5-C — escudo desde el primer toque (el rid lo pone apiPost). */
+  const btn = $('#nvl-save');
+  if (guardarEscalaSea_.ocupado) return;
   cfgNivelLeer_();
   const err = cfgNivelValidar_(CFG.escala);
   if (err){ Swal.fire({icon:'warning', title:'Revisa la escala', text: err}); return; }
+  guardarEscalaSea_.ocupado = true;
+  if (btn){ btn.disabled = true; btn.dataset.ocupado = '1'; }
   try{
     const out = await apiPost('saveEscalaSea', { usuarioId: currentUser.id, escala: CFG.escala });
     CFG.data.escalaSea = out.escala;
@@ -3137,6 +3208,10 @@ async function guardarEscalaSea_(){
     Swal.fire({icon:'success', title:'Escala guardada',
       text:'La vista Nivel de Inglés la toma al volver a abrirla.', timer:1600, showConfirmButton:false});
   }catch(e){ Swal.fire({icon:'error', title:'No se pudo guardar', text:String(e.message||e)}); }
+  finally{
+    guardarEscalaSea_.ocupado = false;
+    const b = $('#nvl-save'); if (b){ delete b.dataset.ocupado; cfgNivelRevisar_(); }
+  }
 }
 
 function renderCfgAvanzado_(){

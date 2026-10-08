@@ -116,7 +116,15 @@
     kpis: function () {
       return '<div class="sep-sk-grid">' + rep('<span class="sep-sk sep-sk-kpi"></span>', 5) + '</div>';
     },
-    /* Tabla corta dentro de una tarjeta del tablero */
+    /* 5.5-C — tarjetas pequeñas del Dashboard (Rendimiento y Ventas):
+       franja, nombre, anillo y la fila de cifras. */
+    minis: function () {
+      var una = '<div class="sep-sk-card rayada sep-sk-mini">' +
+        '<div class="sep-sk-top">' + l(60, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-ring sep-sk-ring--s"></span></div>' +
+        '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 3) + '</div></div>';
+      return '<div class="sep-sk-minis">' + rep(una, 3) + '</div>';
+    },
+    /* Tabla corta dentro de una tarjeta del tablero (ya no la usa nadie: 5.5-C) */
     tabla: function () {
       return '<div class="sep-sk-rows" style="margin-top:0">' + l(95, true) + l(95) + l(80) + l(80) + l(60) + '</div>';
     },
@@ -203,9 +211,9 @@
     ],
     dashboard: [
       ['dsh-kpis', 'kpis', 1],
-      ['dsh-rend', 'tabla', 1],
+      ['dsh-rend', 'minis', 1],     /* 5.5-C */
       ['dsh-estados', 'barras', 1],
-      ['dsh-ventas', 'tabla', 1],
+      ['dsh-ventas', 'minis', 1],   /* 5.5-C */
       ['dsh-alertas', 'texto', 1]
     ],
     /* 17/08/2026 — Nivel de Inglés: el arranque de la vista y el modal

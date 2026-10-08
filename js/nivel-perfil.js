@@ -632,20 +632,23 @@ var NPERFIL = (function () {
     if (!s) return [];
     try { var f = JSON.parse(s); return Array.isArray(f) ? f : []; } catch (e) { return []; }
   }
+  /* 5.5-C (08/10/2026) — CERO TABLAS: cada registro de la lista es una
+     tarjeta con su número y sus campos etiqueta → valor (texto completo,
+     parte en líneas; nunca scroll horizontal). */
   function listaHtml_(c, v) {
     var subs = c.sub || [];
     var filas = aFilas_(v);
     if (!filas.length || !subs.length) return '<div class="nfm-v vacio">— sin registros —</div>';
-    var cab = subs.map(function (s) { return '<th>' + esc(s.l || s.k) + '</th>'; }).join('');
-    var cuerpo = filas.map(function (f) {
-      return '<tr>' + subs.map(function (s) {
-        var x = f ? f[s.k] : '';
-        var t = (s.t === 'sino' || s.t === 'check') ? siNo_(x) : txt_(x);
-        return '<td>' + (t ? esc(t) : '<span class="vacio">—</span>') + '</td>';
-      }).join('') + '</tr>';
-    }).join('');
-    return '<div class="nfm-tabla-wrap"><table class="nfm-tabla">' +
-      '<thead><tr>' + cab + '</tr></thead><tbody>' + cuerpo + '</tbody></table></div>';
+    return '<div class="nfm-filas">' + filas.map(function (f, i) {
+      return '<div class="nfm-fila"><div class="nfm-fila__h"><span>' + esc(c.l || c.k) + ' · ' + (i + 1) +
+        '</span><b>' + (i + 1) + ' de ' + filas.length + '</b></div><div class="nfm-fila__b">' +
+        subs.map(function (s) {
+          var x = f ? f[s.k] : '';
+          var t = (s.t === 'sino' || s.t === 'check') ? siNo_(x) : txt_(x);
+          return '<div class="nfm-par"><span class="nfm-l">' + esc(s.l || s.k) + '</span>' +
+            (t ? '<span class="nfm-v">' + esc(t) + '</span>' : '<span class="nfm-v vacio">—</span>') + '</div>';
+        }).join('') + '</div></div>';
+    }).join('') + '</div>';
   }
 
   function archivoHtml_(c, v) {
@@ -806,25 +809,25 @@ var NPERFIL = (function () {
       (norm_(actual) === norm_(valor) ? ' selected' : '') + '>' + esc(texto) + '</option>';
   }
 
-  /* Lista repetible: una tabla de campos con ➕ y ✕. */
+  /* Lista repetible en edición (5.5-C): una tarjeta por registro con
+     sus campos etiquetados, ✕ en la cabecera y ➕ al final. Los campos
+     llevan los mismos data-k / data-fila / data-sub de siempre. */
   function listaEditHtml_(c, v) {
     var subs = c.sub || [];
     var filas = Array.isArray(v) ? v : aFilas_(v);
     var tope = c.maxFilas || 20;
-    var cab = subs.map(function (sc) { return '<th>' + esc(sc.l || sc.k) + '</th>'; }).join('') + '<th></th>';
     var cuerpo = filas.map(function (f, i) {
-      return '<tr>' + subs.map(function (sc) {
-        return '<td>' + subcampoEditHtml_(c, sc, f ? f[sc.k] : '', i) + '</td>';
-      }).join('') +
-      '<td><button type="button" class="nfm-fila-x" data-del="' + esc(c.k) + '" data-fila="' + i + '" title="Quitar esta fila">✕</button></td></tr>';
+      return '<div class="nfm-fila nfm-fila--edit"><div class="nfm-fila__h"><span>' + esc(c.l || c.k) + ' · ' + (i + 1) + '</span>' +
+        '<button type="button" class="nfm-fila-x" data-del="' + esc(c.k) + '" data-fila="' + i + '" title="Quitar este registro" aria-label="Quitar el registro ' + (i + 1) + '">✕</button></div>' +
+        '<div class="nfm-fila__b">' + subs.map(function (sc) {
+          return '<label class="nfm-par"><span class="nfm-l">' + esc(sc.l || sc.k) + '</span>' +
+            subcampoEditHtml_(c, sc, f ? f[sc.k] : '', i) + '</label>';
+        }).join('') + '</div></div>';
     }).join('');
-    if (!filas.length) {
-      cuerpo = '<tr><td colspan="' + (subs.length + 1) + '" class="nfm-v vacio">— sin registros —</td></tr>';
-    }
-    return '<div class="nfm-tabla-wrap"><table class="nfm-tabla nfm-tabla--edit">' +
-      '<thead><tr>' + cab + '</tr></thead><tbody>' + cuerpo + '</tbody></table></div>' +
+    if (!filas.length) cuerpo = '<div class="nfm-v vacio">— sin registros —</div>';
+    return '<div class="nfm-filas">' + cuerpo + '</div>' +
       '<button type="button" class="btn btn-ghost nfm-fila-add" data-add="' + esc(c.k) + '"' +
-      (filas.length >= tope ? ' disabled' : '') + '>➕ Añadir fila</button>';
+      (filas.length >= tope ? ' disabled' : '') + '>➕ Añadir registro</button>';
   }
 
   function subcampoEditHtml_(c, sc, valor, i) {

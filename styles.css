@@ -664,16 +664,31 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .dsh-legend__row .pc{ color:var(--text-muted); width:46px; text-align:right; font-variant-numeric:tabular-nums; }
 
 /* Tablas */
-.dsh table{ width:100%; border-collapse:collapse; font-size:.84rem; }
-.dsh table thead th{ background:var(--primary); color:#fff; font-family:var(--font-display); font-weight:600; font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; padding:9px 10px; text-align:left; }
-.dsh table thead th:first-child{ border-radius:8px 0 0 8px; }
-.dsh table thead th:last-child{ border-radius:0 8px 8px 0; text-align:right; }
-.dsh table tbody td{ padding:9px 10px; border-bottom:1px solid var(--border); }
-.dsh table tbody td:last-child{ text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
-.dsh table tbody tr:hover{ background:var(--accent-soft); }
-.dsh table tfoot td{ padding:10px; font-family:var(--font-display); font-weight:700; border-top:2px solid var(--primary); }
-.dsh table tfoot td:last-child{ text-align:right; }
-.dsh-nm-dot{ display:inline-flex; align-items:center; gap:8px; }
+/* 5.5-C (08/10/2026) — CERO TABLAS en el Dashboard: Rendimiento por asesor
+   y Ventas por programa son tarjetas pequeñas del lenguaje de Seguimiento. */
+.dsh-mcs{ display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap:8px; }
+.dsh-mc{ position:relative; min-width:0; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:10px 12px 10px 16px; overflow:hidden; }
+.dsh-mc__stripe{ position:absolute; top:0; left:0; bottom:0; width:5px; background:var(--e, var(--primary)); }
+.dsh-mc--total{ border:1.5px solid var(--primary); background:color-mix(in srgb, var(--accent) 10%, var(--bg-card)); }
+.dsh-mc__top{ display:flex; align-items:flex-start; gap:10px; }
+.dsh-mc__head{ flex:1; min-width:0; }
+.dsh-mc__name{ margin:0; font-family:var(--font-display); font-size:.92rem; font-weight:700; color:var(--primary); line-height:1.25; overflow-wrap:anywhere; }
+.dsh-mc__sub{ display:block; font-size:.74rem; color:var(--text-soft); margin-top:2px; }
+.dsh-mc__sub b{ color:var(--text-main); font-variant-numeric:tabular-nums; }
+.dsh-ring{ width:46px; height:46px; }
+.dsh-ring b{ width:35px; height:35px; font-size:.8rem; }
+.dsh-mc__cifras{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.dsh-m{ flex:1 1 84px; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:0; padding:4px 8px; border-radius:9px; background:var(--bg-soft); }
+.dsh-m i{ font-style:normal; font-size:.78rem; line-height:1; }
+.dsh-m b{ font-family:var(--font-display); font-size:1rem; font-weight:800; color:var(--text-main); font-variant-numeric:tabular-nums; }
+.dsh-m em{ font-style:normal; font-size:.7rem; font-weight:700; color:var(--text-soft); }
+.dsh-mc__conv{ margin-top:6px; font-size:.76rem; color:var(--text-soft); }
+.dsh-mc__conv b{ color:var(--text-main); font-variant-numeric:tabular-nums; }
+.dsh-mc__pill{ flex:none; max-width:55%; padding:3px 9px; border-radius:999px; font-size:.72rem; font-weight:800; background:var(--bg-soft); color:var(--text-main); white-space:normal; text-align:center; }
+.dsh-mc__money{ margin-top:8px; font-family:var(--font-display); font-size:1.05rem; font-weight:800; color:var(--text-main); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.dsh-mc__bar{ margin-top:7px; height:7px; border-radius:999px; background:var(--bg-soft); overflow:hidden; }
+.dsh-mc__bar span{ display:block; height:100%; border-radius:inherit; background:var(--e, var(--primary)); }
+.dsh-vacio{ margin:4px 0; }
 .dsh-nm-dot i{ width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
 
 /* Barras horizontales (estado) */

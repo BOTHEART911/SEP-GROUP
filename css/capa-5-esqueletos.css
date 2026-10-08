@@ -109,3 +109,10 @@
   .sep-sk { animation: none; background: var(--border, #E3E9F2); }
   .sep-sk-card { animation: none; }
 }
+
+/* 5.5-C (08/10/2026) — tarjetas pequeñas del Dashboard (Rendimiento y Ventas) */
+.sep-sk-minis { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.sep-sk-mini { padding: 10px 12px 10px 18px; margin: 0; }
+.sep-sk-mini .sep-sk-chips { margin-top: 8px; }
+.sep-sk-mini .sep-sk-chip { flex: 1 1 70px; width: auto; height: 34px; border-radius: 9px; }
+.sep-sk-ring--s { width: 46px; height: 46px; }

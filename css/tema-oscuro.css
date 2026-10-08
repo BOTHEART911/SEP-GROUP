@@ -155,7 +155,6 @@ html[data-tema="oscuro"] .seg-toggle .seg.on,
 html[data-tema="oscuro"] .chat-row.mio .chat-bubble,
 html[data-tema="oscuro"] .chat-send,
 html[data-tema="oscuro"] .dsh-seg button.on,
-html[data-tema="oscuro"] .dsh table thead th,
 html[data-tema="oscuro"] .plt-canal.ambos,
 html[data-tema="oscuro"] .pill.active,
 html[data-tema="oscuro"] .pill-asesor.active,
@@ -278,7 +277,6 @@ html[data-tema="oscuro"] .dsh-alert.lv-amb .av { color: #fdba74; }
 html[data-tema="oscuro"] .dsh-alert.lv-yel { background: rgba(250,204,21,.10); border-color: rgba(250,204,21,.35); }
 html[data-tema="oscuro"] .dsh-alert.lv-yel .ai { background: rgba(250,204,21,.20); }
 html[data-tema="oscuro"] .dsh-alert.lv-yel .av { color: #fde047; }
-html[data-tema="oscuro"] .dsh table tbody td { color: var(--text-soft); }
 
 /* ── 10. Esqueletos y ripple (capas 5 y 7) ─────────────────────
    El brillo de la capa 5 va de --border a #F1F5FA escrito a mano:
