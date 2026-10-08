@@ -3,6 +3,15 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.4 · ENTREGA B (08/10/2026) — HISTORIAL Y SINCRONIZACIÓN.
+ *   · Detalle de Seguimiento con pestañas: Historial (línea de tiempo
+ *     armada con las fechas de cada módulo, llega de fondo), Hitos y
+ *     Sincronización (cada dato con su fuente y sus alertas).
+ *   · Botón "Sincronización" en la cabecera: de dónde sale cada dato y
+ *     verificador de desfases (solo lectura, dice dónde se corrige).
+ *   Archivos: js/seguimiento.js, css/seguimiento.css, index.html,
+ *   version.js, sw.js (caché v48).
+ * ------------------------------------------------------------
  * FASE 5.4 · ENTREGA A (08/10/2026) — SEGUIMIENTO.
  *   · Módulo principal "Seguimiento" en el inicio, para todos los roles:
  *     estado, acción futura y 27 hitos en 8 bloques (solo consulta),
@@ -662,4 +671,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.07";
+var APP_VERSION = "2026.10.08.08";

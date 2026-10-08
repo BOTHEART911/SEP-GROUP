@@ -21,13 +21,26 @@
  *   · La lectura se corta al salir (AbortController). Respuesta de una
  *     sesión vieja nunca pisa la nueva. Tiempos en window.__sepMed.
  *
+ * ENTREGA B (08/10/2026) — pliego 5.4.6 y 5.4.7:
+ *   · Detalle: la cabecera se pinta al instante con la fila; el
+ *     HISTORIAL (línea de tiempo) y la SINCRONIZACIÓN del participante
+ *     llegan de fondo en UN viaje (seguimientoDetalle), se recuerdan en
+ *     la sesión y la lectura se corta al cerrar el detalle o salir.
+ *   · Botón "Sincronización" (cabecera): de dónde sale cada dato (viene
+ *     en el catálogo, se pinta al instante) + verificador de desfases
+ *     de solo lectura (seguimientoSincronizacion, a pedido).
+ *
  * Usa de app.js: apiGet, showView, esc_, currentUser, estPartCargar_,
  * EST_PART, procesoChipHtml_; de temporada.js: TEMP.
  * ============================================================= */
 
 const SEG = {
   todos: [], registros: [], catalogo: null, cargado: false, cargando: false,
-  ctrl: null, texto: '', filtros: {}, pintadas: 0, lista: [], obs: null
+  ctrl: null, texto: '', filtros: {}, pintadas: 0, lista: [], obs: null,
+  /* 5.4-B — detalle (historial + sincronización) y verificador global.
+     Recuerdo por sesión; se limpia al Actualizar. */
+  det: {}, detCtrl: null, detN: null, detTab: 'hist', detBloque: '',
+  sinc: null, sincCtrl: null, sincTipo: ''
 };
 const SEG_TANDA = 80;
 const SEG_SIN = '— Sin dato —';
@@ -91,12 +104,13 @@ async function cargarSeguimiento_() {
   }
 }
 
-function recargarSeguimiento_() { SEG.cargado = false; cargarSeguimiento_(); }
+function recargarSeguimiento_() { SEG.cargado = false; SEG.det = {}; SEG.sinc = null; cargarSeguimiento_(); }
 
 function segSalir_() {
   try { SEG.ctrl && SEG.ctrl.abort(); } catch (_) {}
   SEG.ctrl = null; SEG.cargando = false;
   try { SEG.obs && SEG.obs.disconnect(); } catch (_) {}
+  segCortarDet_(); segCortarSinc_();
 }
 
 if (typeof TEMP !== 'undefined') {
@@ -322,12 +336,23 @@ function segTanda_() {
 }
 
 /* ============================================================
-   DETALLE (cabecera inmediata con lo que ya trae la fila)
+   DETALLE — cabecera inmediata (la fila) + historial y
+   sincronización de fondo (5.4-B, un viaje: seguimientoDetalle)
    ============================================================ */
-function segVerDetalle_(n) {
-  const r = SEG.todos.find(x => String(x.n) === String(n)); if (!r) return;
+function segColorBloque_(k) {
+  const b = segBloques_().find(x => x.k === k) || ((SEG.catalogo && SEG.catalogo.bloqueEsp && SEG.catalogo.bloqueEsp.k === k) ? SEG.catalogo.bloqueEsp : null);
+  return b ? b.color : '#64748b';
+}
+function segNombreBloque_(k) {
+  const b = segBloques_().find(x => x.k === k) || ((SEG.catalogo && SEG.catalogo.bloqueEsp && SEG.catalogo.bloqueEsp.k === k) ? SEG.catalogo.bloqueEsp : null);
+  return b ? b.l : k;
+}
+function segDesfDef_(k) { return ((SEG.catalogo && SEG.catalogo.desfasesDef) || []).find(d => d.k === k) || { k: k, l: k, n: 'media', c: '' }; }
+const SEG_NIVEL = { alta: { t: 'Contradicción', c: '#dc2626' }, media: { t: 'Falta un dato', c: '#d97706' }, info: { t: 'Para revisar', c: '#2563eb' } };
+
+function segHitosHtml_(r) {
   const hs = segHitos_(), bs = segBloques_();
-  const bloques = bs.map(b => {
+  return bs.map(b => {
     const items = hs.map((h, i) => ({ h, i })).filter(x => x.h.b === b.k);
     if (!items.length) return '';
     return `<div class="seg-db" style="--g:${b.color}"><h4>${esc_(b.l)}</h4>${items.map(x => {
@@ -337,7 +362,14 @@ function segVerDetalle_(n) {
         <span class="seg-di__v seg-di__v--${v.c}">${v.t}</span></div>`;
     }).join('')}</div>`;
   }).join('');
-  const html = `<div class="seg-det">
+}
+
+function segVerDetalle_(n, tab) {
+  const r = SEG.todos.find(x => String(x.n) === String(n)); if (!r) return;
+  SEG.detN = String(r.n); SEG.detTab = tab || 'hist'; SEG.detBloque = '';
+  const mio = SEG.detN;
+  const tabs = [['hist', '🕒 Historial'], ['hitos', '✅ Hitos'], ['sync', '🔗 Sincronización']];
+  const html = `<div class="seg-det" data-seg-det="${r.n}">
     <div class="seg-det__cab">
       <div class="seg-det__nom">#${r.n} · ${esc_((r.nom + ' ' + r.ape).trim())}</div>
       <div class="seg-estbox">${segEstadoHtml_(r)}</div>
@@ -352,9 +384,198 @@ function segVerDetalle_(n) {
       <div class="seg-bar seg-bar--det"><i style="width:${segAvance_(r)}%"></i></div>
       <small class="seg-muted">${segAvance_(r)}% de los hitos que le aplican</small>
     </div>
-    <div class="seg-det__bloques">${bloques}</div></div>`;
-  Swal.fire({ html: html, width: 760, showConfirmButton: false, showCloseButton: true,
-              customClass: { popup: 'seg-pop' } });
+    <div class="seg-tabs" role="tablist">${tabs.map(t =>
+      `<button class="seg-tab ${SEG.detTab === t[0] ? 'is-on' : ''}" role="tab" aria-selected="${SEG.detTab === t[0]}" data-seg-tab="${t[0]}">${t[1]}<span class="seg-tab__n" id="seg-tabn-${t[0]}"></span></button>`).join('')}</div>
+    <div class="seg-panel ${SEG.detTab === 'hist' ? '' : 'hidden'}" data-seg-panel="hist" id="seg-p-hist"></div>
+    <div class="seg-panel ${SEG.detTab === 'hitos' ? '' : 'hidden'}" data-seg-panel="hitos"><div class="seg-det__bloques">${segHitosHtml_(r)}</div></div>
+    <div class="seg-panel ${SEG.detTab === 'sync' ? '' : 'hidden'}" data-seg-panel="sync" id="seg-p-sync"></div>
+  </div>`;
+  Swal.fire({ html: html, width: 860, showConfirmButton: false, showCloseButton: true,
+              customClass: { popup: 'seg-pop' },
+              didClose: () => { if (SEG.detN === mio) { segCortarDet_(); SEG.detN = null; } } });
+  if (SEG.det[SEG.detN]) segPintarDet_(); else { segEsqueletoDet_(); segCargarDet_(SEG.detN); }
+}
+
+function segDetTab_(t) {
+  SEG.detTab = t;
+  document.querySelectorAll('[data-seg-tab]').forEach(b => {
+    const on = b.dataset.segTab === t; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on));
+  });
+  document.querySelectorAll('[data-seg-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.segPanel !== t));
+}
+
+function segEsqueletoDet_() {
+  const sk = n => Array.from({ length: n }, () => '<div class="seg-sk"><i></i><span></span></div>').join('');
+  const h = segQ_('#seg-p-hist'), y = segQ_('#seg-p-sync');
+  if (h) h.innerHTML = `<div class="seg-sks" aria-busy="true">${sk(5)}</div>`;
+  if (y) y.innerHTML = `<div class="seg-sks" aria-busy="true">${sk(4)}</div>`;
+}
+
+function segCortarDet_() { try { SEG.detCtrl && SEG.detCtrl.abort(); } catch (_) {} SEG.detCtrl = null; }
+
+async function segCargarDet_(n) {
+  segCortarDet_();
+  const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+  SEG.detCtrl = ctrl;
+  const quien = currentUser && currentUser.id;
+  const t0 = Date.now();
+  try {
+    const d = await apiGet('seguimientoDetalle', { usuarioId: quien, n: n }, Object.assign({ silent: true }, ctrl ? { signal: ctrl.signal } : {}));
+    if (!currentUser || currentUser.id !== quien) return;           // sesión vieja
+    SEG.det[String(n)] = d;
+    segMed_('seguimientoDetalle', t0);
+    if (SEG.detN === String(n)) segPintarDet_();                    // sigue abierto el mismo
+  } catch (e) {
+    if (segAbortado_(e)) return;
+    if (SEG.detN !== String(n)) return;
+    const msg = `<div class="seg-err">No se pudo traer el historial: ${esc_(String(e.message || e))}
+      <button class="btn btn-ghost btn-sm" data-seg-det-reintentar>Reintentar</button></div>`;
+    ['#seg-p-hist', '#seg-p-sync'].forEach(id => { const el = segQ_(id); if (el) el.innerHTML = msg; });
+  } finally { if (SEG.detCtrl === ctrl) SEG.detCtrl = null; }
+}
+
+function segPintarDet_() { segPintarHist_(); segPintarSyncDet_(); }
+
+/* ---------- historial (línea de tiempo) ---------- */
+function segDia_(f) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(f || '');
+  if (!m) return '';
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  try { return d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch (_) { return m[3] + '/' + m[2] + '/' + m[1]; }
+}
+function segHora_(f) { const m = / (\d{2}):(\d{2})$/.exec(f || ''); return m && m[1] + m[2] !== '0000' ? m[1] + ':' + m[2] : ''; }
+
+function segPintarHist_() {
+  const el = segQ_('#seg-p-hist'); const d = SEG.det[SEG.detN];
+  if (!el || !d) return;
+  const t0 = Date.now();
+  const ev = d.historial || [];
+  const n = segQ_('#seg-tabn-hist'); if (n) n.textContent = ev.length ? ' ' + ev.length : '';
+  if (!ev.length) {
+    el.innerHTML = '<div class="seg-vacio">Todavía no hay eventos: el participante no tiene comprobante de inscripción ni movimientos en las fuentes.</div>';
+    return;
+  }
+  const bloques = [...new Set(ev.map(e => e.b))];
+  const chips = `<div class="seg-hchips">
+      <button class="seg-hchip ${!SEG.detBloque ? 'is-on' : ''}" data-seg-hb="">Todo <b>${ev.length}</b></button>
+      ${bloques.map(b => `<button class="seg-hchip ${SEG.detBloque === b ? 'is-on' : ''}" data-seg-hb="${esc_(b)}" style="--g:${segColorBloque_(b)}">${esc_(segNombreBloque_(b))} <b>${ev.filter(e => e.b === b).length}</b></button>`).join('')}
+    </div>`;
+  const vis = SEG.detBloque ? ev.filter(e => e.b === SEG.detBloque) : ev;
+  let html = '', dia = null;
+  vis.forEach(e => {
+    const dd = e.f ? segDia_(e.f) : 'Sin fecha registrada';
+    if (dd !== dia) { html += (dia === null ? '' : '</ol>') + `<h5 class="seg-tl__dia">${esc_(dd)}</h5><ol class="seg-tl">`; dia = dd; }
+    const meta = [segHora_(e.f), e.q ? 'por ' + e.q : '', e.o === 'P' ? 'participante' : ''].filter(Boolean).join(' · ');
+    html += `<li class="seg-tl__ev ${e.neg ? 'is-neg' : ''} ${e.der ? 'is-der' : ''}" style="--g:${segColorBloque_(e.b)}">
+        <span class="seg-tl__dot" aria-hidden="true"></span>
+        <div class="seg-tl__c">
+          <div class="seg-tl__t">${esc_(e.l)}${e.der ? ' <small class="seg-tag">calculado</small>' : ''}</div>
+          ${e.d ? `<div class="seg-tl__d">${esc_(e.d)}</div>` : ''}
+          <div class="seg-tl__m"><span class="seg-tl__b">${esc_(segNombreBloque_(e.b))}</span>${meta ? ' · ' + esc_(meta) : ''}</div>
+        </div></li>`;
+  });
+  el.innerHTML = chips + html + '</ol>' +
+    '<p class="seg-muted seg-nota">Línea de tiempo armada con las fechas que ya guarda cada módulo (no es una hoja aparte). Lo que su módulo no fecha sale en "Sin fecha registrada".</p>';
+  segMed_('seguimientoHistorialPintado', t0);
+}
+
+/* ---------- sincronización del participante ---------- */
+function segDesfChip_(k) {
+  const def = segDesfDef_(k), nv = SEG_NIVEL[def.n] || SEG_NIVEL.media;
+  return `<span class="seg-desf" style="--d:${nv.c}" title="${esc_(nv.t + ' · Se corrige en: ' + def.c)}">⚠️ ${esc_(def.l)}</span>`;
+}
+function segPintarSyncDet_() {
+  const el = segQ_('#seg-p-sync'); const d = SEG.det[SEG.detN];
+  if (!el || !d) return;
+  const fu = (SEG.catalogo && SEG.catalogo.fuentes) || [];
+  const al = (d.desfases || []).length;
+  const n = segQ_('#seg-tabn-sync'); if (n) n.textContent = al ? ' ⚠️' + al : '';
+  const val = {}; (d.sync || []).forEach(x => { val[x.k] = x; });
+  const det = {}; (d.desfases || []).forEach(x => { det[x.k] = x.d; });
+  el.innerHTML = `<div class="seg-sres ${al ? 'is-al' : 'is-ok'}">${al
+      ? '⚠️ ' + al + (al === 1 ? ' dato no coincide' : ' datos no coinciden') + ' entre módulos. Se muestra dónde se corrige; aquí no se edita nada.'
+      : '✅ Todas las fuentes de este participante coinciden.'}</div>
+    <div class="seg-stabla" role="table">
+      ${fu.map(f => {
+        const x = val[f.k] || {};
+        return `<div class="seg-sfila ${x.al ? 'is-al' : ''}" role="row">
+          <div class="seg-sfila__dato" role="cell"><b>${esc_(f.d)}</b><small>${esc_(f.f)}</small></div>
+          <div class="seg-sfila__v" role="cell">${esc_(x.v || '—')}
+            ${(x.al || []).map(k => segDesfChip_(k) + (det[k] ? `<small class="seg-desf__d">${esc_(det[k])}</small>` : '')).join('')}</div>
+          <div class="seg-sfila__h" role="cell" title="Quién lo escribe: ${esc_(f.e)}">${esc_(f.h)}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+/* ============================================================
+   SINCRONIZACIÓN GLOBAL (botón de la cabecera)
+   ============================================================ */
+function segCortarSinc_() { try { SEG.sincCtrl && SEG.sincCtrl.abort(); } catch (_) {} SEG.sincCtrl = null; }
+
+function segAbrirSinc_() {
+  if (!SEG.catalogo) return;
+  const fu = SEG.catalogo.fuentes || [];
+  const html = `<div class="seg-sinc">
+    <h3 class="seg-sinc__h">🔗 De dónde sale cada dato</h3>
+    <p class="seg-muted">Seguimiento y Estadísticas solo consultan estas fuentes; no guardan copias.</p>
+    <div class="seg-fuentes" role="table">
+      <div class="seg-fuentes__f seg-fuentes__cab" role="row"><span>Dato</span><span>Fuente</span><span>Hoja y columnas</span><span>Quién lo escribe</span></div>
+      ${fu.map(f => `<div class="seg-fuentes__f" role="row"><span><b>${esc_(f.d)}</b></span><span>${esc_(f.f)}</span><span class="seg-mono">${esc_(f.h)}</span><span>${esc_(f.e)}</span></div>`).join('')}
+    </div>
+    <h3 class="seg-sinc__h">🧭 Verificador de desfases <small class="seg-muted">${esc_(typeof TEMP !== 'undefined' ? TEMP.etiqueta() : '')}</small></h3>
+    <div id="seg-sinc-res"><div class="seg-sks" aria-busy="true">${Array.from({ length: 4 }, () => '<div class="seg-sk"><i></i><span></span></div>').join('')}</div></div>
+  </div>`;
+  Swal.fire({ html: html, width: 980, showConfirmButton: false, showCloseButton: true,
+              customClass: { popup: 'seg-pop' }, didClose: () => segCortarSinc_() });
+  if (SEG.sinc) segPintarSinc_(); else segCargarSinc_();
+}
+
+async function segCargarSinc_() {
+  segCortarSinc_();
+  const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+  SEG.sincCtrl = ctrl;
+  const quien = currentUser && currentUser.id;
+  const t0 = Date.now();
+  try {
+    const d = await apiGet('seguimientoSincronizacion', { usuarioId: quien }, Object.assign({ silent: true }, ctrl ? { signal: ctrl.signal } : {}));
+    if (!currentUser || currentUser.id !== quien) return;
+    SEG.sinc = d;
+    segMed_('seguimientoSincronizacion', t0);
+    segPintarSinc_();
+  } catch (e) {
+    if (segAbortado_(e)) return;
+    const el = segQ_('#seg-sinc-res');
+    if (el) el.innerHTML = `<div class="seg-err">No se pudo revisar: ${esc_(String(e.message || e))}
+      <button class="btn btn-ghost btn-sm" data-seg-sinc-reintentar>Reintentar</button></div>`;
+  } finally { if (SEG.sincCtrl === ctrl) SEG.sincCtrl = null; }
+}
+
+function segPintarSinc_() {
+  const el = segQ_('#seg-sinc-res'); const d = SEG.sinc;
+  if (!el || !d) return;
+  const todos = (typeof TEMP !== 'undefined') ? TEMP.filtrar(d.desfases || []) : (d.desfases || []);
+  const defs = (SEG.catalogo && SEG.catalogo.desfasesDef) || [];
+  const cuenta = {}; todos.forEach(x => { cuenta[x.k] = (cuenta[x.k] || 0) + 1; });
+  const conDesf = defs.filter(x => cuenta[x.k]);
+  const lista = SEG.sincTipo ? todos.filter(x => x.k === SEG.sincTipo) : todos;
+  if (!todos.length) {
+    el.innerHTML = `<div class="seg-sres is-ok">✅ Sin desfases: las fuentes coinciden en los ${d.revisados} participantes revisados.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="seg-sres is-al">⚠️ ${todos.length} ${todos.length === 1 ? 'desfase' : 'desfases'} en ${d.revisados} participantes revisados. Solo lectura: cada uno dice dónde se corrige.</div>
+    <div class="seg-dtipos">${conDesf.map(x => {
+      const nv = SEG_NIVEL[x.n] || SEG_NIVEL.media;
+      return `<button class="seg-dtipo ${SEG.sincTipo === x.k ? 'is-on' : ''}" data-seg-sinc-tipo="${x.k}" style="--d:${nv.c}">
+        <b>${cuenta[x.k]}</b><span>${esc_(x.l)}</span><small>${esc_(nv.t)} · se corrige en ${esc_(x.c)}</small></button>`;
+    }).join('')}</div>
+    <div class="seg-dlista">${lista.slice(0, 400).map(x => {
+      const def = segDesfDef_(x.k), nv = SEG_NIVEL[def.n] || SEG_NIVEL.media;
+      const quien = x.n ? `<button class="seg-nom" data-seg-sinc-ver="${x.n}"><span class="seg-id">#${x.n}</span> ${esc_(x.nom || '(sin nombre)')}</button>`
+                        : `<span class="seg-nom seg-nom--sin">${esc_(x.nom || '(sin nombre)')}</span>`;
+      return `<div class="seg-dfila" style="--d:${nv.c}">${quien}<span class="seg-dfila__l">${esc_(def.l)}</span><span class="seg-dfila__d">${esc_(x.d || '')}</span></div>`;
+    }).join('')}${lista.length > 400 ? `<p class="seg-muted">Se muestran 400 de ${lista.length}. Filtra por tipo para ver el resto.</p>` : ''}</div>`;
 }
 
 /* ============================================================
@@ -368,6 +589,17 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-seg-mas]')) { segTanda_(); return; }
   const v = e.target.closest('[data-seg-ver]');
   if (v) { segVerDetalle_(v.dataset.segVer); return; }
+  const tb = e.target.closest('[data-seg-tab]');
+  if (tb) { segDetTab_(tb.dataset.segTab); return; }
+  const bq = e.target.closest('[data-seg-hb]');
+  if (bq) { SEG.detBloque = bq.dataset.segHb; segPintarHist_(); return; }
+  const sv = e.target.closest('[data-seg-sinc-ver]');
+  if (sv) { const n = sv.dataset.segSincVer; Swal.close(); setTimeout(() => segVerDetalle_(n, 'sync'), 0); return; }
+  const st = e.target.closest('[data-seg-sinc-tipo]');
+  if (st) { SEG.sincTipo = st.dataset.segSincTipo === SEG.sincTipo ? '' : st.dataset.segSincTipo; segPintarSinc_(); return; }
+  if (e.target.closest('[data-seg-sinc-reintentar]')) { SEG.sinc = null; segCargarSinc_(); return; }
+  if (e.target.closest('[data-seg-det-reintentar]')) { const n = SEG.detN; delete SEG.det[n]; segCargarDet_(n); return; }
+  if (e.target.closest('#seg-sinc')) { segAbrirSinc_(); return; }
   if (e.target.closest('#seg-refresh')) { recargarSeguimiento_(); }
 });
 (function () {
