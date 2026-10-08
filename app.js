@@ -2300,6 +2300,21 @@ function renderCfgGeneral_(){
       <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-alertas">Guardar alertas</button></div>
     </div>
 
+    <div class="cfg-card">
+      <h3 class="cfg-card__title">📨 Recordatorios al participante (correo)</h3>
+      <p class="cfg-card__sub">Nueve recordatorios automáticos, solo por correo: firmar contrato, examen de inglés, pagar oferta, formulario SEP, elegir oferta, pagar visa, pago total, Pre-Arrival y cargar vuelo. Cada uno se detiene solo cuando el participante cumple la acción. Los textos se editan en Plantillas (claves REC_…).</p>
+      <div class="cfg-grid">
+        <div class="cfg-field"><label>Recordatorios</label>
+          <select id="cf-RECORDATORIOS_ACTIVOS"><option value="TRUE">Encendidos</option><option value="FALSE">Apagados</option></select>
+        </div>
+        ${field_('cf-PROCESOS_TELEFONO','Número de Procesos (aparece en el correo)', g.PROCESOS_TELEFONO, 'text')}
+        <div class="cfg-field"><label>Enviar desde</label><input id="cf-REC_HORA_INICIO" type="time" value="${esc_(g.REC_HORA_INICIO||'07:00')}"></div>
+        <div class="cfg-field"><label>Hasta</label><input id="cf-REC_HORA_FIN" type="time" value="${esc_(g.REC_HORA_FIN||'19:00')}"></div>
+      </div>
+      <div class="cfg-hint">La lista del día se arma a las 6 a. m. y se envía por lotes dentro de esta franja. Sin número de Procesos, el correo muestra el teléfono del asesor de Procesos asignado.</div>
+      <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-rec">Guardar recordatorios</button></div>
+    </div>
+
     <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-general">Guardar cambios</button></div>`;
 
   $('#cf-save-general').addEventListener('click', async ()=>{
@@ -2308,6 +2323,22 @@ function renderCfgGeneral_(){
       'BANCO_NOMBRE','BANCO_CUENTA','BANCO_TITULAR','BANCO_NIT'];
     const cambios = {}; claves.forEach(k => cambios[k] = $('#cf-'+k).value);
     await guardarConfig_(cambios);
+  });
+
+  // ── Recordatorios al participante (Fase 5.3-C) ──
+  $('#cf-RECORDATORIOS_ACTIVOS').value = (String(g.RECORDATORIOS_ACTIVOS||'TRUE').toUpperCase()==='FALSE') ? 'FALSE' : 'TRUE';
+  $('#cf-save-rec').addEventListener('click', async (ev)=>{
+    const btn = ev.currentTarget;
+    if (btn.dataset.ocupado) return;                      // escudo desde el primer toque
+    const ini = $('#cf-REC_HORA_INICIO').value, fin = $('#cf-REC_HORA_FIN').value;
+    if (!ini || !fin){ Swal.fire({icon:'warning', title:'Falta la franja', text:'Indica desde y hasta qué hora se envían.'}); return; }
+    const tel = $('#cf-PROCESOS_TELEFONO').value.replace(/\D/g,'');
+    if (tel && (tel.length < 7 || tel.length > 15)){ Swal.fire({icon:'warning', title:'Número inválido', text:'Escribe solo el número de Procesos (7 a 15 dígitos).'}); return; }
+    btn.dataset.ocupado = '1'; btn.disabled = true;
+    try{
+      await guardarConfig_({ RECORDATORIOS_ACTIVOS: $('#cf-RECORDATORIOS_ACTIVOS').value,
+        PROCESOS_TELEFONO: tel, REC_HORA_INICIO: ini, REC_HORA_FIN: fin });
+    } finally { delete btn.dataset.ocupado; btn.disabled = false; }
   });
 
   // ── Alertas del bot (Fase 12) ──

@@ -3,6 +3,13 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.3 · ENTREGA C (08/10/2026) — RECORDATORIOS POR CORREO.
+ *   · Configuración → General: tarjeta "Recordatorios al participante"
+ *     (encendidos/apagados, número de Procesos y franja de envío).
+ *   · Los 9 recordatorios viven en el backend (Recordatorios.gs) y sus
+ *     textos en Configuración → Plantillas (claves REC_…).
+ *   Archivos: app.js, version.js, sw.js (caché v46).
+ * ------------------------------------------------------------
  * FASE 5.3 · ENTREGA B (08/10/2026) — PRE-ARRIVAL, VUELO Y RIFA.
  *   · Panel de Visas: Pre-Arrival solo con la visa aprobada; grupo
  *     Vuelo con el itinerario (📁 Revisar abre Ver | Aprobar | Rechazar
@@ -648,4 +655,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.05";
+var APP_VERSION = "2026.10.08.06";
