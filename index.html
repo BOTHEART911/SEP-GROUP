@@ -63,6 +63,7 @@
   <link rel="stylesheet" href="css/verif.css" />
   <link rel="stylesheet" href="css/visas.css" />
   <link rel="stylesheet" href="css/seguimiento.css" />
+  <link rel="stylesheet" href="css/estadisticas.css" />
   <!-- MODO OSCURO · ANTIPARPADEO (11/08)
        Deja puesto data-tema ANTES del primer pintado; si no, la app
        nace clara y parpadea a oscuro al cargar el JS. Sin elección
@@ -1127,6 +1128,41 @@
     </div>
   </section>
 
+  <!-- ============================================================
+       FASE 5.4 · ENTREGA C — ESTADÍSTICAS (js/estadisticas.js)
+       Misma carga de Seguimiento; filtros locales; valores solo para
+       Contador, Superadmin y Desarrollador.
+       ============================================================ -->
+  <section id="view-estadisticas" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Estadísticas</h1>
+      <button class="app-header__icon" id="est-refresh" title="Actualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </header>
+
+    <div class="container container--ancho">
+      <div class="filters-row seg-filtros" id="est-filters"></div>
+      <div class="vis-count" id="est-count"></div>
+      <div id="est-cuerpo" class="est-cuerpo"></div>
+    </div>
+  </section>
+
+  <div id="est-fsheet" class="fsheet hidden" aria-hidden="true">
+    <div class="fsheet__scrim" data-est-fsheet-close></div>
+    <div class="fsheet__panel" role="dialog" aria-modal="true" aria-labelledby="est-fsheet-title">
+      <div class="fsheet__grip"></div>
+      <div class="fsheet__head">
+        <h3 id="est-fsheet-title">Filtrar</h3>
+        <button class="fsheet__x" data-est-fsheet-close aria-label="Cerrar">✕</button>
+      </div>
+      <div class="fsheet__list" id="est-fsheet-list"></div>
+    </div>
+  </div>
+
   <div id="seg-fsheet" class="fsheet hidden" aria-hidden="true">
     <div class="fsheet__scrim" data-seg-fsheet-close></div>
     <div class="fsheet__panel" role="dialog" aria-modal="true" aria-labelledby="seg-fsheet-title">
@@ -1464,6 +1500,7 @@
   <script src="js/verif.js"></script>
   <script src="js/visas.js"></script>
   <script src="js/seguimiento.js"></script>
+  <script src="js/estadisticas.js"></script>
 
   <!-- FASE 4 · Entrega 1 (03/09/2026) — Ofertas de empleo -->
   <script src="js/ofertas.js"></script>

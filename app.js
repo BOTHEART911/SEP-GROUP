@@ -72,9 +72,14 @@ async function apiAbrirGz_(b64){
    Se rehidratan a objetos; un null es "campo que la fila no trae". */
 const API_FMT2 = { comercialInit: 1, listComercial: 1, contadorInit: 1, listContador: 1, visasInit: 1, seguimientoInit: 1 };
 function apiRehidratar_(x){
-  const conv = v => (v && v.fmt === 2 && Array.isArray(v.c) && Array.isArray(v.f))
-    ? v.f.map(f => { const o = {}; for (let i = 0; i < v.c.length; i++) if (f[i] !== null) o[v.c[i]] = f[i]; return o; })
-    : v;
+  /* 5.4-C — `r` (ralo=1): campos que casi ninguna fila trae viajan como
+     { campo: [[fila, valor], …] } en vez de una columna llena de null. */
+  const conv = v => {
+    if (!(v && v.fmt === 2 && Array.isArray(v.c) && Array.isArray(v.f))) return v;
+    const out = v.f.map(f => { const o = {}; for (let i = 0; i < v.c.length; i++) if (f[i] !== null) o[v.c[i]] = f[i]; return o; });
+    if (v.r && typeof v.r === 'object') Object.keys(v.r).forEach(k => (v.r[k] || []).forEach(p => { if (out[p[0]]) out[p[0]][k] = p[1]; }));
+    return out;
+  };
   if (!x || typeof x !== 'object') return x;
   if (x.fmt === 2) return conv(x);
   if (x.registros && x.registros.fmt === 2) x.registros = conv(x.registros);
@@ -87,7 +92,7 @@ async function apiGet(action, params = {}, opts = {}){
     const url = new URL(API_BASE);
     const extra = {};
     if (API_GZ) extra.z = '1';
-    if (API_FMT2[action]) extra.fmt = '2';
+    if (API_FMT2[action]) { extra.fmt = '2'; extra.ralo = '1'; }   // ralo: 5.4-C
     if (MED_PEND.length) extra._mf = JSON.stringify(MED_PEND.splice(0, MED_PEND.length));
     url.search = new URLSearchParams({ action, ...params, ...extra }).toString();
     /* FASE 5.2-A — opts.signal: la vista que pidió la lectura la puede
@@ -179,7 +184,8 @@ function showView(id){
   // FASE 5.2-B: al salir del Panel de Visas se corta su lectura.
   if (id !== 'visas' && typeof visSalir_ === 'function') visSalir_();
   // FASE 5.4-A: al salir de Seguimiento se corta su lectura.
-  if (id !== 'seguimiento' && typeof segSalir_ === 'function') segSalir_();
+  // 5.4-C: Estadísticas usa la MISMA carga → entre las dos se hereda.
+  if (id !== 'seguimiento' && id !== 'estadisticas' && typeof segSalir_ === 'function') segSalir_();
 }
 
 /* FASE 5 — URL del Doc de Google de la plantilla del contrato.
@@ -587,6 +593,11 @@ const TILES = [
   { key:'seguimiento', titulo:'Seguimiento', desc:'Estado, acción e hitos',
     icono:'img/seguimiento.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL','PROCESOS'], listo:true, view:'seguimiento' },
+  /* FASE 5.4-C (pliego 5.4.5 + respuesta 7) — visible para TODOS; los
+     valores en dinero solo llegan a Contador, Superadmin y Desarrollador. */
+  { key:'estadisticas', titulo:'Estadísticas', desc:'Lectura gerencial por año',
+    icono:'img/estadisticas.webp',
+    roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL','PROCESOS'], listo:true, view:'estadisticas' },
   { key:'contador', titulo:'Contador', desc:'Inscritos, pagos y contratos',
     icono:'img/contador.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR'], listo:true, view:'contador' },
@@ -651,7 +662,8 @@ function pintarTiles_(u){
       }
       if (t.key === 'comercial'){ abrirComercial_(); }
       else if (t.key === 'contador'){ abrirContador_(); }   // Fase 2 — js/contador.js
-      else if (t.key === 'seguimiento'){ abrirSeguimiento_(); }   // Fase 5.4-A — js/seguimiento.js
+      else if (t.key === 'seguimiento'){ if (typeof SEG !== 'undefined') SEG.esp = null; abrirSeguimiento_(); }   // Fase 5.4-A — js/seguimiento.js
+      else if (t.key === 'estadisticas'){ abrirEstadisticas_(); }   // Fase 5.4-C — js/estadisticas.js
       else if (t.key === 'procesos'){ showView('procesos'); }   // Fase 3 SEP — js/nivel.js
       else if (t.key === 'config'){ abrirConfig_(); }
       else if (t.key === 'usuarios'){ abrirUsuarios_(); }

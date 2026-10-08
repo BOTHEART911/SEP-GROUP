@@ -3,6 +3,15 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.4 · ENTREGA C (08/10/2026) — ESTADÍSTICAS.
+ *   · Módulo principal "Estadísticas" (todos los roles) sobre la MISMA
+ *     carga de Seguimiento: Reclutamiento, Pagos, Placement/Procesos,
+ *     Visas y Especiales; filtros Programa, Año, Asesor, Sponsor y Mes
+ *     de inscripción; cada indicador abre Seguimiento con esa lista.
+ *     Valores COP/USD (nunca sumados) solo Contador/Superadmin/Dev.
+ *   Archivos: js/estadisticas.js, css/estadisticas.css, js/seguimiento.js,
+ *   index.html, app.js, js/capa-5-esqueletos.js, version.js, sw.js (caché v49).
+ * ------------------------------------------------------------
  * FASE 5.4 · ENTREGA B (08/10/2026) — HISTORIAL Y SINCRONIZACIÓN.
  *   · Detalle de Seguimiento con pestañas: Historial (línea de tiempo
  *     armada con las fechas de cada módulo, llega de fondo), Hitos y
@@ -671,4 +680,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.08";
+var APP_VERSION = "2026.10.08.09";

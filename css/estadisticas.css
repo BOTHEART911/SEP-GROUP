@@ -1,0 +1,64 @@
+/* =============================================================
+ * SEP GROUP — ESTADÍSTICAS (Fase 5.4 · Entrega C)
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * Tarjetas por sección (Reclutamiento, Pagos, Placement, Visas,
+ * Especiales). Cada indicador con lista es un botón que abre
+ * Seguimiento filtrado. Tokens de styles.css (claro y oscuro).
+ * ============================================================= */
+
+#view-estadisticas .container--ancho { max-width: min(1400px, 100%); }
+.est-cuerpo { display: grid; gap: 16px; margin-top: 10px; padding-bottom: 28px; }
+
+.est-sec {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px;
+  padding: 14px 14px 12px; box-shadow: var(--sh-sm);
+  border-top: 4px solid var(--c);
+}
+.est-sec__t {
+  font-family: var(--font-display); font-size: 16px; font-weight: 700; margin: 2px 2px 12px;
+  color: var(--text-main); display: flex; align-items: center; gap: 8px;
+}
+
+.est-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+@media (max-width: 520px) { .est-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } }
+
+.est-k {
+  position: relative; display: flex; flex-direction: column; gap: 3px; text-align: left;
+  border: 1px solid var(--border); border-radius: 14px; padding: 11px 12px 12px;
+  background: color-mix(in srgb, var(--c) 5%, var(--bg-card)); color: var(--text-main);
+  font: inherit; min-width: 0;
+}
+.est-k--btn { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.est-k--btn:hover { transform: translateY(-2px); box-shadow: var(--sh-md); border-color: color-mix(in srgb, var(--c) 45%, transparent); }
+.est-k--btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--c) 55%, transparent); outline-offset: 2px; }
+.est-k.is-cero { opacity: .62; }
+.est-k--info { background: color-mix(in srgb, var(--c) 10%, var(--bg-card)); }
+
+.est-k__n { font-family: var(--font-display); font-size: 26px; font-weight: 800; line-height: 1.1; color: var(--c); }
+.est-k__l { font-weight: 700; font-size: 13.5px; line-height: 1.25; }
+.est-k__d { font-size: 11.5px; color: var(--text-muted); line-height: 1.3; }
+.est-k__bar { display: block; height: 5px; border-radius: 99px; background: var(--bg-soft); overflow: hidden; margin-top: 6px; }
+.est-k__bar i { display: block; height: 100%; background: var(--c); border-radius: 99px; }
+.est-k__ir { font-size: 11px; font-weight: 700; color: var(--c); margin-top: 4px; }
+@media (hover: hover) { .est-k__ir { opacity: 0; transition: opacity .15s; } .est-k--btn:hover .est-k__ir { opacity: 1; } }
+@media (max-width: 520px) { .est-k__n { font-size: 22px; } }
+
+.est-nota { margin: 10px 2px 0; font-size: 12px; color: var(--text-muted); }
+
+.est-fin { margin-top: 14px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.est-fin .est-nota { grid-column: 1 / -1; margin-top: 0; }
+.est-fin--oculto {
+  display: block; padding: 12px 14px; border-radius: 12px; font-size: 13px;
+  background: var(--bg-soft); color: var(--text-soft);
+}
+.est-mon { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; background: var(--bg-card); min-width: 0; }
+.est-mon h3 { font-size: 14px; margin: 0 0 8px; color: var(--text-main); }
+.est-mon__f, .est-mon__s { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.est-mon__f { padding: 6px 0; font-weight: 600; }
+.est-mon__f b { font-family: var(--font-display); font-size: 19px; color: var(--c); }
+.est-mon__f--pen { border-top: 1px dashed var(--border-strong); margin-top: 6px; }
+.est-mon__f--pen b { color: #b45309; }
+.est-mon__s { font-size: 12.5px; color: var(--text-soft); padding: 2px 0 2px 10px; }
+.est-mon small { display: block; color: var(--text-muted); font-size: 11.5px; margin-top: 4px; }
+
+.seg-esp { font-weight: 700; }

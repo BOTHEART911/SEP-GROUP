@@ -30,6 +30,11 @@
  *     en el catálogo, se pinta al instante) + verificador de desfases
  *     de solo lectura (seguimientoSincronizacion, a pedido).
  *
+ * ENTREGA C (08/10/2026) — Estadísticas (js/estadisticas.js) usa ESTA
+ *   misma carga: cargarSeguimiento_ avisa a estAlCargar_ y la lectura no
+ *   se corta al pasar entre Seguimiento y Estadísticas (herencia). Un
+ *   indicador abre Seguimiento con SEG.esp = { l, ids } (lista exacta).
+ *
  * Usa de app.js: apiGet, showView, esc_, currentUser, estPartCargar_,
  * EST_PART, procesoChipHtml_; de temporada.js: TEMP.
  * ============================================================= */
@@ -40,7 +45,9 @@ const SEG = {
   /* 5.4-B — detalle (historial + sincronización) y verificador global.
      Recuerdo por sesión; se limpia al Actualizar. */
   det: {}, detCtrl: null, detN: null, detTab: 'hist', detBloque: '',
-  sinc: null, sincCtrl: null, sincTipo: ''
+  sinc: null, sincCtrl: null, sincTipo: '',
+  /* 5.4-C — lista exacta que llega de un indicador de Estadísticas. */
+  esp: null
 };
 const SEG_TANDA = 80;
 const SEG_SIN = '— Sin dato —';
@@ -94,10 +101,14 @@ async function cargarSeguimiento_() {
     SEG.todos = segDecodificar_(d.registros || [], SEG.catalogo.dic);
     SEG.registros = (typeof TEMP !== 'undefined') ? TEMP.filtrar(SEG.todos) : SEG.todos.slice();
     SEG.cargado = true;
-    segPintarTodo_();
-    segMed_('seguimientoPintado', t0);
+    /* 5.4-C — si la carga la pidió Estadísticas, la tabla se pinta al
+       entrar a Seguimiento (abrirSeguimiento_), no antes. */
+    const vSeg = document.getElementById('view-seguimiento');
+    if (!vSeg || vSeg.classList.contains('active')) { segPintarTodo_(); segMed_('seguimientoPintado', t0); }
+    if (typeof estAlCargar_ === 'function') estAlCargar_();          // 5.4-C — misma carga
   } catch (e) {
     if (segAbortado_(e)) return;
+    if (typeof estAlError_ === 'function') estAlError_(String(e.message || e));
     Swal.fire({ icon: 'error', title: 'No se pudo cargar', text: String(e.message || e) });
   } finally {
     if (SEG.ctrl === ctrl) { SEG.ctrl = null; SEG.cargando = false; }
@@ -166,6 +177,7 @@ function segPill_(k) { return SEG_PILLS.find(p => p.k === k); }
 /* Base con TODOS los filtros menos `salvo` (para contar opciones). */
 function segBase_(salvo) {
   let l = SEG.registros;
+  if (SEG.esp && SEG.esp.set) l = l.filter(r => SEG.esp.set.has(Number(r.n)));
   SEG_PILLS.forEach(p => {
     if (p.k === salvo) return;
     const val = SEG.filtros[p.k];
@@ -189,9 +201,11 @@ function segOpciones_(k) {
   return Object.keys(c).sort((a, b) => a.localeCompare(b)).map(v => ({ valor: v, count: c[v] }));
 }
 
-/* Para la Entrega C (Estadísticas): abrir Seguimiento ya filtrado. */
-function segAbrirFiltrado_(filtros) {
+/* Entrega C (Estadísticas): abrir Seguimiento ya filtrado. `esp` =
+   { l: 'etiqueta', ids: [n…] } — la lista exacta del indicador. */
+function segAbrirFiltrado_(filtros, esp) {
   SEG.filtros = Object.assign({}, filtros || {});
+  SEG.esp = (esp && Array.isArray(esp.ids)) ? { l: String(esp.l || 'Estadísticas'), set: new Set(esp.ids.map(Number)) } : null;
   SEG.texto = ''; const s = segQ_('#seg-search'); if (s) s.value = '';
   abrirSeguimiento_();
 }
@@ -203,8 +217,10 @@ function segPintarTodo_() { segPintarPills_(); segPintarLeyenda_(); segPintarTab
 
 function segPintarPills_() {
   const cont = segQ_('#seg-filters'); if (!cont) return;
-  const activos = Object.keys(SEG.filtros).length;
-  cont.innerHTML = SEG_PILLS.map(f => {
+  const activos = Object.keys(SEG.filtros).length + (SEG.esp ? 1 : 0);
+  cont.innerHTML = (SEG.esp ? `<button class="fpill is-on seg-esp" data-seg-esp-quitar style="--fp:#be123c" title="Viene de Estadísticas. Toca para quitar esta lista.">
+      <span class="fpill__ic">📊</span><span class="fpill__label">${esc_(SEG.esp.l)} (${SEG.esp.set.size})</span><span aria-hidden="true">✕</span></button>` : '') +
+    SEG_PILLS.map(f => {
     const val = SEG.filtros[f.k], on = val !== undefined;
     return `<button class="fpill ${on ? 'is-on' : ''}" data-segp="${f.k}" style="--fp:${f.color}" aria-haspopup="dialog"
         title="${esc_(f.tit)}">
@@ -584,7 +600,8 @@ function segPintarSinc_() {
 document.addEventListener('click', e => {
   const p = e.target.closest('[data-segp]');
   if (p) { segAbrirSheet_(p.dataset.segp); return; }
-  if (e.target.closest('[data-seg-limpiar]')) { SEG.filtros = {}; segPintarPills_(); segPintarTabla_(); return; }
+  if (e.target.closest('[data-seg-limpiar]')) { SEG.filtros = {}; SEG.esp = null; segPintarPills_(); segPintarTabla_(); return; }
+  if (e.target.closest('[data-seg-esp-quitar]')) { SEG.esp = null; segPintarPills_(); segPintarTabla_(); return; }
   if (e.target.closest('[data-seg-fsheet-close]')) { segCerrarSheet_(); return; }
   if (e.target.closest('[data-seg-mas]')) { segTanda_(); return; }
   const v = e.target.closest('[data-seg-ver]');
