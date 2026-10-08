@@ -188,6 +188,8 @@
     verifInit:               [['veri-resumen', 'kpis', 1], ['veri-cards', 'lead', 4]],
     verifDetalle:            [['veri-det-body', 'bloque', 3]],
     visasInit:               [['vis-resumen', 'kpis', 1], ['vis-tabla', 'lead', 4]],
+    /* FASE 5.4-A — Seguimiento: la tabla con silueta mientras llega. */
+    seguimientoInit:         [['seg-tabla', 'lead', 4]],
     /* Lecturas de fondo: sin girador y sin silueta (no pintan contenedor) */
     bootstrap: [],
     me: [],

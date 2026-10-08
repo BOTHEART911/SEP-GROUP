@@ -70,7 +70,7 @@ async function apiAbrirGz_(b64){
 }
 /* Listas grandes en columnas (fmt=2): { fmt:2, c:[campos], f:[[...]] }.
    Se rehidratan a objetos; un null es "campo que la fila no trae". */
-const API_FMT2 = { comercialInit: 1, listComercial: 1, contadorInit: 1, listContador: 1, visasInit: 1 };
+const API_FMT2 = { comercialInit: 1, listComercial: 1, contadorInit: 1, listContador: 1, visasInit: 1, seguimientoInit: 1 };
 function apiRehidratar_(x){
   const conv = v => (v && v.fmt === 2 && Array.isArray(v.c) && Array.isArray(v.f))
     ? v.f.map(f => { const o = {}; for (let i = 0; i < v.c.length; i++) if (f[i] !== null) o[v.c[i]] = f[i]; return o; })
@@ -178,6 +178,8 @@ function showView(id){
   if (id !== 'verif' && typeof veriSalir_ === 'function') veriSalir_();
   // FASE 5.2-B: al salir del Panel de Visas se corta su lectura.
   if (id !== 'visas' && typeof visSalir_ === 'function') visSalir_();
+  // FASE 5.4-A: al salir de Seguimiento se corta su lectura.
+  if (id !== 'seguimiento' && typeof segSalir_ === 'function') segSalir_();
 }
 
 /* FASE 5 — URL del Doc de Google de la plantilla del contrato.
@@ -580,6 +582,11 @@ const TILES = [
   { key:'comercial', titulo:'Comercial', desc:'Leads y seguimiento',
     icono:'img/comercial.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL'], listo:true, view:'comercial' },
+  /* FASE 5.4-A (pliego 5.4.1 + respuesta 7) — módulo principal,
+     visible para TODOS los roles. No es el seguimiento comercial. */
+  { key:'seguimiento', titulo:'Seguimiento', desc:'Estado, acción e hitos',
+    icono:'img/seguimiento.webp',
+    roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR','COMERCIAL','PROCESOS'], listo:true, view:'seguimiento' },
   { key:'contador', titulo:'Contador', desc:'Inscritos, pagos y contratos',
     icono:'img/contador.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR'], listo:true, view:'contador' },
@@ -644,6 +651,7 @@ function pintarTiles_(u){
       }
       if (t.key === 'comercial'){ abrirComercial_(); }
       else if (t.key === 'contador'){ abrirContador_(); }   // Fase 2 — js/contador.js
+      else if (t.key === 'seguimiento'){ abrirSeguimiento_(); }   // Fase 5.4-A — js/seguimiento.js
       else if (t.key === 'procesos'){ showView('procesos'); }   // Fase 3 SEP — js/nivel.js
       else if (t.key === 'config'){ abrirConfig_(); }
       else if (t.key === 'usuarios'){ abrirUsuarios_(); }

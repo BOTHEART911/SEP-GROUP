@@ -1,0 +1,123 @@
+/* =============================================================
+ * SEP GROUP — SEGUIMIENTO (Fase 5.4 · Entrega A)
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * Tabla moderna (no Excel crudo): las dos primeras columnas quedan
+ * fijas (participante/estado/acción y sponsor/empleador/plan/proceso)
+ * y los hitos se desplazan en horizontal DENTRO del marco, agrupados
+ * en bloques de color. La página nunca se corre. Tokens de styles.css
+ * (claro y oscuro).
+ * ============================================================= */
+
+#view-seguimiento .container--ancho { max-width: min(1720px, 100%); }
+
+.seg-filtros { flex-wrap: wrap; gap: 8px; }
+.seg-limpiar { --fp: #dc2626; font-weight: 700; }
+
+.seg-leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 6px 2px 2px; font-size: 12px; color: var(--text-soft); }
+.seg-ley { display: inline-flex; align-items: center; gap: 6px; }
+.seg-ley--nota { color: var(--text-muted); flex-basis: 100%; }
+
+.seg-marco {
+  overflow: auto; max-height: calc(100vh - 250px); min-height: 260px;
+  border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card);
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+}
+
+.seg-tabla { border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 100%; }
+.seg-tabla th, .seg-tabla td {
+  border-bottom: 1px solid var(--border); padding: 7px 8px; vertical-align: middle;
+  white-space: nowrap; text-align: center; background: var(--bg-card);
+}
+.seg-tabla thead th {
+  position: sticky; top: 0; z-index: 3; background: var(--bg-soft); color: var(--text-main);
+  font-weight: 700; font-size: 11.5px;
+}
+.seg-tabla thead tr:nth-child(2) th { top: 30px; }
+.seg-tabla thead .seg-grupos th { height: 30px; box-sizing: border-box; }
+.seg-g {
+  text-transform: uppercase; letter-spacing: .04em; font-size: 10.5px !important;
+  color: var(--g) !important; background: color-mix(in srgb, var(--g) 12%, var(--bg-soft)) !important;
+  border-left: 2px solid var(--bg-card); border-bottom: 2px solid var(--g) !important;
+}
+.seg-hc {
+  font-weight: 600 !important; color: var(--text-soft) !important; font-size: 10.5px !important;
+  background: color-mix(in srgb, var(--g) 6%, var(--bg-soft)) !important; min-width: 46px; cursor: help;
+}
+
+/* Columnas fijas */
+.seg-fija { position: sticky; z-index: 2; text-align: left !important; white-space: normal !important; }
+.seg-fija--1 { left: 0; min-width: 250px; max-width: 290px; }
+.seg-fija--2 { left: 0; min-width: 190px; max-width: 220px; font-size: 12px; box-shadow: 2px 0 0 var(--border); }
+.seg-tabla thead .seg-fija { z-index: 5; vertical-align: bottom; }
+@media (min-width: 900px) {
+  .seg-fija--2 { left: 290px; }
+  .seg-fija--1 { width: 290px; min-width: 290px; max-width: 290px; box-sizing: border-box; }
+}
+@media (max-width: 899px) {
+  /* En el teléfono solo queda fija la columna del participante. */
+  .seg-fija--2 { position: static; }
+  .seg-fija--1 { min-width: 200px; max-width: 230px; box-shadow: 2px 0 0 var(--border); }
+}
+.seg-tabla tbody tr:hover td, .seg-tabla tbody tr:hover th { background: color-mix(in srgb, var(--primary) 5%, var(--bg-card)); }
+
+.seg-nom {
+  all: unset; cursor: pointer; font-weight: 700; color: var(--text-main); font-size: 13px; line-height: 1.25;
+  display: block; min-height: 24px;
+}
+.seg-nom:hover { text-decoration: underline; }
+.seg-nom:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+.seg-id { color: var(--text-muted); font-weight: 600; font-size: 11.5px; }
+
+.seg-estbox { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.seg-est {
+  align-self: flex-start; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px;
+  color: var(--e); background: color-mix(in srgb, var(--e) 13%, transparent);
+}
+.seg-prev { font-size: 11px; color: var(--text-muted); }
+.seg-acc { font-size: 11.5px; color: var(--text-soft); }
+.seg-sinest { font-size: 11.5px; color: var(--text-muted); font-style: italic; }
+
+.seg-bar { height: 4px; border-radius: 4px; background: var(--bg-soft); margin-top: 6px; overflow: hidden; }
+.seg-bar i { display: block; height: 100%; background: linear-gradient(90deg, #16a34a, #0d9488); border-radius: 4px; }
+.seg-bar--det { height: 7px; margin-top: 10px; }
+
+.seg-l { line-height: 1.5; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; }
+.seg-l b { font-weight: 400; }
+.seg-l small { color: var(--text-muted); }
+.seg-plan { font-size: 11px; font-weight: 600; color: #b45309; background: color-mix(in srgb, #b45309 12%, transparent); padding: 1px 7px; border-radius: 999px; }
+
+.seg-d { color: var(--text-soft); font-size: 12.5px; }
+.seg-d small { color: var(--text-muted); }
+.seg-d--mail { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Hito */
+.seg-hcell { padding: 4px !important; }
+.seg-h {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  border-radius: 50%; font-size: 12px; font-weight: 800; line-height: 1; box-sizing: border-box;
+}
+.seg-h--ok   { background: #16a34a; color: #fff; }
+.seg-h--proc { background: color-mix(in srgb, #d97706 18%, transparent); color: #b45309; border: 1.5px solid #d97706; }
+.seg-h--no   { background: color-mix(in srgb, #dc2626 15%, transparent); color: #dc2626; border: 1.5px solid #dc2626; }
+.seg-h--pend { border: 1.5px dashed var(--border-strong); }
+.seg-h--na   { color: var(--text-muted); font-weight: 400; }
+
+.seg-mas { text-align: center; padding: 10px; }
+
+/* Detalle */
+.seg-pop { text-align: left; }
+.seg-det__cab { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; }
+.seg-det__nom { font-size: 18px; font-weight: 800; color: var(--text-main); }
+.seg-det__datos { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--text-soft); }
+.seg-muted { color: var(--text-muted); font-size: 12px; }
+.seg-det__bloques { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .seg-det__bloques { grid-template-columns: 1fr; } }
+.seg-db { border: 1px solid var(--border); border-top: 3px solid var(--g); border-radius: 12px; padding: 10px 12px; }
+.seg-db h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--g); }
+.seg-di { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px dashed var(--border); }
+.seg-di:first-of-type { border-top: 0; }
+.seg-di__t { flex: 1; font-size: 13px; color: var(--text-main); display: flex; flex-direction: column; }
+.seg-di__t small { font-size: 11px; color: var(--text-muted); }
+.seg-di__v { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.seg-di__v--ok { color: #16a34a; } .seg-di__v--proc { color: #b45309; } .seg-di__v--no { color: #dc2626; }
+.seg-di__v--pend, .seg-di__v--na { color: var(--text-muted); }

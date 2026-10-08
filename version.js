@@ -3,6 +3,13 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.4 · ENTREGA A (08/10/2026) — SEGUIMIENTO.
+ *   · Módulo principal "Seguimiento" en el inicio, para todos los roles:
+ *     estado, acción futura y 27 hitos en 8 bloques (solo consulta),
+ *     10 filtros locales + año, búsqueda y detalle del participante.
+ *   Archivos: js/seguimiento.js, css/seguimiento.css, img/seguimiento.webp,
+ *   index.html, app.js, js/capa-5-esqueletos.js, version.js, sw.js (caché v47).
+ * ------------------------------------------------------------
  * FASE 5.3 · ENTREGA C (08/10/2026) — RECORDATORIOS POR CORREO.
  *   · Configuración → General: tarjeta "Recordatorios al participante"
  *     (encendidos/apagados, número de Procesos y franja de envío).
@@ -655,4 +662,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.06";
+var APP_VERSION = "2026.10.08.07";

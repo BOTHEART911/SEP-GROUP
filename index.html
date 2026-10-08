@@ -62,6 +62,7 @@
   <!-- FASE 5.2 · A (07/10/2026) — Verificación Académica -->
   <link rel="stylesheet" href="css/verif.css" />
   <link rel="stylesheet" href="css/visas.css" />
+  <link rel="stylesheet" href="css/seguimiento.css" />
   <!-- MODO OSCURO · ANTIPARPADEO (11/08)
        Deja puesto data-tema ANTES del primer pintado; si no, la app
        nace clara y parpadea a oscuro al cargar el JS. Sin elección
@@ -1089,6 +1090,51 @@
     </div>
   </section>
 
+  <!-- ============================================================
+       FASE 5.4 · ENTREGA A — SEGUIMIENTO (js/seguimiento.js)
+       Módulo principal, visible para todos los roles. Solo consulta.
+       ============================================================ -->
+  <section id="view-seguimiento" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Seguimiento</h1>
+      <button class="app-header__icon" id="seg-refresh" title="Actualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </header>
+
+    <div class="container container--ancho">
+      <div class="com-toolbar">
+        <div class="search-bar">
+          <svg class="search-bar__ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="seg-search" type="search" placeholder="Buscar por nombre, identificación, N°, teléfono, correo, sponsor o empleador…" autocomplete="off" />
+        </div>
+      </div>
+      <div class="filters-row seg-filtros" id="seg-filters"></div>
+      <div class="seg-leyenda" id="seg-leyenda"></div>
+      <div class="vis-count" id="seg-count"></div>
+      <div id="seg-tabla" class="seg-marco"></div>
+      <div id="seg-empty" class="com-empty hidden">
+        <p style="font-weight:700;color:var(--text-soft);">Sin participantes con ese filtro</p>
+        <p class="muted">Cambia el año, los filtros o la búsqueda.</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="seg-fsheet" class="fsheet hidden" aria-hidden="true">
+    <div class="fsheet__scrim" data-seg-fsheet-close></div>
+    <div class="fsheet__panel" role="dialog" aria-modal="true" aria-labelledby="seg-fsheet-title">
+      <div class="fsheet__grip"></div>
+      <div class="fsheet__head">
+        <h3 id="seg-fsheet-title">Filtrar</h3>
+        <button class="fsheet__x" data-seg-fsheet-close aria-label="Cerrar">✕</button>
+      </div>
+      <div class="fsheet__list" id="seg-fsheet-list"></div>
+    </div>
+  </div>
+
   <div id="vis-fsheet" class="fsheet hidden" aria-hidden="true">
     <div class="fsheet__scrim" data-vis-fsheet-close></div>
     <div class="fsheet__panel" role="dialog" aria-modal="true" aria-labelledby="vis-fsheet-title">
@@ -1413,6 +1459,7 @@
   <!-- FASE 5.2 · Entrega A — Verificación Académica -->
   <script src="js/verif.js"></script>
   <script src="js/visas.js"></script>
+  <script src="js/seguimiento.js"></script>
 
   <!-- FASE 4 · Entrega 1 (03/09/2026) — Ofertas de empleo -->
   <script src="js/ofertas.js"></script>
