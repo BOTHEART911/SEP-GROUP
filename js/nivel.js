@@ -86,6 +86,8 @@ function nivePuedeRetirar_() { return !!(NIVE.catalogo?.permisos?.retirar); }
    pedírselo. */
 function nivePuedeReactivar_() { return !!(NIVE.catalogo?.permisos?.reactivar); }
 function nivePuedeReasignar_() { return !!(NIVE.catalogo?.permisos?.reasignar); }
+/* FASE 5.1 · D — Inactivo (Procesos y Superadmin). */
+function nivePuedeInactivar_() { return !!(NIVE.catalogo?.permisos?.inactivar); }
 function niveFiltrosVisibles_() {
   return niveVeTodos_() ? NIVE_FILTROS.concat([NIVE_FILTRO_ASESOR]) : NIVE_FILTROS;
 }
@@ -153,6 +155,7 @@ async function cargarNivel_() {
   try {
     const d = await apiGet('nivelInit', { usuarioId: currentUser.id });
     NIVE.catalogo  = d.catalogo;
+    estPartCargar_(d.catalogo && d.catalogo.estadosPart);         // FASE 5.1 · D
     TEMP.set(d.temporadas); TEMP.montar('nivel');                  // FASE 5.1
     NIVE.todos     = d.registros || [];
     NIVE.registros = TEMP.filtrar(NIVE.todos);
@@ -487,6 +490,9 @@ function renderNiveCards_() {
     card.querySelector('[data-act="retirar"]')?.addEventListener('click', () => niveRetirar_(r, true));
     card.querySelector('[data-act="reactivar"]')?.addEventListener('click', () => niveRetirar_(r, false));
     card.querySelector('[data-act="asesor"]')?.addEventListener('click', () => niveCambiarAsesor_(r));
+    /* FASE 5.1 · D */
+    card.querySelector('[data-act="inactivo"]')?.addEventListener('click', e => niveInactivo_(r, true, e.currentTarget));
+    card.querySelector('[data-act="reactivarInactivo"]')?.addEventListener('click', e => niveInactivo_(r, false, e.currentTarget));
   });
 }
 
@@ -534,6 +540,19 @@ async function niveRetirar_(r, retirar) {
   } catch (e) {
     Swal.fire({ icon: 'error', title: 'No se pudo hacer', text: String(e.message || e) });
   }
+}
+
+/* FASE 5.1 · D — marcar/reactivar Inactivo desde la tarjeta. Viaja el
+   N° de CONTADOR (nContador), igual que el retiro. Se parcha la fila en
+   memoria (el mismo objeto de todas las temporadas) y se repinta. */
+async function niveInactivo_(r, marcar, btn) {
+  const n = niveNContador_(r);
+  if (!n) return;
+  const out = await estPartInactivo_(n, marcar, `${r.nombres} ${r.apellidos}`, btn);
+  if (!out) return;
+  (NIVE.todos || []).filter(x => niveNContador_(x) === n).forEach(x => estPartParcharInactivo_(x, out));
+  if (!(NIVE.todos || []).includes(r)) estPartParcharInactivo_(r, out);
+  renderNiveFiltros_(); renderNiveResumen_(); renderNiveCards_();
 }
 
 async function niveCambiarAsesor_(r) {
@@ -643,6 +662,7 @@ function niveCardHtml_(r, i) {
           ${r.nacimiento ? `<span>🎂 ${esc_(r.nacimiento)}${niveEdad_(r.nacimiento) !== '' ? ' · ' + niveEdad_(r.nacimiento) + ' años' : ''}</span>` : ''}
           ${procesoChipHtml_(r.proceso, r.retirado)}
         </div>
+        ${estPartHtml_(r)}
       </div>
       <div class="com-card__tag">
         <span class="com-badge" style="background:${r.estadoColor}">${r.estadoIc} ${esc_(r.estadoLabel)}</span>
@@ -685,6 +705,11 @@ function niveCardHtml_(r, i) {
                   ? '<button class="act-btn" data-act="reactivar">♻️ Reactivar</button>'
                   : '<span class="act-nota" title="Antes de devolver a alguien al proceso, SEP revisa el caso.">♻️ Reactivar: solo un Superadministrador</span>')
               : '<button class="act-btn act-btn--rojo" data-act="retirar">🛑 Retirar</button>')
+          : ''}
+      ${(nivePuedeInactivar_() && !r.retirado && r.nContador)
+          ? (r.inactivo
+              ? '<button class="act-btn" data-act="reactivarInactivo" title="Vuelve al punto del proceso en el que estaba.">▶️ Reactivar proceso</button>'
+              : '<button class="act-btn" data-act="inactivo" title="Dejó de responder. No es un retiro: no silencia ni libera la oferta.">💤 Inactivo</button>')
           : ''}
       ${nivePuedePurgar_() ? '<button class="act-btn act-btn--rojo" data-act="eliminar">🗑️ Eliminar</button>' : ''}
     </div>

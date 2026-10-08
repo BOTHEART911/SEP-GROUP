@@ -1720,6 +1720,74 @@ function procesoChipHtml_(proceso, retirado){
   return `<span class="proc-chip proc-chip--${v.c}" title="Proceso">${v.ic} ${esc_(v.t)}</span>`;
 }
 
+/* FASE 5.1 · D — ESTADO DEL PARTICIPANTE Y ACCIÓN FUTURA (18 estados).
+   La definición NO vive aquí: llega del servidor en el catálogo
+   (estadosPart de contadorInit y nivelInit, Estados.gs). Cada fila trae
+   solo su clave (`est`) y, si está Inactivo o Retirado, el punto
+   operativo de debajo (`estPrev`). No confundir con el estado del lead
+   de Comercial. */
+const EST_PART = { porClave: {} };
+function estPartCargar_(lista){
+  if (!Array.isArray(lista) || !lista.length) return;
+  const m = {}; lista.forEach(e => { m[e.clave] = e; }); EST_PART.porClave = m;
+}
+function estPartHtml_(r){
+  const e = r && r.est ? EST_PART.porClave[r.est] : null;
+  if (!e) return '';
+  const p = r.estPrev ? EST_PART.porClave[r.estPrev] : null;
+  return `<div class="estp" style="--estp:${esc_(e.color)}">
+      <span class="estp__chip" title="${esc_(e.activa)}">${e.ic} ${esc_(e.nombre)}</span>
+      ${p ? `<span class="estp__prev" title="Punto operativo al que vuelve">${r.est === 'INACTIVO' ? 'vuelve a' : 'estaba en'} ${p.ic} ${esc_(p.nombre)}</span>` : ''}
+      <span class="estp__acc" title="Acción futura">➡️ ${esc_(e.accion)}</span>
+    </div>`;
+}
+/* Parche en memoria tras marcar/reactivar Inactivo: el estado de
+   debajo ya lo tiene la fila, así que no hace falta recargar la lista. */
+function estPartParcharInactivo_(r, out){
+  if (!r || !out) return;
+  r.inactivo = !!out.inactivo;
+  if (out.inactivo) {
+    if (r.est && r.est !== 'INACTIVO') r.estPrev = r.est;
+    r.est = 'INACTIVO';
+  } else if (r.est === 'INACTIVO') {
+    r.est = r.estPrev || '';
+    delete r.estPrev;
+  }
+  ['inactivoMotivo','inactivoFecha','inactivoPor'].forEach(k => { if (k in out) r[k] = out[k]; });
+}
+/* Pide el motivo y escribe. Escudo desde el primer toque (el botón
+   queda ocupado y no se puede volver a enviar) y rid en apiPost. */
+async function estPartInactivo_(n, marcar, nombre, btn){
+  if (estPartInactivo_.ocupado) return null;
+  estPartInactivo_.ocupado = true;
+  if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
+  try {
+    const { value: motivo } = await Swal.fire({
+      icon: marcar ? 'warning' : 'question',
+      title: marcar ? 'Marcar como inactivo' : 'Reactivar el proceso',
+      html: marcar
+        ? `<b>${esc_(nombre)}</b> quedará <b>Inactivo</b> (dejó de responder).<br><small>No es un retiro: no se silencia, no pierde la oferta ni el cupo. Al reactivarlo vuelve a su punto del proceso.</small>`
+        : `<b>${esc_(nombre)}</b> vuelve al punto del proceso en el que estaba.`,
+      input: 'textarea', inputLabel: marcar ? 'Motivo (obligatorio)' : 'Motivo de la reactivación (obligatorio)',
+      showCancelButton: true, confirmButtonText: marcar ? 'Marcar inactivo' : 'Reactivar', cancelButtonText: 'Cancelar',
+      inputValidator: v => (String(v || '').trim().length < 5) && 'Escribe el motivo (mínimo 5 caracteres).'
+    });
+    if (!motivo) return null;
+    const t0 = performance.now();
+    const out = await apiPost(marcar ? 'marcarInactivo' : 'reactivarInactivo',
+      { usuarioId: currentUser.id, n: n, motivo: motivo });
+    try { console.info('[medicion] ' + (marcar ? 'marcarInactivo' : 'reactivarInactivo') + ' ' + Math.round(performance.now() - t0) + ' ms'); } catch(_){}
+    Swal.fire({ icon: 'success', title: marcar ? 'Marcado como inactivo' : 'Proceso reactivado', timer: 1300, showConfirmButton: false });
+    return out;
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: String(e.message || e) });
+    return null;
+  } finally {
+    estPartInactivo_.ocupado = false;
+    if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
+  }
+}
+
 /* Deja el selector en solo lectura y explica por qué, sin tocar el
    index.html: el aviso se crea al vuelo bajo el campo. */
 function comPintarCandado_(selectId, hintId, bloqueado){

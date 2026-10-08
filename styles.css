@@ -1024,6 +1024,16 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .proc-chip--aplazado{ background:rgba(245,158,11,.16); color:#b45309; }
 .proc-chip--retirado{ background:rgba(220,38,38,.12); color:#b91c1c; }
 .proc-chip--pend{ background:rgba(100,116,139,.10); color:#64748b; }
+/* FASE 5.1 · D — estado del participante + acción futura (tarjetas internas).
+   El color llega del catálogo del servidor en --estp. */
+.estp{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:6px 0 2px; font-size:12px; }
+.estp__chip{ display:inline-flex; align-items:center; gap:4px; font-weight:800; padding:3px 9px; border-radius:999px;
+  color:#fff; background:var(--estp, #64748b); }
+.estp__prev{ font-weight:600; color:#64748b; padding:2px 8px; border-radius:999px; border:1px dashed #cbd5e1; }
+.estp__acc{ font-weight:600; color:#334155; }
+.act-btn.is-busy{ opacity:.6; pointer-events:none; }
+.conta-inactivo{ margin-top:8px; }
+.conta-inactivo.is-on{ border-color:#cbd5e1; background:rgba(148,163,184,.10); }
 /* Pago validado en banco, por comprobante, en la ficha del Contador. */
 .cfz-banco{ display:flex; align-items:center; gap:6px; width:100%; font-size:12.5px; font-weight:600;
   color:#64748b; cursor:pointer; padding-top:4px; border-top:1px dashed #e3e9f2; }

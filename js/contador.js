@@ -67,6 +67,7 @@ async function cargarContador_() {
   try {
     const d = await apiGet('contadorInit', { usuarioId: currentUser.id });
     CONTA.catalogo  = d.catalogo;
+    estPartCargar_(d.catalogo && d.catalogo.estadosPart);         // FASE 5.1 · D
     TEMP.set(d.temporadas); TEMP.montar('contador');               // FASE 5.1
     CONTA.todos     = d.registros || [];
     CONTA.registros = TEMP.filtrar(CONTA.todos);
@@ -403,6 +404,7 @@ function contaCardHtml_(r) {
       ${r.asesor ? `<span>👤 ${esc_(r.asesor)}</span>` : ''}
       ${r.asesorProcesos ? `<span>🧭 ${esc_(r.asesorProcesos)}</span>` : ''}
     </div>
+    ${estPartHtml_(r)}
     <div class="conta-steps">
       ${contaPaso_(!!r.comprobanteUrl, '💳', 'Comprobante de inscripción', r.comprobanteUrl ? !!r.bancoIns : null)}
       ${contaPaso_(!!r.contratoUrl, '📄', 'Contrato creado')}
@@ -612,6 +614,41 @@ function contaPuedeRetirar_() {
 function contaPuedeReactivar_() {
   return !!(CONTA.catalogo?.permisosE5?.reactivar);
 }
+/* FASE 5.1 · D — Inactivo: lo marcan y lo reactivan Procesos y
+   Superadmin (y DEV). El Contador solo lo ve. */
+function contaPuedeInactivar_() {
+  return !!(CONTA.catalogo?.permisosE5?.inactivar);
+}
+function contaInactivoHtml_(r) {
+  if (r.retirado) return '';
+  if (r.inactivo) {
+    return `<div class="conta-retiro conta-inactivo is-on">
+        <div><b>💤 Inactivo</b> <span class="conta-hint">— dejó de responder</span></div>
+        <div class="conta-hint">${esc_(r.inactivoFecha || '')}${r.inactivoPor ? ' · ' + esc_(r.inactivoPor) : ''}</div>
+        <div class="conta-hint">Motivo: ${esc_(r.inactivoMotivo || '—')}</div>
+        <div class="conta-hint">Sigue recibiendo mensajes y conserva su oferta y su cupo.</div>
+        ${contaPuedeInactivar_()
+          ? '<button type="button" class="act-btn" id="c-reactivar-inactivo">▶️ Reactivar el proceso</button>'
+          : '<div class="conta-hint conta-hint--aviso">▶️ Reactivarlo lo hacen Procesos o un Superadministrador.</div>'}
+      </div>`;
+  }
+  return contaPuedeInactivar_()
+    ? `<div class="conta-retiro conta-inactivo">
+         <button type="button" class="act-btn" id="c-inactivo">💤 Marcar inactivo</button>
+         <small class="conta-hint">Para quien dejó de responder. No es un retiro: no silencia ni libera la oferta.</small>
+       </div>`
+    : '';
+}
+async function contaInactivo_(r, marcar, btn) {
+  const out = await estPartInactivo_(r.n, marcar, `${r.nombres} ${r.apellidos}`, btn);
+  if (!out) return;
+  /* Mismo objeto en la lista de todas las temporadas y en la visible. */
+  const fila = (CONTA.todos || []).find(x => x.n === r.n);
+  if (fila) estPartParcharInactivo_(fila, out);
+  if (fila !== r) estPartParcharInactivo_(r, out);
+  cerrarModalContador_();
+  renderContaFiltros_(); renderContaCards_(); renderContaResumen_();
+}
 
 function contaBloqueProcesos_(r) {
   const asesores = CONTA.catalogo?.asesoresProcesos || [];
@@ -652,7 +689,7 @@ function contaBloqueProcesos_(r) {
       <summary>🧭 Procesos</summary>
       <div class="form-grid">
         <div class="fld"><label>Asesor de Procesos</label>${asesorHtml}</div>
-        <div class="fld"><label>Estado del participante</label>${retiroHtml}</div>
+        <div class="fld"><label>Estado del participante</label>${estPartHtml_(r)}${retiroHtml}${contaInactivoHtml_(r)}</div>
       </div>
     </details>`;
 }
@@ -954,6 +991,9 @@ function abrirModalContador_(r) {
   /* FASE 4 · ENTREGA 5 — botones del bloque Procesos. */
   document.querySelector('#c-retirar')?.addEventListener('click', () => contaRetirar_(r));
   document.querySelector('#c-reactivar')?.addEventListener('click', () => contaReactivar_(r));
+  /* FASE 5.1 · D */
+  document.querySelector('#c-inactivo')?.addEventListener('click', e => contaInactivo_(r, true, e.currentTarget));
+  document.querySelector('#c-reactivar-inactivo')?.addEventListener('click', e => contaInactivo_(r, false, e.currentTarget));
   document.querySelector('#c-apr-cambiar')?.addEventListener('click', () => contaCambiarAsesor_(r));
 
   document.querySelector('#c-fechaIns-clear')?.addEventListener('click', limpiarFechaIns);

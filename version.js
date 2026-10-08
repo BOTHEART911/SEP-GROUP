@@ -3,6 +3,16 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.1 · ENTREGA D (07/10/2026) — MOTOR DE 18 ESTADOS.
+ *   · Estado actual + acción futura en las tarjetas de Contador y de
+ *     Nivel de Inglés (y en la ficha del Contador). La definición de
+ *     los 18 estados viene del servidor (Estados.gs); aquí no se repite.
+ *   · Inactivo: lo marcan y reactivan Procesos y Superadmin; vuelve al
+ *     punto del proceso en que estaba. No silencia ni libera la oferta.
+ *   Archivos: app.js, js/contador.js, js/nivel.js, styles.css,
+ *   css/tema-oscuro.css, sw.js (caché v36). Apps Script: Estados.gs
+ *   (nuevo), Contador, NivelVista, Retirados, Código + MIGRADOR_F51D.
+ * ------------------------------------------------------------
  * FASE 5.1 · ENTREGA B (07/10/2026) — COMERCIAL Y CONTADOR.
  *   · Candado del estado INSCRITO también en el servidor; Superadmin
  *     y Desarrollador sí lo cambian.
@@ -559,4 +569,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.07.05";
+var APP_VERSION = "2026.10.07.06";
