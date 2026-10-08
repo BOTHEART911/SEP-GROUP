@@ -1,0 +1,87 @@
+/* =============================================================
+ * SEP GROUP — PANEL DE VISAS (Fase 5.2 · Entrega B)
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * Tabla tipo Excel: la primera columna (participante) queda fija y la
+ * tabla se desplaza DENTRO de su marco (la página nunca se corre).
+ * Usa los tokens de styles.css (claro y oscuro).
+ * ============================================================= */
+
+.vis-marco {
+  overflow: auto; max-height: calc(100vh - 260px); min-height: 240px;
+  border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card);
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+}
+.vis-count { font-size: 12.5px; color: var(--text-muted); margin: 6px 2px 8px; }
+
+.vis-tabla { border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 100%; }
+.vis-tabla th, .vis-tabla td {
+  border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+  padding: 6px 8px; vertical-align: middle; white-space: nowrap; text-align: center;
+  background: var(--bg-card);
+}
+.vis-tabla thead th {
+  position: sticky; top: 0; z-index: 3; background: var(--bg-soft); color: var(--text-main);
+  font-weight: 700; font-size: 12px;
+}
+.vis-tabla thead tr:nth-child(2) th { top: 31px; font-weight: 600; color: var(--text-soft); }
+.vis-tabla thead .vis-grupos th { height: 31px; box-sizing: border-box; text-transform: uppercase; letter-spacing: .03em; font-size: 11px; }
+.vis-tabla thead th.g1 { background: color-mix(in srgb, #2563eb 9%, var(--bg-soft)); }
+.vis-tabla thead th.g2 { background: color-mix(in srgb, #0d9488 9%, var(--bg-soft)); }
+
+.vis-tabla .vis-sticky {
+  position: sticky; left: 0; z-index: 2; text-align: left; white-space: normal;
+  min-width: 230px; max-width: 260px; box-shadow: 2px 0 0 var(--border);
+}
+.vis-tabla thead .vis-sticky { z-index: 4; }
+.vis-tabla tbody tr:hover td, .vis-tabla tbody tr:hover th { background: var(--bg-soft); }
+
+.vis-nom { font-weight: 700; color: var(--text-main); }
+.vis-sub { font-size: 11.5px; color: var(--text-soft); }
+.vis-tabla .estp { margin-top: 4px; }
+.vis-tabla .estp__acc { display: none; }
+
+.vis-dato { color: var(--text-soft); font-size: 12.5px; }
+.vis-dato--mail { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
+
+.vis-chk { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; min-width: 44px; min-height: 36px; justify-content: center; }
+.vis-chk input { width: 20px; height: 20px; accent-color: #16a34a; cursor: pointer; }
+.vis-chk input:disabled { cursor: not-allowed; opacity: .45; }
+.vis-chk small, .vis-leida small { font-size: 10.5px; color: var(--text-muted); }
+.vis-chk.is-on small { color: #15803d; }
+
+.vis-leida { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; font-size: 16px; opacity: .55; }
+.vis-leida.is-on { opacity: 1; }
+
+.vis-in {
+  font: inherit; font-size: 12.5px; border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 6px 8px; background: var(--bg-card); color: var(--text-main); min-height: 34px; box-sizing: border-box;
+}
+.vis-in--num { width: 128px; text-transform: uppercase; letter-spacing: .02em; }
+.vis-in--fecha { width: auto; }
+.vis-in:focus { outline: 2px solid #2563eb; outline-offset: 0; }
+.vis-in:disabled { opacity: .55; }
+
+.vis-tag { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin: 1px 2px; }
+.vis-tag.is-ok { background: color-mix(in srgb, #16a34a 14%, transparent); color: #15803d; }
+.vis-tag.is-pend { background: var(--bg-soft); color: var(--text-soft); }
+.vis-muted { color: var(--text-muted); font-size: 12px; }
+.vis-falta { display: block; font-size: 10.5px; color: var(--text-muted); }
+.vis-clave { min-width: 120px; }
+
+.vis-tabla tr.is-ocupado td, .vis-tabla tr.is-ocupado th { cursor: progress; }
+.vis-tabla tr.is-ocupado td { background: color-mix(in srgb, #2563eb 5%, var(--bg-card)); }
+.vis-tabla tr.is-inactivo .vis-nom { color: var(--text-muted); }
+
+@media (max-width: 640px) {
+  .vis-marco { max-height: calc(100vh - 230px); }
+  .vis-tabla .vis-sticky { min-width: 150px; max-width: 170px; }
+  .vis-tabla .estp { display: none; }
+  .vis-in--num { width: 112px; }
+}
+
+html[data-tema="oscuro"] .vis-chk.is-on small { color: #4ade80; }
+html[data-tema="oscuro"] .vis-tag.is-ok { color: #4ade80; }
+html[data-tema="oscuro"] .vis-in { color-scheme: dark; }
+
+/* La vista usa todo el ancho disponible en PC (la tabla es ancha). */
+#view-visas .container--ancho { max-width: min(1680px, 100%); }

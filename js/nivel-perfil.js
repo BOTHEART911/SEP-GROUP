@@ -48,7 +48,10 @@ var NPERFIL = (function () {
      'edit' es el bloque que se está editando ahora mismo (FASE 3.1,
      ajuste 8) con su copia de trabajo de los valores: mientras se
      edita NO se toca b.valores, que es lo que hay guardado. */
-  var F = { r: null, data: null, sel: {}, edit: null, motivo: '' };
+  var F = { r: null, data: null, sel: {}, edit: null, motivo: '', clave: {}, claveOcupado: false };
+  /* FASE 5.2-B — campos secretos del formulario: no viajan en el
+     payload; se ven a pedido con verClave y queda registrado quién. */
+  var SECRETOS = { PLATAFORMA_CLAVE: 'PORTAL_ACADEMICO' };
   /* Estado de la reapertura corta (#modal-nreab). */
   var R = { r: null, data: null, sel: {}, resolver: null };
   /* Lo que hay ahora en el visor, para el botón Copiar enlace. */
@@ -330,11 +333,38 @@ var NPERFIL = (function () {
       Swal.fire({ icon: 'error', title: 'No se pudo abrir el formulario', text: String(e && e.message ? e.message : e) });
       return;
     }
-    F.r = r; F.data = d; F.sel = {}; F.edit = null; F.motivo = '';
+    F.r = r; F.data = d; F.sel = {}; F.edit = null; F.motivo = ''; F.clave = {};
     pintarFormulario_();
   }
 
-  function cerrarFormulario_() { q('#modal-nform')?.classList.add('hidden'); }
+  function cerrarFormulario_() { q('#modal-nform')?.classList.add('hidden'); F.clave = {}; }
+
+  /* La misma pieza que Verificación Académica y el Panel de Visas:
+     verClave { tipo, id }. Escudo + rid (apiPost). */
+  async function verClave_(k) {
+    var d = F.data, r = F.r;
+    var id = d && d.estudiante && d.estudiante.id;
+    if (!id || F.claveOcupado) {
+      if (!id) Swal.fire({ icon: 'info', title: 'Sin registro', text: 'Este estudiante no tiene ID de registro: la clave no se puede mostrar.' });
+      return;
+    }
+    var c = await Swal.fire({ icon: 'warning', title: 'Ver la clave del portal académico',
+      text: 'Quedará registrado que la viste, con tu nombre y la hora.',
+      showCancelButton: true, confirmButtonText: 'Ver clave', cancelButtonText: 'Cancelar' });
+    if (!c.isConfirmed || F.claveOcupado || F.r !== r) return;
+    F.claveOcupado = true; pintarFormulario_();
+    var t0 = Date.now();
+    try {
+      var out = await apiPost('verClave', { usuarioId: currentUser.id, tipo: SECRETOS[k], id: id }, { silent: true });
+      try { (window.__sepMed = window.__sepMed || []).push({ ruta: 'verClave', ms: Date.now() - t0, t: Date.now() }); } catch (_) {}
+      if (F.r === r) F.clave[k] = out.clave || '';
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'No se pudo mostrar', text: String(e && e.message ? e.message : e) });
+    } finally {
+      F.claveOcupado = false;
+      if (F.r === r) pintarFormulario_();
+    }
+  }
 
   function pintarFormulario_() {
     var d = F.data;
@@ -390,6 +420,14 @@ var NPERFIL = (function () {
       });
     });
     cablearEdicion_(body);
+
+    /* FASE 5.2-B — ver/ocultar la clave del portal (a pedido, con registro). */
+    body.querySelectorAll('[data-np-clave]').forEach(function (b) {
+      b.addEventListener('click', function () { verClave_(b.dataset.npClave); });
+    });
+    body.querySelectorAll('[data-np-ocultar]').forEach(function (b) {
+      b.addEventListener('click', function () { delete F.clave[b.dataset.npOcultar]; pintarFormulario_(); });
+    });
 
     /* El motivo se guarda en F mientras se escribe: editar un bloque
        repinta el modal entero (para esconder los campos que dependen
@@ -527,9 +565,25 @@ var NPERFIL = (function () {
     return a === b;
   }
 
+  /* Clave enmascarada (vista de lectura del formulario). */
+  function secretoHtml_(c, b) {
+    var hay = !!(b.secretos && b.secretos[c.k] && b.secretos[c.k].hay);
+    if (!hay) return '<span class="nfm-v vacio">No la ha escrito</span>';
+    if (F.clave[c.k]) {
+      return '<span class="nfm-v"><code class="veri-clave">' + esc(F.clave[c.k]) + '</code> ' +
+        '<button type="button" class="veri-link" data-np-ocultar="' + esc(c.k) + '">🙈 Ocultar</button></span>';
+    }
+    return '<span class="nfm-v"><span class="veri-oculta">••••••••</span> ' +
+      '<button type="button" class="veri-link" data-np-clave="' + esc(c.k) + '"' + (F.claveOcupado ? ' disabled' : '') +
+      '>👁 Ver clave</button> <small class="conta-hint">Queda registrado quién la ve.</small></span>';
+  }
+
   function campoHtml_(c, b) {
     var v = (b.valores || {})[c.k];
     var cuerpo, ancho = '';
+    if (SECRETOS[c.k]) {
+      return '<div class="nfm-campo"><span class="nfm-l">' + esc(c.l || c.k) + '</span>' + secretoHtml_(c, b) + '</div>';
+    }
     switch (c.t) {
       case 'sino':    cuerpo = valorHtml_(siNo_(v)); break;
       /* Una casilla de autorización sin marcar es un "No", no un dato
@@ -701,7 +755,12 @@ var NPERFIL = (function () {
                  c.t === 'check' || c.t === 'youtube') ? ' full' : '';
     var cuerpo;
 
-    if (c.t === 'archivo') {
+    if (SECRETOS[c.k]) {
+      /* FASE 5.2-B — la clave no se muestra: vacío = se conserva. */
+      cuerpo = '<input type="password" data-k="' + esc(c.k) + '" value="" autocomplete="new-password" ' +
+        'placeholder="Oculta · escribe solo si la vas a cambiar" maxlength="100" />' +
+        '<small class="conta-hint">Si lo dejas vacío se conserva la clave que ya está guardada.</small>';
+    } else if (c.t === 'archivo') {
       /* Los documentos los sube el estudiante: aquí solo se ven. */
       cuerpo = archivoHtml_(c, v) +
         '<small class="conta-hint">Los archivos los sube el estudiante desde su Zona.</small>';

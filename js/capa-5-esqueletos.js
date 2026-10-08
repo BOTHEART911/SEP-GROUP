@@ -187,6 +187,7 @@
     /* FASE 5.2-A — Verificación Académica: lista y detalle con silueta. */
     verifInit:               [['veri-resumen', 'kpis', 1], ['veri-cards', 'lead', 4]],
     verifDetalle:            [['veri-det-body', 'bloque', 3]],
+    visasInit:               [['vis-resumen', 'kpis', 1], ['vis-tabla', 'lead', 4]],
     /* Lecturas de fondo: sin girador y sin silueta (no pintan contenedor) */
     bootstrap: [],
     me: [],

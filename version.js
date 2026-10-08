@@ -3,6 +3,21 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.2 · ENTREGA B (08/10/2026) — PANEL DE VISAS.
+ *   · Procesos → Visas: tabla tipo Excel con edición en la fila
+ *     (DS-160 interno, Sistema de Visa + clave oculta, Pago de Visa,
+ *     Cita + Start Date + CAS + Consulado, números DS-160 Real y SEVIS,
+ *     Docs Sponsor, DS-2019 solicitado, Asesoría y Pre-Arrival). Las
+ *     casillas de documentos (DS-160 Real, DS-2019, Pago SEVIS) se leen
+ *     de Mis documentos y el pago del programa del Contador.
+ *   · Clave del portal académico oculta también en Nivel de Inglés →
+ *     Ver formulario (se ve a pedido, con registro).
+ *   · Íconos nuevos de Verificación Académica y Visas (WebP).
+ *   Archivos: js/visas.js, css/visas.css, img/visas.webp,
+ *   img/verificacion.webp (reemplaza verificacion.svg), index.html,
+ *   app.js, js/nivel-perfil.js, js/capa-5-esqueletos.js, version.js,
+ *   sw.js (caché v41).
+ * ------------------------------------------------------------
  * DOCUMENTOS PRIVADOS (07/10/2026).
  *   · Comprobantes, cédulas, contratos, formulario, Mis documentos y
  *     hojas de vida ya no son "cualquiera con el enlace": el equipo
@@ -601,4 +616,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.07.10";
+var APP_VERSION = "2026.10.08.01";

@@ -70,7 +70,7 @@ async function apiAbrirGz_(b64){
 }
 /* Listas grandes en columnas (fmt=2): { fmt:2, c:[campos], f:[[...]] }.
    Se rehidratan a objetos; un null es "campo que la fila no trae". */
-const API_FMT2 = { comercialInit: 1, listComercial: 1, contadorInit: 1, listContador: 1 };
+const API_FMT2 = { comercialInit: 1, listComercial: 1, contadorInit: 1, listContador: 1, visasInit: 1 };
 function apiRehidratar_(x){
   const conv = v => (v && v.fmt === 2 && Array.isArray(v.c) && Array.isArray(v.f))
     ? v.f.map(f => { const o = {}; for (let i = 0; i < v.c.length; i++) if (f[i] !== null) o[v.c[i]] = f[i]; return o; })
@@ -176,6 +176,8 @@ function showView(id){
   }
   // FASE 5.2-A: al salir de Verificación Académica se corta su lectura.
   if (id !== 'verif' && typeof veriSalir_ === 'function') veriSalir_();
+  // FASE 5.2-B: al salir del Panel de Visas se corta su lectura.
+  if (id !== 'visas' && typeof visSalir_ === 'function') visSalir_();
 }
 
 /* FASE 5 — URL del Doc de Google de la plantilla del contrato.
