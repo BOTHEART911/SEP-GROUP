@@ -170,3 +170,36 @@ html[data-tema="oscuro"] .act-btn--ok {
   color: #86efac !important;
   border-color: rgba(34, 197, 94, .4) !important;
 }
+
+/* ============================================================
+   FASE 5.1-C (07/10/2026) — REGLA GLOBAL DE DOCUMENTOS
+   ============================================================
+   · El visor (#nive-visor) va ENCIMA del modal de documentos: antes
+     los dos tenían el mismo z-index y #modal-ndocs, que está después
+     en el HTML, lo tapaba (el visor se abría detrás).
+   · Casillas del Panel de Visas, trazabilidad y aviso de bloqueo. */
+#nive-visor { z-index: 9200; }
+
+.ndoc-visa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 12px; padding: 9px 12px; border: 1px dashed var(--border);
+  border-radius: 10px; background: var(--bg-soft); font-size: .82rem; }
+.ndoc-visa-t { font-weight: 800; color: var(--primary); margin-right: 4px; }
+.ndoc-visa-c { padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--text-muted); font-weight: 700; background: var(--bg-card); }
+.ndoc-visa-c.is-ok { color: #15803d; border-color: #bbf7d0; background: #dcfce7; }
+html[data-tema="oscuro"] .ndoc-visa-c.is-ok { color: #86efac; border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.16); }
+
+.ndoc-lock { margin-top: 8px; font-size: .8rem; font-weight: 700; color: #15803d; }
+html[data-tema="oscuro"] .ndoc-lock { color: #86efac; }
+
+.ndoc-traza { margin-top: 10px; font-size: .8rem; color: var(--text-muted); }
+.ndoc-traza summary { cursor: pointer; font-weight: 700; color: var(--primary); list-style: none; }
+.ndoc-traza summary::-webkit-details-marker { display: none; }
+.ndoc-traza ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.ndoc-traza b { color: var(--text-main); }
+.ndoc-traza-f { white-space: nowrap; }
+.ndoc-traza-m { margin-top: 2px; font-style: italic; }
+
+.ndoc-sil { display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 14px; font-size: .88rem; color: #44546b; cursor: pointer; }
+.ndoc-sil input { width: 16px; height: 16px; }

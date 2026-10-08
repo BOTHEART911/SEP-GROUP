@@ -11,9 +11,12 @@
  *
  *     · visualizar y descargar
  *     · habilitar / deshabilitar (individual o VARIOS a la vez)
- *     · aprobar
- *     · solicitar corrección (reabre SOLO ese documento)
- *     · cargar en nombre del participante o reemplazar
+ *     · aprobar / rechazar con motivo (FASE 5.1-C)
+ *     · cargar en nombre del participante o reemplazar mientras el
+ *       documento NO esté aprobado (aprobado = bloqueado)
+ *     · ver la trazabilidad de cada documento (quién y cuándo)
+ *     · ver las casillas del Panel de Visas que marcan los DS-160,
+ *       DS-2019 y SEVIS aprobados
  *
  * QUIÉN DECIDE
  *   El backend (Documentos.gs). Cada documento llega con su estado
@@ -33,7 +36,7 @@
 var NDOCS = (function () {
   'use strict';
 
-  var D = { r: null, data: null, sel: {} };
+  var D = { r: null, data: null, sel: {}, ocupado: false };
 
   function q(sel) { return document.querySelector(sel); }
   function txt_(v) { return String(v === null || v === undefined ? '' : v).trim(); }
@@ -79,16 +82,45 @@ var NDOCS = (function () {
   function pintar() {
     var lista = (D.data && D.data.documentos) || [];
     q('#ndocs-body').innerHTML =
-      '<p class="conta-sub ndoc-intro">Solo PDF. Cuando el participante guarda un documento queda ' +
-      'bloqueado para él; si necesita cambiarlo, pídele corrección y se le reabre solo ese.</p>' +
+      '<p class="conta-sub ndoc-intro">Solo PDF. Mientras un documento no esté aprobado, el participante ' +
+      'o SEP pueden reemplazarlo. Al aprobarlo queda bloqueado. Si lo rechazas, vuelve a pendiente con tu motivo ' +
+      'y al participante le llega un correo.</p>' +
+      visa() +
       lista.map(fila).join('');
     q('#ndocs-foot').innerHTML = pie();
     cablear();
   }
 
+  /* FASE 5.1-C — las casillas del futuro Panel de Visas. No se marcan
+     a mano: las marca el documento aprobado (el backend las deriva). */
+  function visa() {
+    var v = D.data && D.data.visa;
+    if (!v) return '';
+    return '<div class="ndoc-visa"><span class="ndoc-visa-t">Panel de Visas</span>' +
+      Object.keys(v).map(function (k) {
+        var c = v[k];
+        return '<span class="ndoc-visa-c' + (c.ok ? ' is-ok' : '') + '" title="' +
+          esc(c.ok ? 'Aprobado el ' + c.fecha + (c.por ? ' por ' + c.por : '') : 'Pendiente de aprobar') + '">' +
+          (c.ok ? '☑' : '☐') + ' ' + esc(c.label) + '</span>';
+      }).join('') + '</div>';
+  }
+
+  function traza(d) {
+    var h = d.historial || [];
+    if (!h.length) return '';
+    return '<details class="ndoc-traza"><summary>🕓 Trazabilidad (' + h.length + ')</summary><ol>' +
+      h.map(function (x) {
+        return '<li><b>' + esc(x.accion) + '</b> · ' + esc(x.quien || '—') +
+          (x.origen ? ' <span class="ndoc-traza-o">(' + esc(x.origen) + ')</span>' : '') +
+          ' · <span class="ndoc-traza-f">' + esc(x.fecha) + '</span>' +
+          (x.motivo ? '<div class="ndoc-traza-m">' + esc(x.motivo) + '</div>' : '') + '</li>';
+      }).join('') + '</ol></details>';
+  }
+
   function fila(d) {
     var seleccionable = !d.soloVer;
     var acciones = [];
+    var reabrir = !!(D.data && D.data.puedeReabrir);
 
     if (d.tieneArchivo) {
       acciones.push('<button class="act-btn" data-ver="' + esc(d.clave) + '">👁 Ver</button>');
@@ -96,13 +128,17 @@ var NDOCS = (function () {
                     esc(idDrive_(d.url)) + '" target="_blank" rel="noopener">⬇️ Descargar</a>');
     }
     if (!d.soloVer) {
-      acciones.push('<button class="act-btn" data-cargar="' + esc(d.clave) + '">' +
-                    (d.tieneArchivo ? '♻️ Reemplazar' : '⬆️ Cargar por SEP') + '</button>');
-      if (d.tieneArchivo && d.estado !== 'APROBADO') {
-        acciones.push('<button class="act-btn act-btn--ok" data-aprobar="' + esc(d.clave) + '">✅ Aprobar</button>');
+      /* FASE 5.1-C — aprobado = bloqueado también para SEP. */
+      if (!d.bloqueado) {
+        acciones.push('<button class="act-btn" data-cargar="' + esc(d.clave) + '">' +
+                      (d.tieneArchivo ? '♻️ Reemplazar' : '⬆️ Cargar por SEP') + '</button>');
       }
-      if (d.tieneArchivo && d.estado !== 'CORRECCION') {
-        acciones.push('<button class="act-btn act-btn--rojo" data-corregir="' + esc(d.clave) + '">↩️ Pedir corrección</button>');
+      if (d.tieneArchivo && d.estado === 'EN_REVISION') {
+        acciones.push('<button class="act-btn act-btn--ok" data-aprobar="' + esc(d.clave) + '">✅ Aprobar</button>');
+        acciones.push('<button class="act-btn act-btn--rojo" data-rechazar="' + esc(d.clave) + '">✖ Rechazar</button>');
+      }
+      if (d.bloqueado && reabrir) {
+        acciones.push('<button class="act-btn act-btn--rojo" data-rechazar="' + esc(d.clave) + '">↩️ Reabrir (rechazar)</button>');
       }
     }
 
@@ -128,10 +164,15 @@ var NDOCS = (function () {
                (d.origen ? ' (' + esc(d.origen === 'SEP' ? 'por SEP' : 'por el participante') + ')' : '') : 'Sin archivo') +
              (d.revisadoPor ? ' · Revisó ' + esc(d.revisadoPor) + (d.fechaRevision ? ' el ' + esc(d.fechaRevision) : '') : '') +
       '  </div>' +
-      (d.estado === 'CORRECCION' && d.nota
-        ? '  <div class="ndoc-nota"><b>Corrección pedida:</b> ' + esc(d.nota) + '</div>'
+      ((d.estado === 'RECHAZADO' || d.estado === 'CORRECCION') && d.nota
+        ? '  <div class="ndoc-nota"><b>Motivo del rechazo:</b> ' + esc(d.nota) + '</div>'
+        : '') +
+      (d.bloqueado && !d.soloVer
+        ? '  <div class="ndoc-lock">🔒 Aprobado: queda bloqueado' +
+          (reabrir ? '. Solo un Superadmin puede reabrirlo.' : '.') + '</div>'
         : '') +
       '  <div class="ndoc-acc">' + acciones.join('') + '</div>' +
+      traza(d) +
       '  <input type="file" accept="application/pdf,.pdf" class="ndoc-file" data-file="' + esc(d.clave) + '">' +
       '</div>';
   }
@@ -174,8 +215,8 @@ var NDOCS = (function () {
     raiz.querySelectorAll('[data-aprobar]').forEach(function (b) {
       b.addEventListener('click', function () { revisar(b.dataset.aprobar, 'APROBAR'); });
     });
-    raiz.querySelectorAll('[data-corregir]').forEach(function (b) {
-      b.addEventListener('click', function () { revisar(b.dataset.corregir, 'CORREGIR'); });
+    raiz.querySelectorAll('[data-rechazar]').forEach(function (b) {
+      b.addEventListener('click', function () { revisar(b.dataset.rechazar, 'RECHAZAR'); });
     });
     raiz.querySelectorAll('[data-cargar]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -230,45 +271,78 @@ var NDOCS = (function () {
       });
   }
 
+  /* FASE 5.1-C — Aprobar / Rechazar. Escudo desde el primer toque
+     (D.ocupado + Swal con girador mientras escribe) y un solo viaje con
+     su rid (apiPost lo pone y solo reintenta con el MISMO rid). El
+     correo al participante sale después, desde la cola del servidor;
+     "en silencio" lo omite. */
   async function revisar(clave, accion) {
     var d = doc(clave);
-    if (!d) return;
-
-    var nota = '';
-    if (accion === 'CORREGIR') {
-      var r = await Swal.fire({
-        title: '↩️ Pedir corrección',
-        html: '<b>' + esc(d.nombre) + '</b><br><span style="color:#44546b">' +
-              'Esto le reabre SOLO este documento al participante.</span>',
-        input: 'textarea', inputPlaceholder: 'Qué debe corregir…',
-        showCancelButton: true, confirmButtonText: 'Pedir corrección',
-        inputValidator: function (v) { return !txt_(v) && 'Escribe qué debe corregir.'; }
-      });
-      if (!r.isConfirmed) return;
-      nota = txt_(r.value);
-    } else {
-      var c = await Swal.fire({
-        icon: 'question', title: '¿Aprobar este documento?',
-        html: '<b>' + esc(d.nombre) + '</b>',
-        showCancelButton: true, confirmButtonText: 'Sí, aprobar'
-      });
-      if (!c.isConfirmed) return;
-    }
-
+    if (!d || D.ocupado) return;
+    D.ocupado = true;
     try {
-      D.data = await apiPost('docRevisar', cuerpoApi_({ id: D.r.id, doc: clave, accion: accion, nota: nota }));
+      var silencioHtml = '<label class="ndoc-sil"><input type="checkbox" id="ndoc-sil"> ' +
+        'No avisar al participante (en silencio)</label>';
+      /* El rechazo viaja como CORREGIR (+ nota): el backend nuevo lo
+         lee como RECHAZAR y el anterior lo entiende igual, así front y
+         backend se pueden publicar en cualquier orden. */
+      var cuerpo = { id: D.r.id, doc: clave, accion: accion === 'RECHAZAR' ? 'CORREGIR' : 'APROBAR' };
+
+      if (accion === 'RECHAZAR') {
+        var r = await Swal.fire({
+          title: d.bloqueado ? '↩️ Reabrir documento aprobado' : '✖ Rechazar documento',
+          html: '<b>' + esc(d.nombre) + '</b><br><span style="color:#44546b">' +
+                'Vuelve a pendiente y el participante (o SEP) lo puede volver a cargar. ' +
+                'El motivo es lo que verá el participante.</span>' + silencioHtml,
+          input: 'textarea', inputPlaceholder: 'Motivo del rechazo…',
+          showCancelButton: true, confirmButtonText: 'Rechazar', cancelButtonText: 'Volver',
+          inputValidator: function (v) { return !txt_(v) && 'Escribe el motivo del rechazo.'; },
+          preConfirm: function () { cuerpo.silencio = !!(document.getElementById('ndoc-sil') || {}).checked; }
+        });
+        if (!r.isConfirmed) return;
+        cuerpo.motivo = cuerpo.nota = txt_(r.value);
+      } else {
+        var c = await Swal.fire({
+          icon: 'question', title: '¿Aprobar este documento?',
+          html: '<b>' + esc(d.nombre) + '</b><br><span style="color:#44546b">Al aprobarlo queda bloqueado: ' +
+                'ni el participante ni SEP lo podrán reemplazar.</span>' + silencioHtml,
+          showCancelButton: true, confirmButtonText: 'Sí, aprobar', cancelButtonText: 'Volver',
+          preConfirm: function () { cuerpo.silencio = !!(document.getElementById('ndoc-sil') || {}).checked; }
+        });
+        if (!c.isConfirmed) return;
+      }
+
+      Swal.fire({ title: 'Guardando…', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+      var t0 = Date.now();
+      D.data = await apiPost('docRevisar', cuerpoApi_(cuerpo), { silent: true });
+      medir_('docRevisar', t0);
       pintar();
-      Swal.fire({ icon: 'success', title: accion === 'APROBAR' ? 'Documento aprobado' : 'Corrección solicitada',
-        timer: 1500, showConfirmButton: false });
+      Swal.fire({ icon: 'success',
+        title: accion === 'APROBAR' ? 'Documento aprobado' : 'Documento rechazado',
+        text: cuerpo.silencio ? 'Sin aviso al participante.' : 'Le llegará un correo al participante.',
+        timer: 1600, showConfirmButton: false });
     } catch (e) {
       Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: String(e.message || e) });
+    } finally {
+      D.ocupado = false;
     }
+  }
+
+  /* Tiempo de pantalla de cada escritura (regla de medición): queda en
+     la consola y en window.__sepMed para la traza. */
+  function medir_(ruta, t0) {
+    try {
+      var ms = Date.now() - t0;
+      (window.__sepMed = window.__sepMed || []).push({ ruta: ruta, ms: ms, t: Date.now() });
+      if (window.console) console.info('[med] ' + ruta + ' ' + ms + ' ms');
+    } catch (_) {}
   }
 
   function subir(clave, file) {
     var d = doc(clave);
     if (!d) return;
     var maxMb = (D.data && D.data.maxMb) || 5;
+    if (D.ocupado) return;
 
     if (!/\.pdf$/i.test(String(file.name || ''))) {
       return Swal.fire({ icon: 'warning', title: 'Solo PDF', text: d.nombre + ' debe ser un archivo PDF.' });
@@ -282,22 +356,27 @@ var NDOCS = (function () {
     lector.onerror = function () { Swal.fire({ icon: 'error', title: 'No se pudo leer el archivo' }); };
     lector.onload = function () {
       var base64 = String(lector.result).split(',')[1];
-      /* Girador (no esqueleto): esto es una ESCRITURA. */
+      /* Girador (no esqueleto): esto es una ESCRITURA. Escudo desde el
+         primer toque: D.ocupado bloquea cualquier otra acción. */
+      if (D.ocupado) return;
+      D.ocupado = true;
       Swal.fire({ title: 'Subiendo el documento…', allowOutsideClick: false,
         didOpen: function () { Swal.showLoading(); } });
+      var t0 = Date.now();
 
       apiPost('docSubirSep', cuerpoApi_({
         id: D.r.id, doc: clave, filename: String(file.name || ''),
         mime: file.type || 'application/pdf', base64: base64
-      })).then(function (r) {
+      }), { silent: true }).then(function (r) {
+        medir_('docSubirSep', t0);
         D.data = r;
         Swal.close();
         pintar();
-        Swal.fire({ icon: 'success', title: 'Documento cargado', timer: 1500, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: 'Documento cargado', text: 'Queda en revisión.', timer: 1500, showConfirmButton: false });
       }).catch(function (e) {
         Swal.close();
         Swal.fire({ icon: 'error', title: 'No se pudo subir', text: String(e.message || e) });
-      });
+      }).then(function () { D.ocupado = false; });
     };
     lector.readAsDataURL(file);
   }
