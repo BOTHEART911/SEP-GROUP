@@ -128,6 +128,22 @@
     texto: function () {
       return '<div class="sep-sk-rows" style="margin-top:0">' + l(95) + l(80) + l(45) + '</div>';
     },
+    /* 5.5-A — tarjeta de Seguimiento: franja, nombre, anillo de avance,
+       estado, chips y la ruta de 8 bloques de hitos. */
+    seguimiento: function () {
+      return card(
+        '<div class="sep-sk-top">' + l(60, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-ring"></span></div>' +
+        '<div class="sep-sk-rows">' + '<span class="sep-sk sep-sk-badge" style="width:150px"></span>' + l(45) + '</div>' +
+        '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 6) + '</div>' +
+        '<div class="sep-sk-ruta">' + rep('<span class="sep-sk sep-sk-blq"></span>', 8) + '</div>' +
+        '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn"></span>', 3) + '</div>',
+        'rayada'
+      );
+    },
+    /* 5.5-A — sección de Estadísticas: título + rejilla de indicadores. */
+    seccion: function () {
+      return card(l(30, true) + '<div class="sep-sk-grid" style="margin-top:14px">' + rep('<span class="sep-sk sep-sk-kpi"></span>', 4) + '</div>');
+    },
     /* 17/08/2026 — bloques del formulario del estudiante en solo lectura
        (modal "Ver formulario" de Nivel de Inglés). */
     bloque: function () {
@@ -189,7 +205,7 @@
     verifDetalle:            [['veri-det-body', 'bloque', 3]],
     visasInit:               [['vis-resumen', 'kpis', 1], ['vis-tabla', 'lead', 4]],
     /* FASE 5.4-A — Seguimiento: la tabla con silueta mientras llega. */
-    seguimientoInit:         [['seg-tabla', 'lead', 4], ['est-cuerpo', 'kpis', 3]],   /* 5.4-C: misma carga */
+    seguimientoInit:         [['seg-cards', 'seguimiento', 4], ['est-cuerpo', 'seccion', 3]],   /* 5.4-C misma carga · 5.5-A forma de tarjeta */
     /* Lecturas de fondo: sin girador y sin silueta (no pintan contenedor) */
     bootstrap: [],
     me: [],
@@ -200,7 +216,7 @@
   /* Avisos de "no hay nada" que deben esconderse mientras se pinta la silueta */
   var VACIOS = { 'com-cards': 'com-empty', 'usr-cards': 'usr-empty', 'conta-cards': 'conta-empty',
                  'nive-cards': 'nive-empty', 'ofe-cards': 'ofe-empty',
-                 'veri-cards': 'veri-empty' };
+                 'veri-cards': 'veri-empty', 'seg-cards': 'seg-empty' };
 
   /* ---- Pintar / retirar -------------------------------------------------- */
   function pintar(plan) {

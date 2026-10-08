@@ -49,7 +49,7 @@ const SEG = {
   /* 5.4-C — lista exacta que llega de un indicador de Estadísticas. */
   esp: null
 };
-const SEG_TANDA = 80;
+const SEG_TANDA = 24;   /* 5.5-A — tarjetas: tandas de 24 al hacer scroll */
 const SEG_SIN = '— Sin dato —';
 
 function segTxt_(v) { return String(v == null ? '' : v).trim(); }
@@ -235,7 +235,7 @@ function segPintarLeyenda_() {
   c.dataset.ok = '1';
   c.innerHTML = ['1', 'p', 'x', '0', '-'].map(v =>
     `<span class="seg-ley"><span class="seg-h seg-h--${SEG_VAL[v].c}">${SEG_VAL[v].ic}</span>${SEG_VAL[v].t}</span>`).join('') +
-    '<span class="seg-ley seg-ley--nota">Los hitos se marcan solos desde su módulo. Pasa el mouse sobre un hito para ver de dónde sale.</span>';
+    '<span class="seg-ley seg-ley--nota">Los hitos se marcan solos desde su módulo. Cada tarjeta muestra los 8 bloques con su avance; pasa el mouse sobre un hito para ver de dónde sale.</span>';
 }
 
 function segAbrirSheet_(k) {
@@ -262,26 +262,15 @@ function segCerrarSheet_() {
   s.classList.add('hidden'); s.setAttribute('aria-hidden', 'true');
 }
 
-/* ---------- tabla ---------- */
+/* ---------- tarjetas (5.5-A: cero tablas) ----------
+   Cada participante es una tarjeta del mismo lenguaje de Comercial y
+   Contador (franja de color del estado, nombre, insignia, chips). Los 27
+   hitos se leen SIN abrir el detalle: "ruta" de 8 bloques, cada uno con
+   su avance n/total y sus hitos como chips con el código corto y el
+   estado (✓ ◐ ✕ · –). Pintado por tandas al hacer scroll de la página. */
 function segFecha_(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?/.exec(segTxt_(s));
   return m ? (m[3] + '/' + m[2] + '/' + m[1].slice(2) + (m[4] && m[4] + m[5] !== '0000' ? ' ' + m[4] + ':' + m[5] : '')) : '';
-}
-function segCabecera_() {
-  const hs = segHitos_(), bs = segBloques_();
-  const grupos = bs.map(b => {
-    const n = hs.filter(h => h.b === b.k).length;
-    return n ? `<th colspan="${n}" class="seg-g" style="--g:${b.color}">${esc_(b.l)}</th>` : '';
-  }).join('');
-  const cols = hs.map(h => {
-    const b = bs.find(x => x.k === h.b) || {};
-    return `<th class="seg-hc" style="--g:${b.color || '#64748b'}" title="${esc_(h.l + ' — ' + h.f)}">${esc_(h.c)}</th>`;
-  }).join('');
-  return `<thead><tr class="seg-grupos">
-      <th class="seg-fija seg-fija--1" rowspan="2">Participante · Estado · Acción futura</th>
-      <th class="seg-fija seg-fija--2" rowspan="2">Sponsor · Empleador · Plan · Proceso</th>
-      <th colspan="7" class="seg-g" style="--g:#475569">Datos</th>${grupos}</tr>
-    <tr><th>Asesor</th><th>Asesor procesos</th><th>Nivel de Inglés</th><th>Teléfono</th><th>Correo</th><th>Identificación</th><th>Últ. actualización</th>${cols}</tr></thead>`;
 }
 function segEstadoHtml_(r) {
   const e = segEst_(r);
@@ -291,37 +280,60 @@ function segEstadoHtml_(r) {
     (p ? `<span class="seg-prev">${r.est === 'INACTIVO' ? 'vuelve a' : 'estaba en'} ${esc_(p.nombre)}</span>` : '') +
     `<span class="seg-acc">➡️ ${esc_(e.accion)}</span>`;
 }
-function segFilaHtml_(r) {
+/* Ruta de hitos: 8 bloques con su avance y los hitos como chips. */
+function segRutaHtml_(r) {
   const hs = segHitos_();
-  const celdas = hs.map((h, i) => {
-    const v = SEG_VAL[segHito_(r, i)] || SEG_VAL['0'];
-    return `<td class="seg-hcell"><span class="seg-h seg-h--${v.c}" title="${esc_(h.l + ': ' + v.t)}" aria-label="${esc_(h.l + ': ' + v.t)}">${v.ic}</span></td>`;
-  }).join('');
-  const av = segAvance_(r);
-  return `<tr data-sn="${r.n}">
-    <th class="seg-fija seg-fija--1" scope="row">
-      <button class="seg-nom" data-seg-ver="${r.n}" title="Ver el detalle">
-        <span class="seg-id">#${r.n}</span> ${esc_((r.nom + ' ' + r.ape).trim() || '(sin nombre)')}</button>
-      <div class="seg-estbox">${segEstadoHtml_(r)}</div>
-      <div class="seg-bar" title="${av}% de los hitos que aplican"><i style="width:${av}%"></i></div>
-    </th>
-    <td class="seg-fija seg-fija--2">
-      <div class="seg-l"><b>🏢</b> ${esc_(r.spo || '—')}${r.spoC ? ' <small title="Sin oferta: es el sponsor que registró el Contador">(Contador)</small>' : ''}</div>
-      <div class="seg-l"><b>💼</b> ${esc_(r.emp || '—')}</div>
-      <div class="seg-l">${r.plan ? `<span class="seg-plan">🎯 ${esc_(r.plan)}</span>` : ''} ${typeof procesoChipHtml_ === 'function' ? procesoChipHtml_(r.pro, r.ret) : esc_(r.pro || '')}</div>
-    </td>
-    <td class="seg-d">${esc_(r.ase || '—')}</td>
-    <td class="seg-d">${esc_(r.aseP || '—')}</td>
-    <td class="seg-d">${r.niv ? esc_(r.niv) + (r.pun !== '' && r.pun != null ? ` <small>${esc_(r.pun)}</small>` : '') : '—'}</td>
-    <td class="seg-d">${esc_(r.tel || '—')}</td>
-    <td class="seg-d seg-d--mail" title="${esc_(r.cor || '')}">${esc_(r.cor || '—')}</td>
-    <td class="seg-d">${esc_(r.doc || '—')}</td>
-    <td class="seg-d">${esc_(segFecha_(r.act) || '—')}</td>
-    ${celdas}</tr>`;
+  return '<div class="seg-ruta">' + segBloques_().map(b => {
+    let si = 0, de = 0, neg = 0, proc = 0;
+    const chips = [];
+    hs.forEach((h, i) => {
+      if (h.b !== b.k) return;
+      const c = segHito_(r, i), v = SEG_VAL[c] || SEG_VAL['0'];
+      if (c !== '-') { de++; if (c === '1') si++; else if (c === 'x') neg++; else if (c === 'p') proc++; }
+      chips.push(`<span class="seg-hp seg-hp--${v.c}" title="${esc_(h.l + ': ' + v.t + ' · ' + h.f)}" aria-label="${esc_(h.l + ': ' + v.t)}"><i aria-hidden="true">${v.ic || '·'}</i>${esc_(h.c)}</span>`);
+    });
+    if (!chips.length) return '';
+    const est = !de ? 'na' : (neg ? 'no' : (si === de ? 'ok' : (si || proc ? 'proc' : 'pend')));
+    return `<div class="seg-blq seg-blq--${est}" style="--g:${b.color}">
+      <div class="seg-blq__h"><span>${esc_(b.l)}</span><b>${de ? si + '/' + de : '—'}</b></div>
+      <div class="seg-blq__hs">${chips.join('')}</div></div>`;
+  }).join('') + '</div>';
+}
+function segCardHtml_(r) {
+  const e = segEst_(r), av = segAvance_(r);
+  const color = e ? e.color : '#94a3b8';
+  const nombre = (r.nom + ' ' + r.ape).trim() || '(sin nombre)';
+  const chip = (ic, v, tit) => v ? `<span title="${esc_(tit)}">${ic} ${esc_(v)}</span>` : '';
+  return `<article class="com-card seg-card${r.ret ? ' seg-card--ret' : ''}" data-sn="${r.n}" style="--e:${esc_(color)}">
+    <div class="com-card__stripe" style="background:${esc_(color)}"></div>
+    <div class="com-card__top">
+      <div class="com-card__head">
+        <h3 class="com-card__name"><button class="seg-nom" data-seg-ver="${r.n}" title="Ver el detalle">${esc_(nombre)}</button></h3>
+        <div class="seg-card__sub"><span class="com-card__id">N° ${r.n}</span>${r.anio ? `<span>📅 ${esc_(r.anio)}</span>` : ''}${r.act ? `<span title="Última actualización">🕒 ${esc_(segFecha_(r.act))}</span>` : ''}</div>
+      </div>
+      <div class="seg-ring" style="--p:${av}" role="img" aria-label="${av}% de los hitos que le aplican" title="${av}% de los hitos que le aplican"><b>${av}<small>%</small></b></div>
+    </div>
+    <div class="seg-estbox">${segEstadoHtml_(r)}</div>
+    <div class="com-card__meta">
+      ${chip('🪪', r.doc, 'Identificación')}${chip('📱', r.tel, 'Teléfono')}${chip('✉️', r.cor, 'Correo')}
+      ${chip('👤', r.ase, 'Asesor comercial')}${chip('🧭', r.aseP, 'Asesor de Procesos')}
+      ${r.niv ? `<span title="Nivel de Inglés">🗣️ ${esc_(r.niv)}${r.pun !== '' && r.pun != null ? ' · ' + esc_(r.pun) : ''}</span>` : ''}
+      ${r.spo ? `<span title="${r.spoC ? 'Sin oferta: sponsor que registró el Contador' : 'Sponsor'}">🏢 ${esc_(r.spo)}${r.spoC ? ' <small>(Contador)</small>' : ''}</span>` : ''}
+      ${chip('💼', r.emp, 'Empleador')}
+      ${r.plan ? `<span class="seg-plan">🎯 ${esc_(r.plan)}</span>` : ''}
+      ${typeof procesoChipHtml_ === 'function' ? procesoChipHtml_(r.pro, r.ret) : ''}
+    </div>
+    ${segRutaHtml_(r)}
+    <div class="com-card__actions">
+      <button class="act-btn act-ver" data-seg-ver="${r.n}">📋 Detalle</button>
+      <button class="act-btn" data-seg-ver="${r.n}" data-seg-ir="hist">🕒 Historial</button>
+      <button class="act-btn" data-seg-ver="${r.n}" data-seg-ir="sync">🔗 Sincronización</button>
+    </div>
+  </article>`;
 }
 
 function segPintarTabla_() {
-  const cont = segQ_('#seg-tabla'), vacio = segQ_('#seg-empty');
+  const cont = segQ_('#seg-cards'), vacio = segQ_('#seg-empty');
   if (!cont) return;
   const t0 = Date.now();
   try { SEG.obs && SEG.obs.disconnect(); } catch (_) {}
@@ -331,20 +343,22 @@ function segPintarTabla_() {
   if (cnt) cnt.textContent = l.length + ' de ' + SEG.registros.length + ' participantes · ' + (typeof TEMP !== 'undefined' ? TEMP.etiqueta() : '');
   vacio?.classList.toggle('hidden', l.length > 0);
   cont.classList.toggle('hidden', !l.length);
-  if (!l.length) { cont.innerHTML = ''; return; }
-  cont.innerHTML = `<table class="seg-tabla">${segCabecera_()}<tbody id="seg-tbody"></tbody></table><div id="seg-mas" class="seg-mas"></div>`;
+  const mas = segQ_('#seg-mas');
+  cont.innerHTML = '';
+  if (mas) mas.innerHTML = '';
+  if (!l.length) return;
   segTanda_();
-  if (typeof IntersectionObserver === 'function') {
-    SEG.obs = new IntersectionObserver(ent => { if (ent.some(x => x.isIntersecting)) segTanda_(); }, { root: cont, rootMargin: '400px' });
-    SEG.obs.observe(segQ_('#seg-mas'));
+  if (typeof IntersectionObserver === 'function' && mas) {
+    SEG.obs = new IntersectionObserver(ent => { if (ent.some(x => x.isIntersecting)) segTanda_(); }, { rootMargin: '600px' });
+    SEG.obs.observe(mas);
   }
-  segMed_('seguimientoTabla', t0);
+  segMed_('seguimientoTarjetas', t0);
 }
 function segTanda_() {
-  const tb = segQ_('#seg-tbody'); if (!tb) return;
+  const cont = segQ_('#seg-cards'); if (!cont) return;
   const desde = SEG.pintadas, hasta = Math.min(SEG.lista.length, desde + SEG_TANDA);
   if (desde >= hasta) return;
-  tb.insertAdjacentHTML('beforeend', SEG.lista.slice(desde, hasta).map(segFilaHtml_).join(''));
+  cont.insertAdjacentHTML('beforeend', SEG.lista.slice(desde, hasta).map(segCardHtml_).join(''));
   SEG.pintadas = hasta;
   const mas = segQ_('#seg-mas');
   if (mas) mas.innerHTML = hasta < SEG.lista.length
@@ -424,7 +438,13 @@ function segEsqueletoDet_() {
   const sk = n => Array.from({ length: n }, () => '<div class="seg-sk"><i></i><span></span></div>').join('');
   const h = segQ_('#seg-p-hist'), y = segQ_('#seg-p-sync');
   if (h) h.innerHTML = `<div class="seg-sks" aria-busy="true">${sk(5)}</div>`;
-  if (y) y.innerHTML = `<div class="seg-sks" aria-busy="true">${sk(4)}</div>`;
+  if (y) y.innerHTML = segSkScards_(4);
+}
+
+/* Silueta con la forma de las tarjetas de sincronización (5.5-A). */
+function segSkScards_(n) {
+  return '<div class="seg-scards" aria-busy="true" aria-label="Cargando">' + Array.from({ length: n }, () =>
+    '<div class="seg-scard seg-scard--sk"><span class="sep-sk sep-sk-l sep-sk-w60"></span><span class="sep-sk sep-sk-l tit sep-sk-w80"></span><span class="sep-sk sep-sk-l sep-sk-w45"></span></div>').join('') + '</div>';
 }
 
 function segCortarDet_() { try { SEG.detCtrl && SEG.detCtrl.abort(); } catch (_) {} SEG.detCtrl = null; }
@@ -512,14 +532,14 @@ function segPintarSyncDet_() {
   el.innerHTML = `<div class="seg-sres ${al ? 'is-al' : 'is-ok'}">${al
       ? '⚠️ ' + al + (al === 1 ? ' dato no coincide' : ' datos no coinciden') + ' entre módulos. Se muestra dónde se corrige; aquí no se edita nada.'
       : '✅ Todas las fuentes de este participante coinciden.'}</div>
-    <div class="seg-stabla" role="table">
+    <div class="seg-scards">
       ${fu.map(f => {
         const x = val[f.k] || {};
-        return `<div class="seg-sfila ${x.al ? 'is-al' : ''}" role="row">
-          <div class="seg-sfila__dato" role="cell"><b>${esc_(f.d)}</b><small>${esc_(f.f)}</small></div>
-          <div class="seg-sfila__v" role="cell">${esc_(x.v || '—')}
-            ${(x.al || []).map(k => segDesfChip_(k) + (det[k] ? `<small class="seg-desf__d">${esc_(det[k])}</small>` : '')).join('')}</div>
-          <div class="seg-sfila__h" role="cell" title="Quién lo escribe: ${esc_(f.e)}">${esc_(f.h)}</div>
+        return `<div class="seg-scard ${x.al && x.al.length ? 'is-al' : ''}">
+          <div class="seg-scard__dato">${esc_(f.d)}</div>
+          <div class="seg-scard__v">${esc_(x.v || '—')}</div>
+          ${(x.al || []).map(k => '<div class="seg-scard__al">' + segDesfChip_(k) + (det[k] ? `<small class="seg-desf__d">${esc_(det[k])}</small>` : '') + '</div>').join('')}
+          <div class="seg-scard__f"><span>📍 ${esc_(f.f)}</span><span class="seg-mono" title="Quién lo escribe: ${esc_(f.e)}">${esc_(f.h)}</span></div>
         </div>`;
       }).join('')}
     </div>`;
@@ -536,12 +556,16 @@ function segAbrirSinc_() {
   const html = `<div class="seg-sinc">
     <h3 class="seg-sinc__h">🔗 De dónde sale cada dato</h3>
     <p class="seg-muted">Seguimiento y Estadísticas solo consultan estas fuentes; no guardan copias.</p>
-    <div class="seg-fuentes" role="table">
-      <div class="seg-fuentes__f seg-fuentes__cab" role="row"><span>Dato</span><span>Fuente</span><span>Hoja y columnas</span><span>Quién lo escribe</span></div>
-      ${fu.map(f => `<div class="seg-fuentes__f" role="row"><span><b>${esc_(f.d)}</b></span><span>${esc_(f.f)}</span><span class="seg-mono">${esc_(f.h)}</span><span>${esc_(f.e)}</span></div>`).join('')}
+    <div class="seg-scards">
+      ${fu.map(f => `<div class="seg-scard">
+        <div class="seg-scard__dato">${esc_(f.d)}</div>
+        <div class="seg-scard__v">📍 ${esc_(f.f)}</div>
+        <div class="seg-scard__q">✍️ ${esc_(f.e)}</div>
+        <div class="seg-scard__f"><span class="seg-mono">${esc_(f.h)}</span></div>
+      </div>`).join('')}
     </div>
     <h3 class="seg-sinc__h">🧭 Verificador de desfases <small class="seg-muted">${esc_(typeof TEMP !== 'undefined' ? TEMP.etiqueta() : '')}</small></h3>
-    <div id="seg-sinc-res"><div class="seg-sks" aria-busy="true">${Array.from({ length: 4 }, () => '<div class="seg-sk"><i></i><span></span></div>').join('')}</div></div>
+    <div id="seg-sinc-res">${segSkScards_(4)}</div>
   </div>`;
   Swal.fire({ html: html, width: 980, showConfirmButton: false, showCloseButton: true,
               customClass: { popup: 'seg-pop' }, didClose: () => segCortarSinc_() });
@@ -590,7 +614,7 @@ function segPintarSinc_() {
       const def = segDesfDef_(x.k), nv = SEG_NIVEL[def.n] || SEG_NIVEL.media;
       const quien = x.n ? `<button class="seg-nom" data-seg-sinc-ver="${x.n}"><span class="seg-id">#${x.n}</span> ${esc_(x.nom || '(sin nombre)')}</button>`
                         : `<span class="seg-nom seg-nom--sin">${esc_(x.nom || '(sin nombre)')}</span>`;
-      return `<div class="seg-dfila" style="--d:${nv.c}">${quien}<span class="seg-dfila__l">${esc_(def.l)}</span><span class="seg-dfila__d">${esc_(x.d || '')}</span></div>`;
+      return `<div class="seg-dcard" style="--d:${nv.c}">${quien}<span class="seg-dcard__l">⚠️ ${esc_(def.l)}</span><span class="seg-dcard__d">${esc_(x.d || '')}</span><small class="seg-dcard__c">Se corrige en ${esc_(def.c)}</small></div>`;
     }).join('')}${lista.length > 400 ? `<p class="seg-muted">Se muestran 400 de ${lista.length}. Filtra por tipo para ver el resto.</p>` : ''}</div>`;
 }
 
@@ -605,7 +629,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-seg-fsheet-close]')) { segCerrarSheet_(); return; }
   if (e.target.closest('[data-seg-mas]')) { segTanda_(); return; }
   const v = e.target.closest('[data-seg-ver]');
-  if (v) { segVerDetalle_(v.dataset.segVer); return; }
+  if (v) { segVerDetalle_(v.dataset.segVer, v.dataset.segIr); return; }
   const tb = e.target.closest('[data-seg-tab]');
   if (tb) { segDetTab_(tb.dataset.segTab); return; }
   const bq = e.target.closest('[data-seg-hb]');

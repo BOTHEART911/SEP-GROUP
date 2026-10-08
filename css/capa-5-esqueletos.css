@@ -77,6 +77,14 @@
 .sep-sk-ico    { height: 34px; width: 34px; border-radius: 10px; }
 .sep-sk-media  { height: 140px; border-radius: 14px; margin-top: 12px; }
 
+/* 5.5-A — tarjeta de Seguimiento: anillo, chips y ruta de 8 bloques */
+.sep-sk-ring   { width: 52px; height: 52px; border-radius: 50%; flex: none; }
+.sep-sk-chips  { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.sep-sk-chip   { height: 16px; width: 92px; border-radius: 999px; }
+.sep-sk-ruta   { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.sep-sk-blq    { height: 52px; border-radius: 12px; }
+@media (max-width: 340px) { .sep-sk-ruta { grid-template-columns: 1fr; } }
+
 /* Rejilla de KPIs (tablero) y de campos (configuración) */
 .sep-sk-grid {
   display: grid; gap: 12px;

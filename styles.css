@@ -856,13 +856,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
    arriba por compatibilidad, pero ya no se usan en Comercial.
    ══════════════════════════════════════════════════════════ */
 .filters-row {
-  display: flex; gap: 8px; padding: 10px 2px 14px;
+  display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 2px 14px;
 }
 /* Las tres reparten el ancho por igual… */
 .fpill {
   --fp: var(--primary);
-  flex: 1 1 0;
-  position: relative; min-width: 0; overflow: hidden; text-align: left;
+  /* 5.5 — el texto de la pastilla se ve COMPLETO: la pastilla toma el
+     ancho de su texto, la fila pasa a la línea siguiente y, si aun así no
+     cabe, el texto parte en dos líneas. Nunca puntos suspensivos.
+     overflow: clip (no hidden) para que su ancho mínimo sea el de la
+     palabra más larga. */
+  flex: 1 1 auto;
+  position: relative; min-width: auto; overflow: hidden; overflow: clip; text-align: left; line-height: 1.2;
+  max-width: 100%;
   display: flex; align-items: center; gap: 7px;
   padding: 9px 10px 9px 12px; border-radius: var(--r-pill); cursor: pointer;
   background: var(--bg-card); border: 1.5px solid var(--border);
@@ -875,7 +881,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .fpill__ic    { flex: none; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: .95rem; line-height: 1; }
 .fpill__ic img{ width: 18px; height: 18px; object-fit: contain; border-radius: 4px; }
 .fpill__dot   { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--fp); }
-.fpill__label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fpill__label { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: normal; word-break: normal; }
 .fpill__count { flex: none; background: var(--bg-soft); color: var(--text-soft); border-radius: var(--r-pill); padding: 1px 7px; font-size: .7rem; font-weight: 800; }
 .fpill__chev  { flex: none; opacity: .45; transition: transform .18s; }
 .fpill:hover .fpill__chev { transform: translateY(1.5px); }
@@ -883,7 +889,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 /* Encendida = hay filtro aplicado. El color lo inyecta app.js en --fp. */
 /* …y la que tiene filtro aplicado se expande para mostrar el valor completo.
    Es la clave para que quepa "MARIA ALEJANDRA" sin recortar las otras dos. */
-.fpill.is-on { flex: 1.9 1 0; background: var(--fp); border-color: transparent; color: #fff; box-shadow: var(--sh-md); }
+.fpill.is-on { flex: 1.9 1 auto; background: var(--fp); border-color: transparent; color: #fff; box-shadow: var(--sh-md); }
 .fpill.is-on .fpill__count { background: rgba(255,255,255,.24); color: #fff; }
 .fpill.is-on .fpill__dot   { background: #fff; }
 .fpill.is-on .fpill__chev  { opacity: .85; }

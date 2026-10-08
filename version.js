@@ -3,6 +3,18 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.5 · ENTREGA A (08/10/2026) — VISTAS UNIFICADAS EN TARJETAS.
+ *   · Seguimiento sin tablas: cada participante es una tarjeta (franja
+ *     del estado, anillo de avance, acción futura, chips y la ruta de 8
+ *     bloques con sus 27 hitos legibles sin abrir el detalle), por tandas
+ *     de 24 al hacer scroll. Sincronización, fuentes y desfases también
+ *     en tarjetas. Silueta con la forma de la tarjeta (capa 5).
+ *   · Pastillas de filtro con el texto completo en toda la app (parten
+ *     en dos líneas si no caben; nunca puntos suspensivos).
+ *   Archivos: js/seguimiento.js, css/seguimiento.css, index.html,
+ *   js/capa-5-esqueletos.js, css/capa-5-esqueletos.css, styles.css,
+ *   version.js, sw.js (caché v50).
+ * ------------------------------------------------------------
  * FASE 5.4 · ENTREGA C (08/10/2026) — ESTADÍSTICAS.
  *   · Módulo principal "Estadísticas" (todos los roles) sobre la MISMA
  *     carga de Seguimiento: Reclutamiento, Pagos, Placement/Procesos,
@@ -680,4 +692,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.09";
+var APP_VERSION = "2026.10.08.10";
