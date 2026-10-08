@@ -3,6 +3,17 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.3 · ENTREGA B (08/10/2026) — PRE-ARRIVAL, VUELO Y RIFA.
+ *   · Panel de Visas: Pre-Arrival solo con la visa aprobada; grupo
+ *     Vuelo con el itinerario (📁 Revisar abre Ver | Aprobar | Rechazar
+ *     en el mismo modal de documentos, y la fila se actualiza sola) y
+ *     Rifa 72 h (Sí/No, fecha de la primera carga y horas).
+ *   · Indicadores nuevos: Pre-Arrival pendiente, Vuelo por revisar,
+ *     Elegibles rifa 72 h y Programa completado (estado 18).
+ *   · Documentos del participante: el itinerario admite imagen JPG/PNG.
+ *   Archivos: js/visas.js, css/visas.css, js/nivel-docs.js,
+ *   css/procesos.css, version.js, sw.js (caché v45).
+ * ------------------------------------------------------------
  * FASE 5.3 · ENTREGA A (08/10/2026) — MÓDULO VISA DEL PARTICIPANTE.
  *   · Configuración → Programas: los 6 videos del módulo Visa y el del
  *     Pre-Arrival (solo YouTube, No listado). Guardar con escudo.
@@ -637,4 +648,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.04";
+var APP_VERSION = "2026.10.08.05";

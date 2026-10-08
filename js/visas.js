@@ -130,7 +130,12 @@ const VIS_TOPS = [
   /* 5.2-C */
   { clave: 'CONSULAR',    label: 'Doc. consular lista',       ic: '🗂️', color: '#0f766e', f: r => !!r.consular && !r.carpeta },
   { clave: 'EMBAJADA',    label: 'En Embajada',               ic: '🏛️', color: '#1e40af', f: r => !!r.carpeta && (!r.resultado || r.resultado === 'PENDIENTE') },
-  { clave: 'APROBADA',    label: 'Visa aprobada',             ic: '🛂', color: '#16a34a', f: r => r.resultado === 'APROBADA' }
+  { clave: 'APROBADA',    label: 'Visa aprobada',             ic: '🛂', color: '#16a34a', f: r => r.resultado === 'APROBADA' },
+  /* 5.3-B — Pre-Arrival, vuelo, rifa de 72 h y estado 18. */
+  { clave: 'PREARRIVAL',  label: 'Pre-Arrival pendiente',     ic: '✈️', color: '#0369a1', f: r => r.resultado === 'APROBADA' && !r.pre },
+  { clave: 'VUELO_REV',   label: 'Vuelo por revisar',         ic: '🛫', color: '#2563eb', f: r => r.vuelo === 'EN_REVISION' },
+  { clave: 'RIFA',        label: 'Elegibles rifa 72 h',       ic: '🎟️', color: '#c026d3', f: r => r.rifa === 'SI' },
+  { clave: 'COMPLETADO',  label: 'Programa completado',       ic: '🎓', color: '#047857', f: r => r.est === 'PROGRAMA_COMPLETADO' }
 ];
 
 function visVeTodos_() { return !!(VIS.catalogo && VIS.catalogo.permisos && VIS.catalogo.permisos.verTodos); }
@@ -310,6 +315,32 @@ function visPasosV_(r) {
   return `<small class="vis-pasosv${n === 6 ? ' is-ok' : ''}" title="Pasos del módulo Visa que completó el participante en su portal">Portal ${n}/6</small>`;
 }
 
+/* 5.3-B — Pre-Arrival: solo con la visa aprobada; no se quita si ya
+   cargó el vuelo (la rifa se midió contra esa fecha). */
+function visPreCelda_(r) {
+  if (r.pre) return visCheck_(r, 'pre', !!r.vueloCarga, 'Completado') + (r.vueloCarga ? '<small class="vis-falta">Ya cargó el vuelo</small>' : '');
+  const puede = r.resultado === 'APROBADA';
+  return visCheck_(r, 'pre', !puede, puede ? 'Pendiente' : 'Se abre con la visa aprobada') +
+    (puede ? '' : '<small class="vis-falta">Requiere visa aprobada</small>');
+}
+const VIS_VUELO_TAG = {
+  EN_REVISION: ['is-rev', '📤 Por revisar'], RECHAZADO: ['is-pend', '↩️ Rechazado'], APROBADO: ['is-ok', '✅ Aprobado']
+};
+function visVueloCelda_(r) {
+  const t = VIS_VUELO_TAG[r.vuelo];
+  const tag = t ? `<span class="vis-tag ${t[0]}" title="${esc_(r.vuelo === 'APROBADO' ? 'Aprobado por ' + (r.vueloQ || '—') + ' · ' + (r.vueloF || '') : 'Itinerario en Mis documentos')}">${t[1]}</span>`
+                : `<span class="vis-muted">${r.pre ? 'Sin cargar' : '—'}</span>`;
+  const btn = (r.vuelo || r.pre) && typeof NDOCS !== 'undefined'
+    ? `<button class="veri-link vis-vuelo-btn" data-vvuelo="${esc_(r.id)}" title="Ver, aprobar o rechazar el itinerario">📁 ${r.vuelo === 'EN_REVISION' ? 'Revisar' : 'Ver'}</button>` : '';
+  return tag + btn;
+}
+function visRifaCelda_(r) {
+  if (!r.vueloCarga) return '<span class="vis-muted">—</span>';
+  const h = visTxt_(r.rifaH);
+  return `<span class="vis-tag ${r.rifa === 'SI' ? 'is-ok' : 'is-pend'}" title="Primera carga del vuelo vs. Pre-Arrival">${r.rifa === 'SI' ? '🎟️ Sí' : 'No'}</span>
+    <small class="vis-falta">${esc_(visFechaCorta_(r.vueloCarga))}${h && !isNaN(Number(h)) ? ' · ' + esc_(h.replace('.', ',')) + ' h' : ''}</small>`;
+}
+
 /* 5.2-C — Documentación consular: lista o qué le falta (lo dice el backend). */
 function visConsularCelda_(r) {
   if (r.consular) return '<span class="vis-tag is-ok" title="Cumple las 7 condiciones">✅ Lista</span>';
@@ -369,10 +400,12 @@ function visFilaHtml_(r) {
     <td class="g2">${visDs2019Celda_(r)}</td>
     <td class="g2">${visLeida_(r.ds2019, r.ds2019F, r.ds2019Q, 'Se marca cuando SEP aprueba el DS-2019 en Mis documentos')}</td>
     <td class="g1">${visCheck_(r, 'ase')}${visPasosV_(r)}</td>
-    <td class="g1">${visCheck_(r, 'pre')}</td>
     <td class="g3 vis-cons">${visConsularCelda_(r)}</td>
     <td class="g3">${visCarpetaCelda_(r)}</td>
     <td class="g3">${visResultadoCelda_(r)}</td>
+    <td class="g1">${visPreCelda_(r)}</td>
+    <td class="g2 vis-vuelo">${visVueloCelda_(r)}</td>
+    <td class="g2">${visRifaCelda_(r)}</td>
   </tr>`;
 }
 
@@ -389,8 +422,9 @@ const VIS_CABECERA = `<thead>
     <th class="g1">Pago programa</th>
     <th colspan="3" class="g2">Sponsor y DS-2019</th>
     <th class="g1">Asesoría Visa</th>
-    <th class="g1">Pre-Arrival</th>
     <th colspan="3" class="g3">Consular</th>
+    <th class="g1">Pre-Arrival</th>
+    <th colspan="2" class="g2">Vuelo</th>
   </tr>
   <tr>
     <th>Teléfono</th><th>Correo</th><th>Nacimiento</th><th>Pasaporte</th><th>Sponsor</th>
@@ -403,9 +437,11 @@ const VIS_CABECERA = `<thead>
     <th class="g1">Contador</th>
     <th class="g2">☐ Docs Sponsor</th><th class="g2">☐ Solicitado</th><th class="g2" title="Leído de Mis documentos">☑ Recibido (doc)</th>
     <th class="g1">☐ Completada</th>
-    <th class="g1">☐ Completado</th>
     <th class="g3" title="Automática: DS-2019, SEVIS, DS-160 Real con N°, pago Completado y validado, Verificación Académica y Asesoría">Documentación</th>
     <th class="g3">☐ Carpeta entregada</th><th class="g3" title="Solo SEP lo registra">Resultado</th>
+    <th class="g1" title="Se abre con la visa aprobada; lo completa el participante en su portal">☐ Completado</th>
+    <th class="g2" title="Itinerario en Mis documentos: aprobado = Programa completado">Itinerario</th>
+    <th class="g2" title="Primera carga dentro de las 72 h siguientes al Pre-Arrival">Rifa 72 h</th>
   </tr></thead>`;
 
 function visPintarTabla_() {
@@ -463,8 +499,26 @@ document.addEventListener('click', e => {
   const ocu = e.target.closest('[data-vclave-ocultar]');
   if (ocu) { delete VIS.clave[ocu.dataset.vclaveOcultar]; visRepintarFila_(ocu.dataset.vclaveOcultar); return; }
   const ed = e.target.closest('[data-vclave-editar]');
-  if (ed) visEditarClave_(ed.dataset.vclaveEditar);
+  if (ed) { visEditarClave_(ed.dataset.vclaveEditar); return; }
+  const vu = e.target.closest('[data-vvuelo]');
+  if (vu) visAbrirVuelo_(vu.dataset.vvuelo);
 });
+
+/* 5.3-B — Ver | Aprobar | Rechazar el itinerario: el mismo modal de
+   documentos (regla global, correo por la cola). La respuesta trae la
+   fila del panel y se parcha en memoria (sin recargar la lista). */
+function visAbrirVuelo_(id) {
+  const r = VIS.todos.find(x => x.id === id);
+  if (!r || VIS.ocupado[id] || typeof NDOCS === 'undefined') return;
+  const quien = currentUser && currentUser.id;
+  NDOCS.abrir(r, {
+    conVisa: true, enfocar: 'ITINERARIO',
+    alCambiar: fila => {
+      if (!currentUser || currentUser.id !== quien) return;        // sesión vieja
+      visParchar_(fila); visRepintarFila_(id); visPintarTop_();
+    }
+  });
+}
 
 /* Escudo de la fila: desde el primer toque hasta la respuesta. */
 function visOcupar_(id, on) {
@@ -577,4 +631,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Puerta para las pruebas automatizadas. */
 window.__sepVisas = { VIS, abrirVisas_, visPintarTodo_, visVisibles_, visSalir_, visParchar_, visGuardar_,
-                      visFilaHtml_, VIS_TOPS, visResultado_ };
+                      visFilaHtml_, VIS_TOPS, visResultado_, visAbrirVuelo_ };

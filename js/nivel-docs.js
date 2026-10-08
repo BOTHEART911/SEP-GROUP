@@ -36,13 +36,26 @@
 var NDOCS = (function () {
   'use strict';
 
-  var D = { r: null, data: null, sel: {}, ocupado: false };
+  var D = { r: null, data: null, sel: {}, ocupado: false, opts: {} };
 
   function q(sel) { return document.querySelector(sel); }
   function txt_(v) { return String(v === null || v === undefined ? '' : v).trim(); }
   function esc(v) { return (typeof esc_ === 'function') ? esc_(v) : txt_(v); }
   function cuerpoApi_(extra) {
-    return Object.assign({ usuarioId: currentUser.id }, extra || {});
+    /* FASE 5.3-B — abierto desde el Panel de Visas: la respuesta trae
+       también la fila del panel (un solo viaje). */
+    return Object.assign({ usuarioId: currentUser.id }, D.opts.conVisa ? { conVisa: true } : {}, extra || {});
+  }
+  /* FASE 5.3-B — avisa al que abrió el modal (Panel de Visas). */
+  function avisarCambio_(res) {
+    try { if (res && res.visaFila && typeof D.opts.alCambiar === 'function') D.opts.alCambiar(res.visaFila); } catch (_) {}
+  }
+  /* FASE 5.3-B — el itinerario de vuelo admite imagen (lo dice el backend). */
+  function conImg_(d) { return /image\//.test(String(d && d.acepta || '')); }
+  function mimeDe_(nombre, file) {
+    if (/\.png$/i.test(nombre)) return 'image/png';
+    if (/\.jpe?g$/i.test(nombre)) return 'image/jpeg';
+    return (file && file.type === 'application/pdf') ? file.type : 'application/pdf';
   }
 
   function idDrive_(url) {
@@ -53,8 +66,8 @@ var NDOCS = (function () {
   /* ============================================================
      ABRIR
      ============================================================ */
-  function abrir(r) {
-    D.r = r; D.data = null; D.sel = {};
+  function abrir(r, opts) {
+    D.r = r; D.data = null; D.sel = {}; D.opts = opts || {};
     q('#ndocs-title').textContent = '📁 Documentos del participante';
     q('#ndocs-sub').textContent = txt_(r.nombres + ' ' + r.apellidos) + ' · ' + txt_(r.documento);
     q('#ndocs-body').innerHTML = '';
@@ -70,7 +83,14 @@ var NDOCS = (function () {
        casa desde la Entrega 4. El mapa de capa-5 ya conoce la acción
        docsParticipante. */
     return apiGet('docsParticipante', { usuarioId: currentUser.id, id: D.r.id })
-      .then(function (d) { D.data = d; pintar(); })
+      .then(function (d) {
+        D.data = d; pintar();
+        /* FASE 5.3-B — desde el Panel de Visas se abre en el vuelo. */
+        if (D.opts.enfocar) {
+          var el = document.querySelector('#ndocs-body .ndoc[data-doc="' + D.opts.enfocar + '"]');
+          if (el) { el.classList.add('ndoc--foco'); if (el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }
+        }
+      })
       .catch(function (e) {
         q('#ndocs-body').innerHTML = '<p class="conta-sub">' + esc(e.message || e) + '</p>';
       });
@@ -82,7 +102,7 @@ var NDOCS = (function () {
   function pintar() {
     var lista = (D.data && D.data.documentos) || [];
     q('#ndocs-body').innerHTML =
-      '<p class="conta-sub ndoc-intro">Solo PDF. Mientras un documento no esté aprobado, el participante ' +
+      '<p class="conta-sub ndoc-intro">Solo PDF (el itinerario de vuelo también en imagen). Mientras un documento no esté aprobado, el participante ' +
       'o SEP pueden reemplazarlo. Al aprobarlo queda bloqueado. Si lo rechazas, vuelve a pendiente con tu motivo ' +
       'y al participante le llega un correo.</p>' +
       visa() +
@@ -173,7 +193,7 @@ var NDOCS = (function () {
         : '') +
       '  <div class="ndoc-acc">' + acciones.join('') + '</div>' +
       traza(d) +
-      '  <input type="file" accept="application/pdf,.pdf" class="ndoc-file" data-file="' + esc(d.clave) + '">' +
+      '  <input type="file" accept="' + esc(d.acepta || 'application/pdf,.pdf') + '" class="ndoc-file" data-file="' + esc(d.clave) + '">' +
       '</div>';
   }
 
@@ -317,6 +337,7 @@ var NDOCS = (function () {
       D.data = await apiPost('docRevisar', cuerpoApi_(cuerpo), { silent: true });
       medir_('docRevisar', t0);
       pintar();
+      avisarCambio_(D.data);
       Swal.fire({ icon: 'success',
         title: accion === 'APROBAR' ? 'Documento aprobado' : 'Documento rechazado',
         text: cuerpo.silencio ? 'Sin aviso al participante.' : 'Le llegará un correo al participante.',
@@ -344,8 +365,10 @@ var NDOCS = (function () {
     var maxMb = (D.data && D.data.maxMb) || 5;
     if (D.ocupado) return;
 
-    if (!/\.pdf$/i.test(String(file.name || ''))) {
-      return Swal.fire({ icon: 'warning', title: 'Solo PDF', text: d.nombre + ' debe ser un archivo PDF.' });
+    var img = conImg_(d);
+    if (!(img ? /\.(pdf|jpe?g|png)$/i : /\.pdf$/i).test(String(file.name || ''))) {
+      return Swal.fire({ icon: 'warning', title: img ? 'PDF o imagen' : 'Solo PDF',
+        text: d.nombre + (img ? ' debe ser un PDF o una imagen JPG/PNG.' : ' debe ser un archivo PDF.') });
     }
     if (file.size > maxMb * 1024 * 1024) {
       return Swal.fire({ icon: 'warning', title: 'Archivo muy pesado',
@@ -366,12 +389,13 @@ var NDOCS = (function () {
 
       apiPost('docSubirSep', cuerpoApi_({
         id: D.r.id, doc: clave, filename: String(file.name || ''),
-        mime: file.type || 'application/pdf', base64: base64
+        mime: mimeDe_(String(file.name || ''), file), base64: base64
       }), { silent: true }).then(function (r) {
         medir_('docSubirSep', t0);
         D.data = r;
         Swal.close();
         pintar();
+        avisarCambio_(r);
         Swal.fire({ icon: 'success', title: 'Documento cargado', text: 'Queda en revisión.', timer: 1500, showConfirmButton: false });
       }).catch(function (e) {
         Swal.close();

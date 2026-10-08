@@ -203,3 +203,6 @@ html[data-tema="oscuro"] .ndoc-lock { color: #86efac; }
 .ndoc-sil { display: flex; align-items: center; justify-content: center; gap: 8px;
   margin-top: 14px; font-size: .88rem; color: #44546b; cursor: pointer; }
 .ndoc-sil input { width: 16px; height: 16px; }
+
+/* 5.3-B — documento enfocado al abrir desde el Panel de Visas. */
+.ndoc.ndoc--foco { box-shadow: 0 0 0 2px var(--accent, #f5b301); border-radius: 12px; }
