@@ -3576,6 +3576,16 @@ const USR_FOTO_FALLBACK = 'img/usuarios.webp';
    - Drive (cualquier formato) → thumbnail?id=...&sz=w1000
    - No-Drive (Cloudinary, etc.) → se usa tal cual
    - Vacío → fallback */
+/* 07/10/2026 — DOCUMENTOS PRIVADOS. Comprobantes, cédulas, contratos,
+   formulario, Mis documentos y hojas de vida ya no son "cualquiera con el
+   enlace": el equipo los ve con su cuenta de Google (el correo de
+   USUARIOS) y el participante con el suyo. La nota va bajo cada visor. */
+function notaVisorPrivado_(){
+  const c = (currentUser && currentUser.email) ? String(currentUser.email).trim() : '';
+  return '🔒 Documento privado: se abre con tu cuenta de Google del equipo' + (c ? ' (' + c + ')' : '') +
+         '. Si ves «Necesitas acceso», toca ↗ Abrir e inicia sesión con ese correo. ' +
+         'El enlace solo funciona para el equipo y para el participante: a terceros envíales el archivo descargado.';
+}
 function driveImg_(url){
   const s = String(url || '');
   if (!s) return USR_FOTO_FALLBACK;

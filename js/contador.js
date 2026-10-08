@@ -471,6 +471,8 @@ function abrirVisorConta_(url, titulo) {
   /* FASE 5 — descarga directa desde el propio visor. */
   const dl = document.querySelector('#conta-visor-bajar');
   if (dl) dl.href = id ? 'https://drive.google.com/uc?export=download&id=' + id : url;
+  const nota = document.querySelector('#conta-visor-nota');
+  if (nota) nota.textContent = (typeof notaVisorPrivado_ === 'function') ? notaVisorPrivado_() : '';   // 07/10/2026
   document.querySelector('#conta-visor').classList.remove('hidden');
 }
 function cerrarVisorConta_() {

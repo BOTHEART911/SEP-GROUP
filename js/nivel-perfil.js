@@ -121,6 +121,8 @@ var NPERFIL = (function () {
     var abrir = q('#nive-visor-abrir'); if (abrir) abrir.href = V.url;
     var bajar = q('#nive-visor-bajar');
     if (bajar) bajar.href = id ? ('https://drive.google.com/uc?export=download&id=' + id) : V.url;
+    var nota = q('#nive-visor-nota');
+    if (nota) nota.textContent = (typeof notaVisorPrivado_ === 'function') ? notaVisorPrivado_() : '';   // 07/10/2026
 
     visor.classList.remove('hidden');
   }

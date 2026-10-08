@@ -3,6 +3,14 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * DOCUMENTOS PRIVADOS (07/10/2026).
+ *   · Comprobantes, cédulas, contratos, formulario, Mis documentos y
+ *     hojas de vida ya no son "cualquiera con el enlace": el equipo
+ *     los abre con su cuenta de Google (el correo de Usuarios) y el
+ *     participante con el suyo. Los visores lo explican abajo.
+ *   Archivos: app.js, index.html, styles.css, js/contador.js,
+ *   js/nivel-perfil.js, version.js, sw.js (caché v39).
+ * ------------------------------------------------------------
  * RENDIMIENTO (07/10/2026) — LECTURAS, PESO Y MEDICIÓN.
  *   · Las respuestas grandes viajan comprimidas (gzip) y las listas de
  *     Comercial y Contador en columnas: Contador baja de 839 KB a un
@@ -593,4 +601,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.07.08";
+var APP_VERSION = "2026.10.07.09";
