@@ -4,6 +4,8 @@
  * Software propietario; cualquier modificación por terceros anula
  * la garantía de funcionamiento.
  * ------------------------------------------------------------
+ * 5.5-B (08/10/2026): cero tablas también en el detalle (las listas del
+ *   formulario salen en tarjetas) y silueta con la forma de la tarjeta.
  * QUÉ ES (pliego 5.2.2)
  *   Procesos → Verificación Académica. Lista de quienes ya tienen el
  *   formulario aprobado, con:
@@ -403,9 +405,13 @@ function veriBloquesHtml_(d) {
 function veriCampoHtml_(c) {
   let v;
   if (c.t === 'lista') {
+    /* 5.5-B — sin tablas: cada fila de la lista es una tarjeta con sus
+       campos (etiqueta arriba, valor debajo), legible en el teléfono. */
     v = c.filas.length
-      ? `<div class="veri-tabla-w"><table class="veri-tabla"><thead><tr>${c.cols.map(x => `<th>${esc_(x.l)}</th>`).join('')}</tr></thead>
-         <tbody>${c.filas.map(f => `<tr>${c.cols.map(x => `<td>${esc_(f[x.k] || '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+      ? `<div class="veri-filas">${c.filas.map((f, i) => `<div class="veri-fila">
+           <span class="veri-fila__n">${i + 1}</span>
+           ${c.cols.map(x => `<div class="veri-fila__c"><span>${esc_(x.l)}</span><b${f[x.k] ? '' : ' class="veri-falta"'}>${esc_(f[x.k] || '—')}</b></div>`).join('')}
+         </div>`).join('')}</div>`
       : '<span class="veri-falta">—</span>';
   } else if (c.t === 'chips') {
     v = c.v.length ? c.v.map(x => `<span class="veri-chip">${esc_(x)}</span>`).join('') : '<span class="veri-falta">—</span>';
@@ -631,4 +637,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Puerta para las pruebas automatizadas. */
 window.__sepVerif = { VERI, abrirVerif_, veriAbrirDetalle_, veriCerrarDetalle_, veriGuardar_, veriPintarTodo_,
-                      veriVisibles_, veriSalir_, veriParchar_ };
+                      veriVisibles_, veriSalir_, veriParchar_, veriCampoHtml_, veriPintarDetalle_ };

@@ -63,10 +63,19 @@
 .veri-campo__l { font-size: 12.5px; color: var(--text-soft); }
 .veri-campo__v { font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; min-width: 0; }
 .veri-chip { display: inline-block; margin: 0 6px 6px 0; padding: 3px 9px; border-radius: 999px; background: var(--bg-soft); font-size: 12px; }
-.veri-tabla-w { overflow-x: auto; }
-.veri-tabla { border-collapse: collapse; font-size: 12.5px; min-width: 100%; }
-.veri-tabla th, .veri-tabla td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; vertical-align: top; }
-.veri-tabla th { background: var(--bg-soft); font-weight: 700; }
+/* 5.5-B — listas del formulario en tarjetas (cero tablas) */
+.veri-filas { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.veri-fila {
+  position: relative; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 10px 34px;
+  border: 1px solid var(--border); border-left: 3px solid #0d9488; border-radius: 10px; background: var(--bg-soft);
+}
+.veri-fila__n {
+  position: absolute; left: 8px; top: 10px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 10.5px; font-weight: 800; color: #fff; background: #0d9488;
+}
+.veri-fila__c { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.veri-fila__c span { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.veri-fila__c b { font-size: 13px; font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; }
 .veri-oculta { letter-spacing: .15em; }
 .veri-clave { padding: 2px 8px; border-radius: 6px; background: var(--bg-soft); font-size: 13px; }
 .veri-link { border: 0; background: none; color: #2563eb; font-weight: 700; cursor: pointer; padding: 4px 6px; font-size: 12.5px; }
@@ -77,7 +86,10 @@
 
 @media (max-width: 560px) {
   .veri-campo { grid-template-columns: 1fr; gap: 2px; }
+  .veri-filas { grid-template-columns: 1fr; }
 }
+/* Las tarjetas del detalle ocupan el ancho del campo (la lista pasa debajo de su etiqueta). */
+.veri-campo:has(.veri-filas) { grid-template-columns: 1fr; gap: 6px; }
 
 html[data-tema="oscuro"] .veri-link { color: #93c5fd; }
 html[data-tema="oscuro"] .veri-consent.is-on { color: #4ade80; border-color: #4ade80; }

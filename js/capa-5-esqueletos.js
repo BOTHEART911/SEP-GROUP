@@ -140,6 +140,35 @@
         'rayada'
       );
     },
+    /* 5.5-B — tarjeta del Panel de Visas: franja, nombre, anillo n/14,
+       estado, siguiente paso, chips y la rejilla de bloques del proceso. */
+    visa: function () {
+      return card(
+        '<div class="sep-sk-top">' + l(60, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-ring"></span></div>' +
+        '<div class="sep-sk-rows">' + '<span class="sep-sk sep-sk-badge" style="width:150px"></span>' + l(45) + '</div>' +
+        '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 5) + '</div>' +
+        '<div class="sep-sk-vblqs">' + rep('<span class="sep-sk sep-sk-vblq"></span>', 8) + '</div>',
+        'rayada'
+      );
+    },
+    /* 5.5-B — tarjeta de Verificación Académica: nombre, correo, chips,
+       sello del resultado y el botón Verificar. */
+    verif: function () {
+      return card(
+        l(60, true) + '<div class="sep-sk-rows">' + l(45) + '</div>' +
+        '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 4) + '</div>' +
+        '<div class="sep-sk-badges"><span class="sep-sk sep-sk-badge" style="width:170px"></span></div>' +
+        '<div class="sep-sk-acts"><span class="sep-sk sep-sk-btn"></span></div>',
+        'rayada'
+      );
+    },
+    /* 5.5-B — cuerpo del detalle de Verificación: certificados (2 filas
+       con su pastilla) + secciones del formulario con sus tarjetas. */
+    verifdet: function () {
+      var cert = '<div class="sep-sk-top" style="margin-top:12px">' + l(45) + '<span style="flex:1"></span><span class="sep-sk sep-sk-badge"></span></div>';
+      return card(l(30, true) + cert + cert) +
+        rep(card(l(45, true) + '<div class="sep-sk-grid" style="margin-top:12px">' + rep('<span class="sep-sk sep-sk-field"></span>', 3) + '</div>'), 2);
+    },
     /* 5.5-A — sección de Estadísticas: título + rejilla de indicadores. */
     seccion: function () {
       return card(l(30, true) + '<div class="sep-sk-grid" style="margin-top:14px">' + rep('<span class="sep-sk sep-sk-kpi"></span>', 4) + '</div>');
@@ -201,9 +230,9 @@
     ofertasParaParticipante: [['ofe-part-body', 'lead', 3]],
     docsParticipante:        [['ndocs-body', 'bloque', 4]],
     /* FASE 5.2-A — Verificación Académica: lista y detalle con silueta. */
-    verifInit:               [['veri-resumen', 'kpis', 1], ['veri-cards', 'lead', 4]],
-    verifDetalle:            [['veri-det-body', 'bloque', 3]],
-    visasInit:               [['vis-resumen', 'kpis', 1], ['vis-tabla', 'lead', 4]],
+    verifInit:               [['veri-resumen', 'kpis', 1], ['veri-cards', 'verif', 4]],   /* 5.5-B */
+    verifDetalle:            [['veri-det-body', 'verifdet', 1]],
+    visasInit:               [['vis-resumen', 'kpis', 1], ['vis-cards', 'visa', 3]],   /* 5.5-B forma de tarjeta */
     /* FASE 5.4-A — Seguimiento: la tabla con silueta mientras llega. */
     seguimientoInit:         [['seg-cards', 'seguimiento', 4], ['est-cuerpo', 'seccion', 3]],   /* 5.4-C misma carga · 5.5-A forma de tarjeta */
     /* Lecturas de fondo: sin girador y sin silueta (no pintan contenedor) */
@@ -216,7 +245,7 @@
   /* Avisos de "no hay nada" que deben esconderse mientras se pinta la silueta */
   var VACIOS = { 'com-cards': 'com-empty', 'usr-cards': 'usr-empty', 'conta-cards': 'conta-empty',
                  'nive-cards': 'nive-empty', 'ofe-cards': 'ofe-empty',
-                 'veri-cards': 'veri-empty', 'seg-cards': 'seg-empty' };
+                 'veri-cards': 'veri-empty', 'seg-cards': 'seg-empty', 'vis-cards': 'vis-empty' };
 
   /* ---- Pintar / retirar -------------------------------------------------- */
   function pintar(plan) {

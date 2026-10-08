@@ -3,6 +3,19 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.5 · ENTREGA B (08/10/2026) — VISAS Y VERIFICACIÓN EN TARJETAS.
+ *   · Panel de Visas sin tabla: cada participante es una tarjeta con
+ *     anillo de pasos, estado, siguiente paso y 14 bloques legibles
+ *     (DS-160, Sistema de Visa, Cita, Sponsor, DS-2019, SEVIS, Pago,
+ *     Asesoría, Consular, Carpeta, Resultado, Pre-Arrival, Vuelo, Rifa)
+ *     con la edición dentro (mismas reglas, escudo, rid y parche), por
+ *     tandas de 24. Verificación: listas del detalle en tarjetas.
+ *   · Siluetas con la forma de cada tarjeta (visasInit, verifInit,
+ *     verifDetalle).
+ *   Archivos: js/visas.js, css/visas.css, js/verif.js, css/verif.css,
+ *   index.html, js/capa-5-esqueletos.js, css/capa-5-esqueletos.css,
+ *   version.js, sw.js (caché v51).
+ * ------------------------------------------------------------
  * FASE 5.5 · ENTREGA A (08/10/2026) — VISTAS UNIFICADAS EN TARJETAS.
  *   · Seguimiento sin tablas: cada participante es una tarjeta (franja
  *     del estado, anillo de avance, acción futura, chips y la ruta de 8
@@ -692,4 +705,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.10";
+var APP_VERSION = "2026.10.08.11";

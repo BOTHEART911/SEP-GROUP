@@ -1,112 +1,129 @@
 /* =============================================================
  * SEP GROUP — PANEL DE VISAS (Fase 5.2 · Entrega B)
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
- * Tabla tipo Excel: la primera columna (participante) queda fija y la
- * tabla se desplaza DENTRO de su marco (la página nunca se corre).
+ * 5.5-B (08/10/2026): CERO TABLAS. Cada participante es una tarjeta del
+ * lenguaje de Seguimiento (.com-card + anillo .seg-ring) y su proceso de
+ * visa va en bloques legibles con la edición dentro. La página nunca se
+ * corre en horizontal: todo lo largo parte en líneas.
  * Usa los tokens de styles.css (claro y oscuro).
  * ============================================================= */
 
-.vis-marco {
-  overflow: auto; max-height: calc(100vh - 260px); min-height: 240px;
-  border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card);
-  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
-}
+#view-visas .container--ancho { max-width: min(1720px, 100%); }
 .vis-count { font-size: 12.5px; color: var(--text-muted); margin: 6px 2px 8px; }
 
-.vis-tabla { border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 100%; }
-.vis-tabla th, .vis-tabla td {
-  border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
-  padding: 6px 8px; vertical-align: middle; white-space: nowrap; text-align: center;
-  background: var(--bg-card);
+/* Tarjetas: 1 columna hasta 1500 px (los bloques llenan el ancho), 2 desde ahí. */
+.vis-cards { grid-template-columns: 1fr; }
+@media (min-width: 720px) { .vis-cards { grid-template-columns: 1fr; } }
+@media (min-width: 1500px) { .vis-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vis-card { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vis-card:hover { transform: none; }
+.vis-card .com-card__name { font-size: 1.02rem; overflow-wrap: anywhere; }
+.vis-card .com-card__meta { margin-top: 8px; gap: 5px 12px; }
+.vis-card .com-card__meta span { min-width: 0; overflow-wrap: anywhere; }
+.vis-card .estp { margin-top: 8px; }
+.vis-card.is-ocupado { cursor: progress; box-shadow: 0 0 0 2px color-mix(in srgb, #2563eb 45%, transparent); }
+.vis-card.is-ocupado .vis-blqs { opacity: .72; }
+.vis-card.is-inactivo { opacity: .82; }
+.vis-card.is-inactivo .com-card__name { color: var(--text-muted); }
+
+.vis-sig {
+  margin-top: 8px; font-size: 12.5px; font-weight: 600; color: var(--text-main); padding: 5px 9px; border-radius: 10px;
+  background: var(--bg-soft); border-left: 3px solid var(--e, var(--primary));
 }
-.vis-tabla thead th {
-  position: sticky; top: 0; z-index: 3; background: var(--bg-soft); color: var(--text-main);
-  font-weight: 700; font-size: 12px;
+.vis-sig.is-ok { border-left-color: #16a34a; }
+
+/* Bloques del proceso */
+.vis-blqs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin-top: 12px; }
+@media (max-width: 420px) { .vis-blqs { grid-template-columns: 1fr; } }
+.vis-blq {
+  min-width: 0; border-radius: 12px; padding: 7px 10px 9px; border: 1px solid color-mix(in srgb, var(--g) 28%, var(--border));
+  background: color-mix(in srgb, var(--g) 4%, var(--bg-card)); display: flex; flex-direction: column; gap: 6px;
 }
-.vis-tabla thead tr:nth-child(2) th { top: 31px; font-weight: 600; color: var(--text-soft); }
-.vis-tabla thead .vis-grupos th { height: 31px; box-sizing: border-box; text-transform: uppercase; letter-spacing: .03em; font-size: 11px; }
-.vis-tabla thead th.g1 { background: color-mix(in srgb, #2563eb 9%, var(--bg-soft)); }
-.vis-tabla thead th.g2 { background: color-mix(in srgb, #0d9488 9%, var(--bg-soft)); }
-.vis-tabla thead th.g3 { background: color-mix(in srgb, #7c3aed 10%, var(--bg-soft)); }
+.vis-blq--ok { background: color-mix(in srgb, var(--g) 12%, var(--bg-card)); border-color: color-mix(in srgb, var(--g) 55%, transparent); }
+.vis-blq--proc { border-color: #d97706; }
+.vis-blq--no { border-color: #dc2626; }
+.vis-blq--na { opacity: .62; border-style: dashed; }
+.vis-blq__h { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--g); }
+.vis-blq__h span { min-width: 0; overflow-wrap: anywhere; }
+.vis-blq__h b { flex: none; font-size: .7rem; letter-spacing: 0; text-transform: none; padding: 1px 8px; border-radius: 999px; background: var(--bg-soft); color: var(--text-soft); }
+.vis-blq--ok .vis-blq__h b { background: #16a34a; color: #fff; }
+.vis-blq--proc .vis-blq__h b { background: color-mix(in srgb, #d97706 18%, transparent); color: #b45309; }
+.vis-blq--no .vis-blq__h b { background: color-mix(in srgb, #dc2626 15%, transparent); color: #dc2626; }
+.vis-blq__b { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
-.vis-tabla .vis-sticky {
-  position: sticky; left: 0; z-index: 2; text-align: left; white-space: normal;
-  min-width: 230px; max-width: 260px; box-shadow: 2px 0 0 var(--border);
+/* Las etiquetas globales (label) traen margen y peso: aquí no. */
+.vis-blq label { margin: 0; font-size: inherit; color: inherit; font-weight: inherit; }
+
+/* Casillas con su etiqueta y quién/cuándo a la vista */
+.vis-chk { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; min-height: 32px; padding: 3px 0; }
+.vis-chk input { flex: none; width: 20px; height: 20px; min-height: 0; padding: 0; margin: 1px 0 0; accent-color: #16a34a; cursor: pointer; }
+.vis-chk.is-dis, .vis-chk input:disabled { cursor: not-allowed; }
+.vis-chk.is-dis .vis-chk__t { color: var(--text-muted); }
+.vis-chk__t { font-size: 13px; font-weight: 600; color: var(--text-main); line-height: 1.3; min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; }
+.vis-chk__t em { font-style: normal; font-weight: 500; font-size: 11.5px; color: var(--text-muted); }
+.vis-chk.is-on .vis-chk__t { color: #15803d; }
+.vis-sello { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+
+.vis-leida { display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; }
+.vis-leida__ic {
+  flex: none; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px;
+  border: 1.5px dashed var(--border-strong); color: var(--text-muted);
 }
-.vis-tabla thead .vis-sticky { z-index: 4; }
-.vis-tabla tbody tr:hover td, .vis-tabla tbody tr:hover th { background: var(--bg-soft); }
+.vis-leida.is-on .vis-leida__ic { border: 0; background: #16a34a; color: #fff; font-weight: 800; }
+.vis-leida.is-on .vis-chk__t { color: #15803d; }
 
-.vis-nom { font-weight: 700; color: var(--text-main); }
-.vis-sub { font-size: 11.5px; color: var(--text-soft); }
-.vis-tabla .estp { margin-top: 4px; }
-.vis-tabla .estp__acc { display: none; }
-
-.vis-dato { color: var(--text-soft); font-size: 12.5px; }
-.vis-dato--mail { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
-
-.vis-chk { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; min-width: 44px; min-height: 36px; justify-content: center; }
-.vis-chk input { width: 20px; height: 20px; accent-color: #16a34a; cursor: pointer; }
-.vis-chk input:disabled { cursor: not-allowed; opacity: .45; }
-.vis-chk small, .vis-leida small { font-size: 10.5px; color: var(--text-muted); }
-.vis-chk.is-on small { color: #15803d; }
-
-.vis-leida { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; font-size: 16px; opacity: .55; }
-.vis-leida.is-on { opacity: 1; }
-
+/* Campos (número, fecha, fecha y hora) */
+.vis-campo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vis-campo > span { font-size: 11.5px; color: var(--text-soft); font-weight: 600; }
 .vis-in {
-  font: inherit; font-size: 12.5px; border: 1px solid var(--border-strong); border-radius: 8px;
-  padding: 6px 8px; background: var(--bg-card); color: var(--text-main); min-height: 34px; box-sizing: border-box;
+  font: inherit; font-size: 13px; border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 6px 8px; background: var(--bg-card); color: var(--text-main); min-height: 36px; height: 36px; box-sizing: border-box;
+  width: 100%; max-width: 100%; min-width: 0;
 }
-.vis-in--num { width: 128px; text-transform: uppercase; letter-spacing: .02em; }
-.vis-in--fecha { width: auto; }
+.vis-in--num { text-transform: uppercase; letter-spacing: .02em; }
 .vis-in:focus { outline: 2px solid #2563eb; outline-offset: 0; }
 .vis-in:disabled { opacity: .55; }
-
-.vis-tag { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin: 1px 2px; }
-.vis-tag.is-ok { background: color-mix(in srgb, #16a34a 14%, transparent); color: #15803d; }
-.vis-tag.is-pend { background: var(--bg-soft); color: var(--text-soft); }
-.vis-muted { color: var(--text-muted); font-size: 12px; }
-.vis-falta { display: block; font-size: 10.5px; color: var(--text-muted); }
-.vis-clave { min-width: 120px; }
-
-/* 5.2-C — Consular */
-.vis-cons { min-width: 150px; }
-.vis-falta--lista { text-align: left; white-space: normal; line-height: 1.35; margin-top: 2px; }
-.vis-sel { min-width: 170px; cursor: pointer; }
+.vis-sel { cursor: pointer; }
 .vis-sel:disabled { cursor: not-allowed; }
 .vis-sel.is-on { font-weight: 700; }
 .vis-res--aprobada { border-color: #16a34a; color: #15803d; }
 .vis-res--negada { border-color: #b91c1c; color: #b91c1c; }
 .vis-res--proceso_admin, .vis-res--verif_redes { border-color: #ca8a04; color: #a16207; }
 
-.vis-tabla tr.is-ocupado td, .vis-tabla tr.is-ocupado th { cursor: progress; }
-.vis-tabla tr.is-ocupado td { background: color-mix(in srgb, #2563eb 5%, var(--bg-card)); }
-.vis-tabla tr.is-inactivo .vis-nom { color: var(--text-muted); }
+/* Clave del Sistema de Visa */
+.vis-clave { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 13px; }
+.vis-clave__l { font-size: 11.5px; color: var(--text-soft); font-weight: 600; margin-right: 2px; }
 
-@media (max-width: 640px) {
-  .vis-marco { max-height: calc(100vh - 230px); }
-  .vis-tabla .vis-sticky { min-width: 150px; max-width: 170px; }
-  .vis-tabla .estp { display: none; }
-  .vis-in--num { width: 112px; }
-}
+/* Etiquetas y notas */
+.vis-tag { display: inline-block; align-self: flex-start; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; overflow-wrap: anywhere; }
+.vis-tag.is-ok { background: color-mix(in srgb, #16a34a 14%, transparent); color: #15803d; }
+.vis-tag.is-pend { background: var(--bg-soft); color: var(--text-soft); }
+.vis-tag.is-rev { background: color-mix(in srgb, #2563eb 14%, transparent); color: #1d4ed8; }
+.vis-muted { color: var(--text-muted); font-size: 12px; }
+.vis-falta { display: block; font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
+.vis-faltan { margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-soft); line-height: 1.45; }
+.vis-dato-l { font-size: 12.5px; color: var(--text-soft); overflow-wrap: anywhere; }
+.vis-pasosv { font-size: 12px; font-weight: 700; color: var(--text-soft); }
+.vis-pasosv.is-ok { color: #15803d; }
+.vis-vuelo-btn { align-self: flex-start; padding-left: 0; }
 
-html[data-tema="oscuro"] .vis-chk.is-on small { color: #4ade80; }
-html[data-tema="oscuro"] .vis-tag.is-ok { color: #4ade80; }
+/* Modo oscuro */
+html[data-tema="oscuro"] .vis-chk.is-on .vis-chk__t,
+html[data-tema="oscuro"] .vis-leida.is-on .vis-chk__t,
+html[data-tema="oscuro"] .vis-tag.is-ok,
+html[data-tema="oscuro"] .vis-pasosv.is-ok { color: #4ade80; }
+html[data-tema="oscuro"] .vis-tag.is-rev { color: #93c5fd; }
+html[data-tema="oscuro"] .vis-blq--proc .vis-blq__h b { color: #fbbf24; }
+html[data-tema="oscuro"] .vis-blq--no .vis-blq__h b { color: #f87171; }
+html[data-tema="oscuro"] .vis-blq__h { filter: brightness(1.45); }
 html[data-tema="oscuro"] .vis-in { color-scheme: dark; }
 html[data-tema="oscuro"] .vis-res--aprobada { color: #4ade80; }
 html[data-tema="oscuro"] .vis-res--negada { color: #f87171; }
 html[data-tema="oscuro"] .vis-res--proceso_admin, html[data-tema="oscuro"] .vis-res--verif_redes { color: #facc15; }
 
-/* La vista usa todo el ancho disponible en PC (la tabla es ancha). */
-#view-visas .container--ancho { max-width: min(1680px, 100%); }
-
-/* 5.3-A — avance del participante en su módulo Visa */
-.vis-pasosv { display:block; margin-top:3px; font-size:11px; font-weight:700; color:var(--text-soft); white-space:nowrap; }
-.vis-pasosv.is-ok { color:#15803d; }
-html[data-tema="oscuro"] .vis-pasosv.is-ok { color:#4ade80; }
-
-/* 5.3-B — Vuelo y rifa */
-.vis-tag.is-rev { background: color-mix(in srgb, #2563eb 14%, transparent); color: #1d4ed8; }
-html[data-tema="oscuro"] .vis-tag.is-rev { color: #93c5fd; }
-.vis-vuelo { white-space: nowrap; }
-.vis-vuelo-btn { display: block; margin: 4px auto 0; }
+/* Teléfono: los bloques que aún no aplican quedan solo con su cabecera
+   (el estado "No aplica" se sigue leyendo) para no alargar la tarjeta. */
+@media (max-width: 640px) {
+  .vis-blq--na .vis-blq__b { display: none; }
+  .vis-blq--na { padding-bottom: 7px; }
+}

@@ -85,6 +85,11 @@
 .sep-sk-blq    { height: 52px; border-radius: 12px; }
 @media (max-width: 340px) { .sep-sk-ruta { grid-template-columns: 1fr; } }
 
+/* 5.5-B — tarjeta de Visas: rejilla de bloques del proceso */
+.sep-sk-vblqs  { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 12px; }
+.sep-sk-vblq   { height: 92px; border-radius: 12px; }
+#vis-cards > .sep-sk-wrap, #veri-cards > .sep-sk-wrap { display: grid; grid-template-columns: inherit; gap: 12px; grid-column: 1 / -1; }
+
 /* Rejilla de KPIs (tablero) y de campos (configuración) */
 .sep-sk-grid {
   display: grid; gap: 12px;

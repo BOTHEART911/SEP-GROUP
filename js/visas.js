@@ -5,10 +5,10 @@
  * la garantía de funcionamiento.
  * ------------------------------------------------------------
  * QUÉ ES (pliego 5.2.3 y 5.2.4)
- *   Procesos → Visas: una fila por participante, tipo Excel, y la
- *   edición se hace EN LA FILA (casillas, números y fechas) sin entrar
- *   a otra pantalla. Cada casilla guarda quién y cuándo (se ve al
- *   pasar el mouse y en la fecha corta debajo).
+ *   Procesos → Visas: una TARJETA por participante (5.5-B: cero
+ *   tablas) con su proceso en bloques legibles, y la edición se hace EN
+ *   LA TARJETA (casillas, números y fechas) sin entrar a otra pantalla.
+ *   Cada casilla guarda quién y cuándo (se ve debajo de la casilla).
  *   · DS-160 Real, DS-2019 recibido y Pago SEVIS NO se marcan aquí:
  *     salen del documento APROBADO en Mis documentos (respuesta 2).
  *   · Pago del programa sale del Contador (Completado + Validado en banco).
@@ -25,7 +25,7 @@
  * RENDIMIENTO (reglas de la casa)
  *   · Una vista, un viaje (visasInit: catálogo + lista, fmt=2 + gzip).
  *   · Carga única por sesión; filtros y búsqueda locales. Tras guardar
- *     se PARCHA la fila en memoria y se repinta SOLO esa fila.
+ *     se PARCHA la fila en memoria y se repinta SOLO esa tarjeta.
  *   · La lectura se corta al salir (AbortController); los guardados no.
  *   · Toda escritura: la fila queda ocupada desde el primer toque +
  *     rid (apiPost). Respuesta de una sesión vieja nunca pisa la nueva.
@@ -39,7 +39,8 @@ const VIS = {
   todos: [], registros: [], catalogo: null, cargado: false, cargando: false,
   filtroTop: '__ALL__', filtroAsesor: '__ALL__', filtroSponsor: '__ALL__', texto: '',
   ctrl: null,
-  ocupado: {},       // id → true mientras esa fila escribe (escudo)
+  ocupado: {},       // id → true mientras esa tarjeta escribe (escudo)
+  lista: [], pintadas: 0, obs: null,   // 5.5-B — tandas de tarjetas
   clave: {}          // id → clave del Sistema de Visa ya revelada
 };
 const VIS_SIN = '— Sin asignar —';
@@ -106,6 +107,8 @@ function recargarVisas_() { VIS.cargado = false; VIS.clave = {}; cargarVisas_();
 function visSalir_() {
   try { VIS.ctrl && VIS.ctrl.abort(); } catch (_) {}
   VIS.ctrl = null; VIS.cargando = false; VIS.clave = {};
+  try { VIS.obs && VIS.obs.disconnect(); } catch (_) {}
+  VIS.obs = null;
 }
 
 if (typeof TEMP !== 'undefined') {
@@ -244,7 +247,20 @@ function visCerrarSheet_() {
 }
 document.addEventListener('click', e => { if (e.target.closest('[data-vis-fsheet-close]')) visCerrarSheet_(); });
 
-/* ---------- celdas ---------- */
+/* ============================================================
+   TARJETAS (5.5-B · 08/10/2026) — CERO TABLAS
+   Cada participante es una tarjeta del mismo lenguaje de Seguimiento
+   (franja del estado, anillo de avance, estado + siguiente paso, chips)
+   y su proceso de visa en BLOQUES legibles sin abrir nada: DS-160,
+   Sistema de Visa, Cita, Sponsor, DS-2019, SEVIS, Pago del programa,
+   Asesoría, Consular, Carpeta, Resultado, Pre-Arrival, Vuelo y Rifa.
+   Cada bloque dice su estado en texto (Listo · En curso · Pendiente ·
+   No aplica) y trae sus casillas/campos con QUIÉN y CUÁNDO a la vista.
+   La edición es la de siempre (mismas reglas, escudo, rid y parche en
+   memoria); se pinta por tandas de 24 al hacer scroll.
+   ============================================================ */
+const VIS_TANDA = 24;
+
 function visFechaCorta_(s) {
   /* 'dd/mm/aaaa hh:mm:ss' (sello del servidor) → 'dd/mm hh:mm' */
   const m = /^(\d{2})\/(\d{2})\/\d{4}(?: (\d{2}):(\d{2}))?/.exec(visTxt_(s));
@@ -255,226 +271,255 @@ function visIsoCorta_(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(visTxt_(s));
   return m ? (m[3] + '/' + m[2] + '/' + m[1] + (m[4] ? ' ' + m[4] + ':' + m[5] : '')) : visTxt_(s);
 }
+/* Quién · cuándo, visible (no solo al pasar el mouse). */
+function visSello_(q, f) {
+  const t = [visTxt_(q), visFechaCorta_(f)].filter(Boolean).join(' · ');
+  return t ? `<small class="vis-sello">${esc_(t)}</small>` : '';
+}
 
-/* Casilla editable con quién/cuándo. */
-function visCheck_(r, k, extraDis, titulo) {
+/* Casilla editable: etiqueta legible + quién/cuándo. */
+function visCheck_(r, k, etiqueta, extraDis, titulo) {
   const on = !!r[k];
   const dis = VIS.ocupado[r.id] || extraDis;
   const tip = on ? ('Marcado por ' + (r[k + 'Q'] || '—') + ' · ' + (r[k + 'F'] || '')) : (titulo || 'Sin marcar');
-  return `<label class="vis-chk${on ? ' is-on' : ''}" title="${esc_(tip)}">
+  return `<label class="vis-chk${on ? ' is-on' : ''}${dis ? ' is-dis' : ''}" title="${esc_(tip)}">
       <input type="checkbox" data-vk="${k}"${on ? ' checked' : ''}${dis ? ' disabled' : ''}>
-      ${on && r[k + 'F'] ? `<small>${esc_(visFechaCorta_(r[k + 'F']))}</small>` : ''}</label>`;
+      <span class="vis-chk__t">${esc_(etiqueta)}${on ? visSello_(r[k + 'Q'], r[k + 'F']) : ''}</span></label>`;
 }
-/* Casilla LEÍDA de un documento (no editable). */
-function visLeida_(on, fecha, por, falta) {
+/* Casilla LEÍDA de un documento (no editable): estado en texto. */
+function visLeida_(etiqueta, on, fecha, por, falta) {
   const tip = on ? ('Documento aprobado por ' + (por || '—') + ' · ' + (fecha || '')) : falta;
-  return `<span class="vis-leida${on ? ' is-on' : ''}" title="${esc_(tip)}">${on ? '✅' : '⏳'}
-      ${on && fecha ? `<small>${esc_(visFechaCorta_(fecha))}</small>` : ''}</span>`;
+  return `<div class="vis-leida${on ? ' is-on' : ''}" title="${esc_(tip)}">
+      <span class="vis-leida__ic" aria-hidden="true">${on ? '✓' : '⏳'}</span>
+      <span class="vis-chk__t">${esc_(etiqueta)} <em>${on ? 'aprobado en Mis documentos' : 'se marca al aprobar el documento'}</em>
+      ${on ? visSello_(por, fecha) : ''}</span></div>`;
 }
-function visInput_(r, k, tipo, ph) {
+function visInput_(r, k, tipo, etiqueta, ph) {
   const v = r[k] || '';
   const val = tipo === 'datetime-local' ? v.replace(' ', 'T') : v;
   const dis = VIS.ocupado[r.id] ? ' disabled' : '';
   const cls = tipo === 'text' ? 'vis-in vis-in--num' : 'vis-in vis-in--fecha';
-  return `<input class="${cls}" type="${tipo}" data-vk="${k}" value="${esc_(val)}"${ph ? ` placeholder="${esc_(ph)}"` : ''}
-      ${tipo === 'text' ? 'maxlength="30" autocapitalize="characters" spellcheck="false"' : ''}${dis}>`;
+  return `<label class="vis-campo"><span>${esc_(etiqueta)}</span>
+      <input class="${cls}" type="${tipo}" data-vk="${k}" value="${esc_(val)}"${ph ? ` placeholder="${esc_(ph)}"` : ''}
+      ${tipo === 'text' ? 'maxlength="30" autocapitalize="characters" spellcheck="false"' : ''}${dis}></label>`;
 }
+function visNota_(t) { return t ? `<small class="vis-falta">${esc_(t)}</small>` : ''; }
 
-function visClaveCelda_(r) {
+function visClaveHtml_(r) {
   const puede = visPuedeClave_();
   const dis = VIS.ocupado[r.id] ? ' disabled' : '';
-  if (!puede) return `<span class="vis-muted" title="Solo PROCESOS y SUPERUSUARIO">${r.svHay ? '🔒 Guardada' : '—'}</span>`;
-  if (VIS.clave[r.id]) {
-    return `<code class="veri-clave">${esc_(VIS.clave[r.id])}</code>
-      <button class="veri-link" data-vclave-ocultar="${esc_(r.id)}">🙈</button>`;
+  let v;
+  if (!puede) v = `<span class="vis-muted" title="Solo PROCESOS y SUPERUSUARIO">${r.svHay ? '🔒 Guardada' : 'Sin clave'}</span>`;
+  else if (VIS.clave[r.id]) {
+    v = `<code class="veri-clave">${esc_(VIS.clave[r.id])}</code>
+      <button class="veri-link" data-vclave-ocultar="${esc_(r.id)}">🙈 Ocultar</button>`;
+  } else {
+    v = `${r.svHay ? `<span class="veri-oculta">••••••</span>
+      <button class="veri-link" data-vclave-ver="${esc_(r.id)}" title="Ver clave (queda registrado)"${dis}>👁 Ver</button>` : '<span class="vis-muted">Sin clave</span>'}
+      <button class="veri-link" data-vclave-editar="${esc_(r.id)}" title="${r.svHay ? 'Cambiar la clave' : 'Guardar la clave'}"${dis}>🔑 ${r.svHay ? 'Cambiar' : 'Guardar'}</button>`;
   }
-  return `${r.svHay ? `<span class="veri-oculta">••••••</span>
-      <button class="veri-link" data-vclave-ver="${esc_(r.id)}" title="Ver clave (queda registrado)"${dis}>👁</button>` : '<span class="vis-muted">Sin clave</span>'}
-      <button class="veri-link" data-vclave-editar="${esc_(r.id)}" title="${r.svHay ? 'Cambiar la clave' : 'Guardar la clave'}"${dis}>🔑</button>`;
+  return `<div class="vis-clave"><span class="vis-clave__l">Clave</span>${v}</div>`;
 }
 
-function visPagoCelda_(r) {
-  return `<span class="vis-tag ${r.pagoTotal ? 'is-ok' : 'is-pend'}">${r.pagoTotal ? '✅ Completado' : '⏳ Pendiente'}</span>
-    <span class="vis-tag ${r.bancoTotal ? 'is-ok' : 'is-pend'}" title="Validado en banco (Contador)">🏦 ${r.bancoTotal ? 'Sí' : 'No'}</span>`;
+function visPagoHtml_(r) {
+  return `<span class="vis-tag ${r.pagoTotal ? 'is-ok' : 'is-pend'}">${r.pagoTotal ? '✅ Pago total completado' : '⏳ Pago total pendiente'}</span>
+    <span class="vis-tag ${r.bancoTotal ? 'is-ok' : 'is-pend'}" title="Validado en banco (Contador)">🏦 ${r.bancoTotal ? 'Validado en banco' : 'Sin validar en banco'}</span>`;
 }
 
-function visDs2019Celda_(r) {
-  if (r.ds2019) return '<span class="vis-muted">Ya recibido</span>';
+function visDs2019Html_(r) {
+  if (r.ds2019) return '';
   const falta = [];
   if (!r.spon) falta.push('Docs Sponsor');
   if (!r.pagoTotal) falta.push('pago total');
   const dis = !r.ds2019Sol && !r.ds2019Puede;
-  return visCheck_(r, 'ds2019Sol', dis, dis ? 'Falta: ' + falta.join(' y ') : 'Lista para solicitar') +
-    (dis ? `<small class="vis-falta">Falta ${esc_(falta.join(' y '))}</small>` : '');
+  return visCheck_(r, 'ds2019Sol', 'Solicitado', dis, dis ? 'Falta: ' + falta.join(' y ') : 'Lista para solicitar') +
+    (dis ? visNota_('Falta ' + falta.join(' y ')) : '');
 }
 
-/* 5.3-A — avance del participante en su módulo Visa (pasos 1 a 6). */
-function visPasosV_(r) {
-  if (r.pasosV == null) return '';
-  const n = Number(r.pasosV) || 0;
-  return `<small class="vis-pasosv${n === 6 ? ' is-ok' : ''}" title="Pasos del módulo Visa que completó el participante en su portal">Portal ${n}/6</small>`;
-}
-
-/* 5.3-B — Pre-Arrival: solo con la visa aprobada; no se quita si ya
-   cargó el vuelo (la rifa se midió contra esa fecha). */
-function visPreCelda_(r) {
-  if (r.pre) return visCheck_(r, 'pre', !!r.vueloCarga, 'Completado') + (r.vueloCarga ? '<small class="vis-falta">Ya cargó el vuelo</small>' : '');
-  const puede = r.resultado === 'APROBADA';
-  return visCheck_(r, 'pre', !puede, puede ? 'Pendiente' : 'Se abre con la visa aprobada') +
-    (puede ? '' : '<small class="vis-falta">Requiere visa aprobada</small>');
-}
 const VIS_VUELO_TAG = {
   EN_REVISION: ['is-rev', '📤 Por revisar'], RECHAZADO: ['is-pend', '↩️ Rechazado'], APROBADO: ['is-ok', '✅ Aprobado']
 };
-function visVueloCelda_(r) {
+function visVueloHtml_(r) {
   const t = VIS_VUELO_TAG[r.vuelo];
   const tag = t ? `<span class="vis-tag ${t[0]}" title="${esc_(r.vuelo === 'APROBADO' ? 'Aprobado por ' + (r.vueloQ || '—') + ' · ' + (r.vueloF || '') : 'Itinerario en Mis documentos')}">${t[1]}</span>`
-                : `<span class="vis-muted">${r.pre ? 'Sin cargar' : '—'}</span>`;
+              : `<span class="vis-muted">${r.pre ? 'Itinerario sin cargar' : 'Se carga después del Pre-Arrival'}</span>`;
   const btn = (r.vuelo || r.pre) && typeof NDOCS !== 'undefined'
-    ? `<button class="veri-link vis-vuelo-btn" data-vvuelo="${esc_(r.id)}" title="Ver, aprobar o rechazar el itinerario">📁 ${r.vuelo === 'EN_REVISION' ? 'Revisar' : 'Ver'}</button>` : '';
-  return tag + btn;
+    ? `<button class="veri-link vis-vuelo-btn" data-vvuelo="${esc_(r.id)}" title="Ver, aprobar o rechazar el itinerario">📁 ${r.vuelo === 'EN_REVISION' ? 'Revisar' : 'Ver'} itinerario</button>` : '';
+  return tag + (r.vuelo === 'APROBADO' ? visSello_(r.vueloQ, r.vueloF) : '') + btn;
 }
-function visRifaCelda_(r) {
-  if (!r.vueloCarga) return '<span class="vis-muted">—</span>';
+function visRifaHtml_(r) {
+  if (!r.vueloCarga) return '<span class="vis-muted">Se mide al cargar el vuelo</span>';
   const h = visTxt_(r.rifaH);
-  return `<span class="vis-tag ${r.rifa === 'SI' ? 'is-ok' : 'is-pend'}" title="Primera carga del vuelo vs. Pre-Arrival">${r.rifa === 'SI' ? '🎟️ Sí' : 'No'}</span>
-    <small class="vis-falta">${esc_(visFechaCorta_(r.vueloCarga))}${h && !isNaN(Number(h)) ? ' · ' + esc_(h.replace('.', ',')) + ' h' : ''}</small>`;
+  return `<span class="vis-tag ${r.rifa === 'SI' ? 'is-ok' : 'is-pend'}" title="Primera carga del vuelo vs. Pre-Arrival">${r.rifa === 'SI' ? '🎟️ Elegible' : 'No elegible'}</span>
+    ${visNota_('Vuelo cargado ' + visFechaCorta_(r.vueloCarga) + (h && !isNaN(Number(h)) ? ' · ' + h.replace('.', ',') + ' h' : ''))}`;
 }
-
-/* 5.2-C — Documentación consular: lista o qué le falta (lo dice el backend). */
-function visConsularCelda_(r) {
-  if (r.consular) return '<span class="vis-tag is-ok" title="Cumple las 7 condiciones">✅ Lista</span>';
+function visConsularHtml_(r) {
+  if (r.consular) return '<span class="vis-tag is-ok" title="Cumple las 7 condiciones">✅ Documentación lista</span>';
   const cat = (VIS.catalogo && VIS.catalogo.consular) || [];
   const faltan = (r.consularFaltan || []).map(k => (cat.find(c => c.k === k) || { l: k }).l);
-  return `<span class="vis-tag is-pend" title="${esc_('Falta: ' + faltan.join(', '))}">⏳ Faltan ${faltan.length}</span>
-    <small class="vis-falta vis-falta--lista">${faltan.map(esc_).join('<br>')}</small>`;
+  return `<span class="vis-tag is-pend">⏳ Faltan ${faltan.length} de ${cat.length || 7}</span>
+    <ul class="vis-faltan">${faltan.map(f => `<li>${esc_(f)}</li>`).join('')}</ul>`;
 }
-function visCarpetaCelda_(r) {
+function visCarpetaHtml_(r) {
   if (r.carpeta) {
-    return visCheck_(r, 'carpeta', !!r.resultado, 'Carpeta entregada') +
-      (r.resultado ? '<small class="vis-falta">Quita el resultado para desmarcarla</small>' : '');
+    return visCheck_(r, 'carpeta', 'Carpeta entregada', !!r.resultado, 'Carpeta entregada') +
+      (r.resultado ? visNota_('Quita el resultado para desmarcarla') : '');
   }
-  return visCheck_(r, 'carpeta', !r.consular, r.consular ? 'Lista para entregar' : 'Requiere la documentación consular lista') +
-    (r.consular ? '' : '<small class="vis-falta">Requiere doc. lista</small>');
+  return visCheck_(r, 'carpeta', 'Carpeta entregada', !r.consular, r.consular ? 'Lista para entregar' : 'Requiere la documentación consular lista') +
+    (r.consular ? '' : visNota_('Requiere la documentación consular lista'));
 }
-function visResultadoCelda_(r) {
+function visResultadoHtml_(r) {
   const ops = (VIS.catalogo && VIS.catalogo.resultados) || [];
   const dis = VIS.ocupado[r.id] || !r.carpeta;
   const v = r.resultado || '';
   const tip = v ? ('Registrado por ' + (r.resultadoQ || '—') + ' · ' + (r.resultadoF || '')) : (r.carpeta ? 'Sin registrar' : 'Se registra con la carpeta entregada');
-  return `<select class="vis-in vis-sel${v ? ' is-on vis-res--' + v.toLowerCase() : ''}" data-vk="resultado" title="${esc_(tip)}"${dis ? ' disabled' : ''}>
+  return `<select class="vis-in vis-sel${v ? ' is-on vis-res--' + v.toLowerCase() : ''}" data-vk="resultado" title="${esc_(tip)}" aria-label="Resultado consular"${dis ? ' disabled' : ''}>
       <option value="">— Sin registrar —</option>
       ${ops.map(o => `<option value="${esc_(o.k)}"${o.k === v ? ' selected' : ''}>${esc_(o.ic + ' ' + o.l)}</option>`).join('')}
-    </select>${v && r.resultadoF ? `<small class="vis-falta">${esc_((r.resultadoQ || '') + ' · ' + visFechaCorta_(r.resultadoF))}</small>` : ''}`;
+    </select>${v ? visSello_(r.resultadoQ, r.resultadoF) : (r.carpeta ? '' : visNota_('Se registra con la carpeta entregada'))}`;
+}
+function visPreHtml_(r) {
+  if (r.pre) return visCheck_(r, 'pre', 'Completado', !!r.vueloCarga, 'Completado') + (r.vueloCarga ? visNota_('Ya cargó el vuelo') : '');
+  const puede = r.resultado === 'APROBADA';
+  return visCheck_(r, 'pre', 'Completado', !puede, puede ? 'Pendiente' : 'Se abre con la visa aprobada') +
+    (puede ? '' : visNota_('Se abre con la visa aprobada'));
 }
 
-function visFilaHtml_(r) {
+/* Los 14 bloques: título, estado (ok · proc · pend · no · na) y cuerpo. */
+const VIS_EST_TXT = { ok: '✓ Listo', proc: '◐ En curso', pend: 'Pendiente', no: '✕ Negativo', na: 'No aplica' };
+function visBloques_(r) {
+  const b = (k, l, color, est, html) => ({ k, l, color, est, html });
+  const res = r.resultado || '';
+  return [
+    b('ds160', 'DS-160', '#2563eb',
+      r.ds160r && r.ds160rNum ? 'ok' : (r.ds160i || r.ds160iNum || r.ds160r || r.ds160rNum ? 'proc' : 'pend'),
+      visCheck_(r, 'ds160i', 'Interno diligenciado') + visInput_(r, 'ds160iNum', 'text', 'N° interno', 'N°') +
+      visLeida_('Real', r.ds160r, r.ds160rF, r.ds160rQ, 'Se marca cuando SEP aprueba el DS-160 (copia y confirmación) en Mis documentos') +
+      visInput_(r, 'ds160rNum', 'text', 'N° real', 'N°')),
+    b('sv', 'Sistema de Visa', '#0d9488',
+      r.sv && r.pv ? 'ok' : (r.sv || r.pv || r.svHay ? 'proc' : 'pend'),
+      visCheck_(r, 'sv', 'Cuenta creada') + visClaveHtml_(r) + visCheck_(r, 'pv', 'Pago de la visa')),
+    b('cita', 'Cita', '#d97706',
+      r.cita ? 'ok' : (r.cas || r.consul || r.start ? 'proc' : 'pend'),
+      visCheck_(r, 'cita', 'Agendada', !r.cita && !(r.cas && r.consul), 'Requiere Fecha/Hora CAS y Consulado') +
+      (!r.cita && !(r.cas && r.consul) ? visNota_('Requiere CAS y Consulado') : '') +
+      visInput_(r, 'start', 'date', 'Start Date') + visInput_(r, 'cas', 'datetime-local', 'CAS') +
+      visInput_(r, 'consul', 'datetime-local', 'Consulado')),
+    b('spon', 'Sponsor', '#ca8a04', r.spon ? 'ok' : 'pend',
+      `<div class="vis-dato-l">🏢 ${esc_(r.sponsor || 'Sin sponsor')}</div>` + visCheck_(r, 'spon', 'Documentos completos')),
+    b('ds2019', 'DS-2019', '#7c3aed',
+      r.ds2019 ? 'ok' : (r.ds2019Sol ? 'proc' : 'pend'),
+      visDs2019Html_(r) + visLeida_('Recibido', r.ds2019, r.ds2019F, r.ds2019Q, 'Se marca cuando SEP aprueba el DS-2019 en Mis documentos')),
+    b('sevis', 'SEVIS', '#0369a1',
+      r.sevis ? 'ok' : (r.sevisNum ? 'proc' : 'pend'),
+      visInput_(r, 'sevisNum', 'text', 'N° SEVIS', 'N°') +
+      visLeida_('Pago', r.sevis, r.sevisF, r.sevisQ, 'Se marca cuando SEP aprueba la confirmación del pago SEVIS en Mis documentos')),
+    b('pago', 'Pago del programa', '#15803d',
+      r.pagoTotal && r.bancoTotal ? 'ok' : (r.pagoTotal || r.bancoTotal ? 'proc' : 'pend'), visPagoHtml_(r)),
+    b('ase', 'Asesoría Visa', '#0f766e',
+      r.ase ? 'ok' : (Number(r.pasosV) > 0 ? 'proc' : 'pend'),
+      visCheck_(r, 'ase', 'Completada') +
+      (r.pasosV != null ? `<div class="vis-pasosv${Number(r.pasosV) === 6 ? ' is-ok' : ''}" title="Pasos del módulo Visa que completó el participante en su portal">Portal del participante: ${Number(r.pasosV) || 0} de 6 pasos</div>` : '')),
+    b('consular', 'Documentación consular', '#0f766e', r.consular ? 'ok' : 'pend', visConsularHtml_(r)),
+    b('carpeta', 'Carpeta', '#1e40af', r.carpeta ? 'ok' : (r.consular ? 'pend' : 'na'), visCarpetaHtml_(r)),
+    b('resultado', 'Resultado consular', '#16a34a',
+      res === 'APROBADA' ? 'ok' : (res === 'NEGADA' ? 'no' : (res ? 'proc' : (r.carpeta ? 'pend' : 'na'))), visResultadoHtml_(r)),
+    b('pre', 'Pre-Arrival', '#0369a1', r.pre ? 'ok' : (res === 'APROBADA' ? 'pend' : 'na'), visPreHtml_(r)),
+    b('vuelo', 'Vuelo', '#2563eb',
+      r.vuelo === 'APROBADO' ? 'ok' : (r.vuelo === 'RECHAZADO' ? 'no' : (r.vuelo === 'EN_REVISION' ? 'proc' : (r.pre ? 'pend' : 'na'))), visVueloHtml_(r)),
+    b('rifa', 'Rifa 72 h', '#c026d3', !r.vueloCarga ? 'na' : (r.rifa === 'SI' ? 'ok' : 'no'), visRifaHtml_(r))
+  ];
+}
+
+function visCardHtml_(r) {
   const oc = VIS.ocupado[r.id];
-  return `<tr data-vid="${esc_(r.id)}" class="${oc ? 'is-ocupado' : ''}${r.inactivo ? ' is-inactivo' : ''}">
-    <th class="vis-sticky" scope="row">
-      <div class="vis-nom">${esc_(r.nombres)} ${esc_(r.apellidos)}</div>
-      <div class="vis-sub">${r.n ? 'N° ' + r.n + ' · ' : ''}${esc_(r.documento || '')}</div>
-      <div class="vis-sub ${r.asesorProcesos ? '' : 'veri-falta'}">🧭 ${esc_(r.asesorProcesos || 'sin asesor')}</div>
-      ${typeof estPartHtml_ === 'function' ? estPartHtml_(r) : ''}
-    </th>
-    <td class="vis-dato">${esc_(r.telefono || '—')}</td>
-    <td class="vis-dato vis-dato--mail">${esc_(r.correo || '—')}</td>
-    <td class="vis-dato">${esc_(visIsoCorta_(r.nacimiento) || '—')}</td>
-    <td class="vis-dato">${esc_(r.pasaporte || '—')}</td>
-    <td class="vis-dato">${esc_(r.sponsor || '—')}</td>
-    <td class="g1">${visCheck_(r, 'ds160i')}</td>
-    <td class="g1">${visInput_(r, 'ds160iNum', 'text', 'N°')}</td>
-    <td class="g2">${visCheck_(r, 'sv')}</td>
-    <td class="g2 vis-clave">${visClaveCelda_(r)}</td>
-    <td class="g1">${visCheck_(r, 'pv')}</td>
-    <td class="g2">${visCheck_(r, 'cita', !r.cita && !(r.cas && r.consul), 'Requiere Fecha/Hora CAS y Consulado')}</td>
-    <td class="g2">${visInput_(r, 'start', 'date')}</td>
-    <td class="g2">${visInput_(r, 'cas', 'datetime-local')}</td>
-    <td class="g2">${visInput_(r, 'consul', 'datetime-local')}</td>
-    <td class="g1">${visLeida_(r.ds160r, r.ds160rF, r.ds160rQ, 'Se marca cuando SEP aprueba el DS-160 (copia y confirmación) en Mis documentos')}</td>
-    <td class="g1">${visInput_(r, 'ds160rNum', 'text', 'N°')}</td>
-    <td class="g2">${visInput_(r, 'sevisNum', 'text', 'N°')}</td>
-    <td class="g2">${visLeida_(r.sevis, r.sevisF, r.sevisQ, 'Se marca cuando SEP aprueba la confirmación del pago SEVIS en Mis documentos')}</td>
-    <td class="g1 vis-pago">${visPagoCelda_(r)}</td>
-    <td class="g2">${visCheck_(r, 'spon')}</td>
-    <td class="g2">${visDs2019Celda_(r)}</td>
-    <td class="g2">${visLeida_(r.ds2019, r.ds2019F, r.ds2019Q, 'Se marca cuando SEP aprueba el DS-2019 en Mis documentos')}</td>
-    <td class="g1">${visCheck_(r, 'ase')}${visPasosV_(r)}</td>
-    <td class="g3 vis-cons">${visConsularCelda_(r)}</td>
-    <td class="g3">${visCarpetaCelda_(r)}</td>
-    <td class="g3">${visResultadoCelda_(r)}</td>
-    <td class="g1">${visPreCelda_(r)}</td>
-    <td class="g2 vis-vuelo">${visVueloCelda_(r)}</td>
-    <td class="g2">${visRifaCelda_(r)}</td>
-  </tr>`;
+  const e = (typeof EST_PART !== 'undefined' && r.est) ? EST_PART.porClave[r.est] : null;
+  const color = e ? e.color : '#94a3b8';
+  const bl = visBloques_(r);
+  const aplica = bl.filter(x => x.est !== 'na'), listos = aplica.filter(x => x.est === 'ok').length;
+  const av = aplica.length ? Math.round(listos * 100 / aplica.length) : 0;
+  const sig = aplica.find(x => x.est !== 'ok');
+  const nombre = visTxt_(r.nombres + ' ' + r.apellidos) || '(sin nombre)';
+  const chip = (ic, v, tit) => v ? `<span title="${esc_(tit)}">${ic} ${esc_(v)}</span>` : '';
+  return `<article class="com-card vis-card${oc ? ' is-ocupado' : ''}${r.inactivo ? ' is-inactivo' : ''}" data-vid="${esc_(r.id)}" style="--e:${esc_(color)}" aria-busy="${oc ? 'true' : 'false'}">
+    <div class="com-card__stripe" style="background:${esc_(color)}"></div>
+    <div class="com-card__top">
+      <div class="com-card__head">
+        <h3 class="com-card__name">${esc_(nombre)}</h3>
+        <div class="seg-card__sub">${r.n ? `<span class="com-card__id">N° ${r.n}</span>` : ''}${r.anio ? `<span>📅 ${esc_(r.anio)}</span>` : ''}
+          <span class="${r.asesorProcesos ? '' : 'veri-falta'}" title="Asesor de Procesos">🧭 ${esc_(r.asesorProcesos || 'sin asesor')}</span></div>
+      </div>
+      <div class="seg-ring" style="--p:${av}" role="img" aria-label="${listos} de ${aplica.length} pasos de visa listos" title="${listos} de ${aplica.length} pasos de visa listos"><b>${listos}<small>/${aplica.length}</small></b></div>
+    </div>
+    ${typeof estPartHtml_ === 'function' ? estPartHtml_(r) : ''}
+    ${sig ? `<div class="vis-sig">➡️ Siguiente: <b>${esc_(sig.l)}</b></div>` : '<div class="vis-sig is-ok">🎉 Proceso de visa completo</div>'}
+    <div class="com-card__meta">
+      ${chip('🪪', r.documento, 'Identificación')}${chip('📱', r.telefono, 'Teléfono')}${chip('✉️', r.correo, 'Correo')}
+      ${chip('🎂', visIsoCorta_(r.nacimiento), 'Nacimiento')}${chip('🛂', r.pasaporte, 'Pasaporte')}
+      ${r.pasaporte ? '' : '<span class="veri-falta" title="Pasaporte">🛂 sin pasaporte</span>'}
+      ${typeof procesoChipHtml_ === 'function' ? procesoChipHtml_(r.proceso, false) : ''}
+    </div>
+    <div class="vis-blqs">${bl.map(x => `<section class="vis-blq vis-blq--${x.est}" style="--g:${x.color}" data-vblq="${x.k}">
+        <div class="vis-blq__h"><span>${esc_(x.l)}</span><b>${VIS_EST_TXT[x.est]}</b></div>
+        <div class="vis-blq__b">${x.html}</div></section>`).join('')}</div>
+  </article>`;
 }
-
-const VIS_CABECERA = `<thead>
-  <tr class="vis-grupos">
-    <th class="vis-sticky" rowspan="2">Participante</th>
-    <th colspan="5">Datos existentes</th>
-    <th colspan="2" class="g1">DS-160 interno</th>
-    <th colspan="2" class="g2">Sistema Visa</th>
-    <th class="g1">Pago Visa</th>
-    <th colspan="4" class="g2">Cita</th>
-    <th colspan="2" class="g1">DS-160 Real</th>
-    <th colspan="2" class="g2">SEVIS</th>
-    <th class="g1">Pago programa</th>
-    <th colspan="3" class="g2">Sponsor y DS-2019</th>
-    <th class="g1">Asesoría Visa</th>
-    <th colspan="3" class="g3">Consular</th>
-    <th class="g1">Pre-Arrival</th>
-    <th colspan="2" class="g2">Vuelo</th>
-  </tr>
-  <tr>
-    <th>Teléfono</th><th>Correo</th><th>Nacimiento</th><th>Pasaporte</th><th>Sponsor</th>
-    <th class="g1">☐</th><th class="g1">Número</th>
-    <th class="g2">☐</th><th class="g2">Clave</th>
-    <th class="g1">☐</th>
-    <th class="g2">☐ Agendada</th><th class="g2">Start Date</th><th class="g2">CAS</th><th class="g2">Consulado</th>
-    <th class="g1" title="Leído de Mis documentos">☑ (doc)</th><th class="g1">Número</th>
-    <th class="g2">Número</th><th class="g2" title="Leído de Mis documentos">☑ Pago (doc)</th>
-    <th class="g1">Contador</th>
-    <th class="g2">☐ Docs Sponsor</th><th class="g2">☐ Solicitado</th><th class="g2" title="Leído de Mis documentos">☑ Recibido (doc)</th>
-    <th class="g1">☐ Completada</th>
-    <th class="g3" title="Automática: DS-2019, SEVIS, DS-160 Real con N°, pago Completado y validado, Verificación Académica y Asesoría">Documentación</th>
-    <th class="g3">☐ Carpeta entregada</th><th class="g3" title="Solo SEP lo registra">Resultado</th>
-    <th class="g1" title="Se abre con la visa aprobada; lo completa el participante en su portal">☐ Completado</th>
-    <th class="g2" title="Itinerario en Mis documentos: aprobado = Programa completado">Itinerario</th>
-    <th class="g2" title="Primera carga dentro de las 72 h siguientes al Pre-Arrival">Rifa 72 h</th>
-  </tr></thead>`;
 
 function visPintarTabla_() {
-  const cont = visQ_('#vis-tabla'), vacio = visQ_('#vis-empty');
+  const cont = visQ_('#vis-cards'), vacio = visQ_('#vis-empty');
   if (!cont) return;
+  const t0 = Date.now();
+  try { VIS.obs && VIS.obs.disconnect(); } catch (_) {}
   const l = visVisibles_();
+  VIS.lista = l; VIS.pintadas = 0;
+  const cnt = visQ_('#vis-count'); if (cnt) cnt.textContent = l.length + ' de ' + VIS.registros.length + ' participantes';
   vacio?.classList.toggle('hidden', l.length > 0);
   cont.classList.toggle('hidden', !l.length);
-  if (!l.length) { cont.innerHTML = ''; return; }
-  cont.innerHTML = `<table class="vis-tabla">${VIS_CABECERA}<tbody>${l.map(visFilaHtml_).join('')}</tbody></table>`;
-  const cnt = visQ_('#vis-count'); if (cnt) cnt.textContent = l.length + ' de ' + VIS.registros.length;
+  const mas = visQ_('#vis-mas');
+  cont.innerHTML = '';
+  if (mas) mas.innerHTML = '';
+  if (!l.length) return;
+  visTanda_();
+  if (typeof IntersectionObserver === 'function' && mas) {
+    VIS.obs = new IntersectionObserver(ent => { if (ent.some(x => x.isIntersecting)) visTanda_(); }, { rootMargin: '600px' });
+    VIS.obs.observe(mas);
+  }
+  visMed_('visasTarjetas', t0);
 }
+function visTanda_() {
+  const cont = visQ_('#vis-cards'); if (!cont) return;
+  const desde = VIS.pintadas, hasta = Math.min(VIS.lista.length, desde + VIS_TANDA);
+  if (desde >= hasta) return;
+  cont.insertAdjacentHTML('beforeend', VIS.lista.slice(desde, hasta).map(visCardHtml_).join(''));
+  VIS.pintadas = hasta;
+  const mas = visQ_('#vis-mas');
+  if (mas) mas.innerHTML = hasta < VIS.lista.length
+    ? `<button class="btn btn-ghost btn-sm" data-vis-mas>Ver ${Math.min(VIS_TANDA, VIS.lista.length - hasta)} más (${VIS.lista.length - hasta} restantes)</button>` : '';
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-vis-mas]')) visTanda_(); });
 
-/* Repinta SOLO una fila (tras guardar o al ocupar/liberar). */
+function visTarjeta_(id) { return document.querySelector('#vis-cards [data-vid="' + CSS.escape(id) + '"]'); }
+
+/* Repinta SOLO una tarjeta (tras guardar o al ocupar/liberar). */
 function visRepintarFila_(id) {
-  const tr = document.querySelector('#vis-tabla tr[data-vid="' + CSS.escape(id) + '"]');
+  const el = visTarjeta_(id);
   const r = VIS.todos.find(x => x.id === id);
-  if (!tr || !r) return;
-  const tmp = document.createElement('tbody');
-  tmp.innerHTML = visFilaHtml_(r);
-  tr.replaceWith(tmp.firstElementChild);
+  if (!el || !r) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = visCardHtml_(r);
+  el.replaceWith(tmp.firstElementChild);
 }
 
 /* ============================================================
-   EDICIÓN EN LA FILA (delegada: un oyente para toda la tabla)
+   EDICIÓN EN LA TARJETA (delegada: un oyente para toda la vista)
    ============================================================ */
 function visFilaDe_(el) {
-  const tr = el.closest('tr[data-vid]');
-  return tr ? VIS.todos.find(x => x.id === tr.dataset.vid) : null;
+  const c = el.closest('[data-vid]');
+  return c ? VIS.todos.find(x => x.id === c.dataset.vid) : null;
 }
 
 document.addEventListener('change', e => {
-  const el = e.target.closest('#vis-tabla [data-vk]');
+  const el = e.target.closest('#vis-cards [data-vk]');
   if (!el) return;
   const r = visFilaDe_(el); if (!r) return;
   const k = el.dataset.vk;
@@ -489,7 +534,7 @@ document.addEventListener('change', e => {
 /* Enter en un número = guardar (el change se dispara al salir). */
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  const el = e.target.closest('#vis-tabla input[type="text"][data-vk]');
+  const el = e.target.closest('#vis-cards input[type="text"][data-vk]');
   if (el) { e.preventDefault(); el.blur(); }
 });
 
@@ -523,10 +568,11 @@ function visAbrirVuelo_(id) {
 /* Escudo de la fila: desde el primer toque hasta la respuesta. */
 function visOcupar_(id, on) {
   if (on) VIS.ocupado[id] = true; else delete VIS.ocupado[id];
-  const tr = document.querySelector('#vis-tabla tr[data-vid="' + CSS.escape(id) + '"]');
-  if (!tr) return;
-  tr.classList.toggle('is-ocupado', !!on);
-  if (on) tr.querySelectorAll('input, button').forEach(x => x.setAttribute('disabled', ''));
+  const c = visTarjeta_(id);
+  if (!c) return;
+  c.classList.toggle('is-ocupado', !!on);
+  c.setAttribute('aria-busy', on ? 'true' : 'false');
+  if (on) c.querySelectorAll('input, button, select').forEach(x => x.setAttribute('disabled', ''));
 }
 
 async function visGuardar_(r, cambios) {
@@ -631,4 +677,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Puerta para las pruebas automatizadas. */
 window.__sepVisas = { VIS, abrirVisas_, visPintarTodo_, visVisibles_, visSalir_, visParchar_, visGuardar_,
-                      visFilaHtml_, VIS_TOPS, visResultado_, visAbrirVuelo_ };
+                      visCardHtml_, visBloques_, visRepintarFila_, VIS_TOPS, visResultado_, visAbrirVuelo_ };
