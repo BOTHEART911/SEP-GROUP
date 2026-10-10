@@ -578,7 +578,7 @@
     /* Fase 3 SEP · Entrega 2 — consultas PROPIAS de esta pantalla
        (lo pidió el usuario: no los botones genéricos del resto). */
     'view-nivel': {
-      titulo: 'Consultas de Nivel de Inglés', sub: 'Resultados del SET en pantalla',
+      titulo: 'Consultas de Participantes', sub: 'Resultados del SET en pantalla',
       botones: [
         { id: 'resumen',    et: 'Lo que estoy viendo',     ic: '👀' },
         { id: 'resultado',  et: 'Por resultado',           ic: '🏷️' },
@@ -1594,7 +1594,7 @@
     var F = nivelFiltrosPuestos();
     var T = L.length;
     var cola = pie(F, T, plural(T, 'estudiante', 'estudiantes'));
-    if (!T) return vacio('Nivel de Inglés');
+    if (!T) return vacio('Participantes');
 
     var CON = L.filter(function (r) { return r.estado !== 'SIN_PUNTAJE'; });
     var SIN = L.filter(function (r) { return r.estado === 'SIN_PUNTAJE'; });
@@ -1604,7 +1604,7 @@
       var est = contar(L, function (r) { return etiq(r.estadoLabel); });
       var apro = L.filter(function (r) { return r.aprobado; }).length;
       return {
-        titulo: '👀 Lo que estoy viendo · Nivel de Inglés',
+        titulo: '👀 Lo que estoy viendo · Participantes',
         texto: 'Tienes ' + b(T) + ' ' + plural(T, 'estudiante', 'estudiantes') + ' en pantalla.\n\n' +
           '- Con Puntaje SEA registrado: ' + b(CON.length) + ' (' + pct(CON.length, T) + ' %)\n' +
           '- Sin puntaje todavía: ' + b(SIN.length) + '\n' +
@@ -1924,7 +1924,7 @@
       };
     }
 
-    return vacio('Nivel de Inglés');
+    return vacio('Participantes');
   }
 
   function informe(vista, id) {

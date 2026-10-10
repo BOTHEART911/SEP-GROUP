@@ -1,0 +1,55 @@
+/* =============================================================
+ * SEP GROUP — RECURSOS (Ajustes Fase 5 · 09/10/2026)
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * Solo variables de styles.css: el modo oscuro sale solo.
+ * ============================================================= */
+.rcs-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 10px; }
+.rcs-intro { margin: 0; flex: 1 1 280px; }
+.rcs-nuevo { flex: 0 0 auto; }
+
+.rcs-cards { align-items: stretch; }
+.rcs-card { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.rcs-card--oculto { opacity: .78; }
+.rcs-card--oculto .rcs-mini img { filter: grayscale(.7); }
+
+.rcs-mini { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; padding: 0; margin: 0;
+  background: #0b0f16; cursor: pointer; overflow: hidden; }
+.rcs-mini img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
+.rcs-mini:hover img { transform: scale(1.03); }
+.rcs-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 58px; height: 58px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 1.35rem; color: #fff; padding-left: 4px;
+  background: rgba(38, 49, 67, .78); box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+.rcs-mini:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.rcs-mini--sin { cursor: default; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: var(--bg-soft); color: var(--text-muted); aspect-ratio: 16 / 6; }
+.rcs-mini--sin span { font-size: 1.6rem; }
+
+.rcs-cuerpo { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 14px; flex: 1 1 auto; }
+.rcs-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rcs-chip { font-size: .7rem; font-weight: 800; padding: 2px 9px; border-radius: var(--r-pill); background: var(--bg-soft); color: var(--text-soft); }
+.rcs-chip--on  { background: rgba(22, 163, 74, .12); color: var(--ok); }
+.rcs-chip--off { background: rgba(220, 38, 38, .10); color: var(--error); }
+.rcs-titulo { margin: 2px 0 0; font-family: var(--font-display); font-size: 1rem; font-weight: 800; color: var(--text-main); line-height: 1.3; }
+.rcs-desc { margin: 0; color: var(--text-soft); font-size: .88rem; line-height: 1.5; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.rcs-pie { font-size: .74rem; color: var(--text-muted); margin-top: auto; padding-top: 4px; }
+.rcs-acts { margin-top: 6px; }
+
+/* Formulario (SweetAlert) */
+.rcs-form { text-align: left; display: flex; flex-direction: column; gap: 4px; }
+.rcs-form label { font-weight: 700; font-size: .85rem; color: var(--text-main); margin-top: 8px; }
+.rcs-form label small { font-weight: 500; color: var(--text-muted); }
+.rcs-form .swal2-input, .rcs-form .swal2-textarea { width: 100%; max-width: 100%; margin: 4px 0 0; box-sizing: border-box; }
+.rcs-form .swal2-textarea { min-height: 96px; }
+.rcs-f-vista img { width: 100%; max-width: 280px; border-radius: var(--r-sm); margin-top: 8px; display: block; }
+.rcs-f-error { color: var(--error); font-size: .82rem; font-weight: 700; }
+.rcs-f-fila { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+.rcs-f-fila > div { flex: 1 1 160px; }
+.rcs-f-check { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; cursor: pointer; }
+.rcs-f-check input { width: 18px; height: 18px; }
+.rcs-f-nota { font-size: .78rem; color: var(--text-soft); margin: 10px 0 0; }
+
+/* Reproductor */
+.rcs-video { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--r-md); overflow: hidden; background: #0b0f16; }
+.rcs-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.rcs-video-desc { text-align: left; color: var(--text-soft); font-size: .9rem; white-space: pre-line; margin: 12px 0 0; }

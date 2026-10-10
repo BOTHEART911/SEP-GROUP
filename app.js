@@ -141,8 +141,34 @@ async function apiPost(action, body = {}, opts = {}){
       catch (_) { throw new Error('No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.'); }
     }
     if(!j.ok) throw new Error(j.error || 'Error');
+    /* AJUSTES FASE 5 (09/10/2026) — la revisión ya respondió; el aviso
+       al participante sale ahora en un llamado de fondo (no a los 30
+       min del reloj). Ver avisosDespachar_. */
+    if (AVISO_ACCIONES[action] && j.data && j.data.aviso === 'cola') avisosDespachar_();
     return j.data;
   } finally { if (!opts.silent) stopLoading(); }
+}
+
+/* AJUSTES FASE 5 (09/10/2026) — DESPACHO INMEDIATO DE AVISOS.
+   Medido con el rechazo real del 09/10: el correo de "vuelve a cargar"
+   esperaba al reloj de 30 min y, si el documento se reemplazaba o se
+   aprobaba antes, se descartaba por viejo y nunca llegaba. Ahora, en
+   cuanto la revisión (o el resultado de visa) responde, se hace UN
+   llamado de fondo a 'avisosAhora': sin girador, sin escudo, sin
+   esperar respuesta. Varios guardados seguidos se juntan en uno. Si
+   falla, el reloj de 30 min sigue de respaldo (nada se pierde). */
+const AVISO_ACCIONES = { docRevisar: 1, visasGuardar: 1 };
+let _avisosT = null;
+function avisosDespachar_(){
+  clearTimeout(_avisosT);
+  _avisosT = setTimeout(() => {
+    _avisosT = null;
+    if (!currentUser) return;
+    const t0 = Date.now();
+    apiPost('avisosAhora', { usuarioId: currentUser.id }, { silent: true })
+      .then(() => { try { (window.__sepMed = window.__sepMed || []).push({ ruta: 'avisosAhora', ms: Date.now() - t0, t: Date.now() }); } catch (_) {} })
+      .catch(() => { /* respaldo: el reloj de 30 min */ });
+  }, 600);
 }
 
 /* ================== SESIÓN ================== */
@@ -248,6 +274,8 @@ function showView(id){
   if (id !== 'verif' && typeof veriSalir_ === 'function') veriSalir_();
   // FASE 5.2-B: al salir del Panel de Visas se corta su lectura.
   if (id !== 'visas' && typeof visSalir_ === 'function') visSalir_();
+  // AJUSTES FASE 5 (09/10/2026): al salir de Recursos se corta su lectura.
+  if (id !== 'recursos' && typeof rcsSalir_ === 'function') rcsSalir_();
   // FASE 5.4-A: al salir de Seguimiento se corta su lectura.
   // 5.4-C: Estadísticas usa la MISMA carga → entre las dos se hereda.
   if (id !== 'seguimiento' && id !== 'estadisticas' && typeof segSalir_ === 'function') segSalir_();
@@ -1231,6 +1259,7 @@ function cardHtml_(r){
       <div class="com-card__tag">
         <span class="com-badge" style="background:${r.estadoColor}">${esc_(r.estadoLabel)}</span>
         <span class="com-card__id">${r.id}</span>
+        ${notaEsquinaHtml_(r)}
       </div>
     </div>
     <div class="com-card__meta">
@@ -1252,6 +1281,51 @@ function cardHtml_(r){
       ${puedeEliminar?`<button class="act-btn act-eliminar" data-act="eliminar">🗑 Eliminar</button>`:''}
     </div>
   </div>`;
+}
+
+/* AJUSTES FASE 5 (09/10/2026) — ÚLTIMA NOTA EN LA ESQUINA.
+   Viene en la misma lista (ultNota 'aaaa-mm-ddTHH:mm', sin otro viaje).
+   Se lee de un vistazo: "hoy 3:15 p. m.", "ayer", "hace 4 días" o la
+   fecha; el color dice qué tan fresco está el contacto. */
+const NOTA_MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function notaFecha_(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(String(iso || ''));
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) : null;
+}
+function notaCuando_(iso, ahora){
+  const d = notaFecha_(iso); if (!d) return null;
+  const hoy = ahora ? new Date(ahora) : new Date();
+  const dias = Math.round((new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()) -
+                           new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+  let h = d.getHours(); const mi = String(d.getMinutes()).padStart(2, '0');
+  const ap = h >= 12 ? 'p. m.' : 'a. m.'; h = h % 12 || 12;
+  const hora = h + ':' + mi + ' ' + ap;
+  const fecha = d.getDate() + ' ' + NOTA_MESES[d.getMonth()] + (d.getFullYear() !== hoy.getFullYear() ? ' ' + d.getFullYear() : '');
+  let txt, nivel;
+  if (dias <= 0)      { txt = 'Hoy ' + hora; nivel = 'hoy'; }
+  else if (dias === 1){ txt = 'Ayer ' + hora; nivel = 'ayer'; }
+  else if (dias < 7)  { txt = 'Hace ' + dias + ' días'; nivel = 'semana'; }
+  else                { txt = fecha; nivel = 'vieja'; }
+  return { txt, nivel, completo: 'Última nota: ' + fecha + ' · ' + hora };
+}
+function notaEsquinaHtml_(r){
+  const c = r && r.ultNota ? notaCuando_(r.ultNota) : null;
+  if (!c) return '';
+  return `<span class="com-card__nota com-card__nota--${c.nivel}" title="${esc_(c.completo)}" aria-label="${esc_(c.completo)}">📝 ${esc_(c.txt)}</span>`;
+}
+/* Tras enviar una nota: se parcha la fila en memoria y SOLO la esquina
+   y el botón de esa tarjeta (sin recargar la lista). */
+function notaParche_(leadId){
+  const d = new Date();
+  const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') +
+              'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  (COM.todos || []).forEach(r => { if (String(r.id) === String(leadId)) { r.ultNota = iso; r.tieneNotas = true; } });
+  const card = document.getElementById('card-' + leadId); if (!card) return;
+  const tag = card.querySelector('.com-card__tag');
+  const html = notaEsquinaHtml_({ ultNota: iso });
+  const vieja = tag && tag.querySelector('.com-card__nota');
+  if (vieja) vieja.outerHTML = html; else if (tag) tag.insertAdjacentHTML('beforeend', html);
+  card.querySelector('[data-act="chat"]')?.classList.add('act-chat--notas');
 }
 
 function bindCard_(r){
@@ -1753,6 +1827,7 @@ async function chatEnviar_(){
   inp.value=''; chatAutoGrow_();
   try{
     await apiPost('enviarMensajeChat', { usuarioId: currentUser.id, leadId: CHAT.leadId, texto: txt }, { silent:true });
+    notaParche_(CHAT.leadId);   // AJUSTES FASE 5 — la esquina de la tarjeta, sin recargar
     await chatCargar_(true); // refleja el envío al instante
   }catch(e){
     inp.value = txt;

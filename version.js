@@ -3,6 +3,20 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTES FASE 5 · NOTAS DE JAVIER (09/10/2026).
+ *   · Documento rechazado / aprobado y felicitación de visa: el aviso
+ *     sale en segundos (llamado de fondo 'avisosAhora' tras guardar),
+ *     no a los 30 min del reloj.
+ *   · Procesos: el panel "Nivel de Inglés" ahora se llama Participantes
+ *     ("Perfilamiento y gestión documental de participantes").
+ *   · Comercial: fecha de la última nota en la esquina de la tarjeta
+ *     (mismo viaje de la lista; se actualiza al enviar una nota).
+ *   · Procesos → Recursos: crear, editar, ocultar y eliminar recursos
+ *     (título, descripción y video de YouTube) para el portal.
+ *   Archivos: app.js, styles.css, index.html, js/nivel.js,
+ *   js/capa-11-insights.js, js/capa-5-esqueletos.js, js/recursos.js,
+ *   css/recursos.css, img/recursos.svg, version.js, sw.js (caché v54).
+ * ------------------------------------------------------------
  * FASE 5.5 · ENTREGA D (09/10/2026) — AUDITORÍA DE ESQUELETOS Y FILTROS.
  *   · Toda lectura con la silueta de lo que llega, dentro de la rejilla
  *     real (2 columnas en Comercial/Contador/Nivel, 3 en Ofertas, KPIs y
@@ -738,4 +752,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.09.01";
+var APP_VERSION = "2026.10.09.02";

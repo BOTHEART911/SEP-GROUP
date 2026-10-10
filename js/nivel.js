@@ -157,7 +157,7 @@ function nivePuedeEntrar_() {
 
 async function abrirNivel_() {
   if (!nivePuedeEntrar_()) {
-    Swal.fire({ icon: 'warning', title: 'Sin permiso', text: 'Solo SUPERUSUARIO o DESARROLLADOR entran a Nivel de Inglés.' });
+    Swal.fire({ icon: 'warning', title: 'Sin permiso', text: 'Solo SUPERUSUARIO o DESARROLLADOR entran a Participantes.' });
     return;
   }
   showView('nivel');

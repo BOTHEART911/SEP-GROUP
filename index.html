@@ -62,6 +62,7 @@
   <!-- FASE 5.2 · A (07/10/2026) — Verificación Académica -->
   <link rel="stylesheet" href="css/verif.css" />
   <link rel="stylesheet" href="css/visas.css" />
+  <link rel="stylesheet" href="css/recursos.css" />
   <link rel="stylesheet" href="css/seguimiento.css" />
   <link rel="stylesheet" href="css/estadisticas.css" />
   <!-- MODO OSCURO · ANTIPARPADEO (11/08)
@@ -955,9 +956,9 @@
 
       <div class="menu-grid">
         <button class="menu-tile" id="proc-tile-nivel">
-          <img src="img/nivel.webp" alt="Nivel de Inglés" loading="lazy" />
-          <div class="menu-tile__title">Nivel de Inglés</div>
-          <div class="menu-tile__desc">Resultado Prueba IA</div>
+          <img src="img/nivel.webp" alt="Participantes" loading="lazy" />
+          <div class="menu-tile__title">Participantes</div>
+          <div class="menu-tile__desc">Perfilamiento y gestión documental de participantes</div>
         </button>
         <!-- FASE 5.2 · Entrega A (07/10/2026) — Verificación Académica -->
         <button class="menu-tile" id="proc-tile-verif">
@@ -970,6 +971,12 @@
           <img src="img/visas.webp" alt="Visas" loading="lazy" />
           <div class="menu-tile__title">Visas</div>
           <div class="menu-tile__desc">Panel de visas</div>
+        </button>
+        <!-- AJUSTES FASE 5 (09/10/2026) — Recursos para el participante -->
+        <button class="menu-tile" id="proc-tile-recursos">
+          <img src="img/recursos.svg" alt="Recursos" loading="lazy" />
+          <div class="menu-tile__title">Recursos</div>
+          <div class="menu-tile__desc">Videos e información para el participante</div>
         </button>
         <!-- FASE 4 · Entrega 1 (03/09/2026) -->
         <button class="menu-tile" id="proc-tile-ofertas">
@@ -1000,7 +1007,7 @@
       <button class="app-header__back" data-go="procesos" title="Volver">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
-      <h1 class="app-header__title">Nivel de Inglés</h1>
+      <h1 class="app-header__title">Participantes</h1>
       <button class="app-header__icon" id="nive-refresh" title="Actualizar">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
@@ -1088,6 +1095,33 @@
       <div id="vis-empty" class="com-empty hidden">
         <p style="font-weight:700;color:var(--text-soft);">Sin participantes con ese filtro</p>
         <p class="muted">Aquí aparecen quienes ya tienen el <b>formulario SEP aprobado</b>. Las casillas de documentos (DS-160 real, DS-2019 y pago SEVIS) se marcan solas cuando SEP aprueba el documento en Mis documentos.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- AJUSTES FASE 5 (09/10/2026) — RECURSOS (js/recursos.js)
+       SEP publica videos e información; el participante los ve en su
+       portal (SEP-AGENDA). Del video viaja solo el ID de YouTube. -->
+  <section id="view-recursos" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="procesos" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Recursos</h1>
+      <button class="app-header__icon" id="rcs-refresh" title="Actualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </header>
+    <div class="container container--ancho">
+      <div class="rcs-cabeza">
+        <p class="muted rcs-intro">Lo que publiques aquí aparece en el portal del participante, en la tarjeta <b>Recursos</b>. Solo se ven los activos.</p>
+        <button class="btn btn-primary rcs-nuevo" id="rcs-nuevo" type="button">＋ Nuevo recurso</button>
+      </div>
+      <div class="filters-row" id="rcs-filters"></div>
+      <div id="rcs-cards" class="com-cards rcs-cards"></div>
+      <div id="rcs-empty" class="com-empty hidden">
+        <p style="font-weight:700;color:var(--text-soft);">Todavía no hay recursos</p>
+        <p class="muted">Crea el primero con <b>＋ Nuevo recurso</b>: un título, una descripción corta y, si quieres, el enlace de un video de YouTube.</p>
       </div>
     </div>
   </section>
@@ -1501,6 +1535,7 @@
   <!-- FASE 5.2 · Entrega A — Verificación Académica -->
   <script src="js/verif.js"></script>
   <script src="js/visas.js"></script>
+  <script src="js/recursos.js"></script>
   <script src="js/seguimiento.js"></script>
   <script src="js/estadisticas.js"></script>
 

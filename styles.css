@@ -325,6 +325,16 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .com-card__name { font-family: var(--font-display); font-weight: 700; font-size: 1.04rem; color: var(--primary); margin: 0; line-height: 1.2; }
 .com-card__id { font-size: .68rem; font-weight: 800; color: var(--text-muted); background: var(--bg-soft); padding: 2px 8px; border-radius: var(--r-pill); }
 .com-card__tag { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+/* AJUSTES FASE 5 (09/10/2026) — última nota en la esquina de la tarjeta */
+.com-card__nota { font-size: .68rem; font-weight: 800; padding: 2px 8px; border-radius: var(--r-pill); white-space: nowrap;
+  border: 1px solid transparent; line-height: 1.5; }
+.com-card__nota--hoy    { color: #166534; background: rgba(22,163,74,.12);  border-color: rgba(22,163,74,.28); }
+.com-card__nota--ayer   { color: #1d4ed8; background: rgba(37,99,235,.10);  border-color: rgba(37,99,235,.25); }
+.com-card__nota--semana { color: #92400e; background: rgba(217,119,6,.12);  border-color: rgba(217,119,6,.28); }
+.com-card__nota--vieja  { color: var(--text-muted); background: var(--bg-soft); }
+html[data-tema="oscuro"] .com-card__nota--hoy    { color: #86efac; }
+html[data-tema="oscuro"] .com-card__nota--ayer   { color: #93c5fd; }
+html[data-tema="oscuro"] .com-card__nota--semana { color: #fcd34d; }
 .com-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px; border-radius: var(--r-pill); font-size: .7rem; font-weight: 800; color: #fff; margin-top: 8px; }
 .com-card__tag .com-badge { margin-top: 0; }
 .com-card__email { margin: 4px 0 0; display: inline-flex; align-items: center; gap: 5px; font-size: .8rem; color: var(--text-soft); word-break: break-all; }

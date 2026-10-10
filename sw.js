@@ -20,7 +20,7 @@
  *   subes APP_VERSION, y servirlo viejo dejaría la app clavada en una versión
  *   antigua. Tampoco se cachea nada que lleve query string.
  * ============================================================ */
-const SEP_CACHE = 'sep-group-v53';
+const SEP_CACHE = 'sep-group-v54';
 
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
@@ -41,6 +41,7 @@ const SHELL = [
   './css/visas.css', './js/visas.js', './img/visas.webp',                /* Fase 5.2 · B (08/10/2026) */
   './css/seguimiento.css', './js/seguimiento.js', './img/seguimiento.webp', /* Fase 5.4 · A (08/10/2026) */
   './css/estadisticas.css', './js/estadisticas.js', './img/estadisticas.webp', /* Fase 5.4 · C (08/10/2026) */
+  './css/recursos.css', './js/recursos.js', './img/recursos.svg',       /* Ajustes Fase 5 (09/10/2026) */
   './img/sep_logo.png'
 ];
 

@@ -339,6 +339,7 @@
     verifInit:               [['veri-resumen', 'kpi', 3], ['veri-filters', 'pill', 2], ['veri-cards', 'verif', 4]],
     verifDetalle:            [['veri-det-body', 'verifdet', 1]],
     visasInit:               [['vis-resumen', 'kpi', 13], ['vis-filters', 'pill', 2], ['vis-cards', 'visa', 2]],
+    recursosInit:            [['rcs-filters', 'pill', 3], ['rcs-cards', 'tarjeta', 4]],   /* Ajustes Fase 5 */
     seguimientoInit:         [['seg-filters', 'pill', 10], ['seg-cards', 'seguimiento', 4], ['est-filters', 'pill', 4], ['est-cuerpo', 'seccion', 3]],
     /* Lecturas de fondo: sin girador y sin silueta (no pintan contenedor) */
     bootstrap: [],
@@ -350,7 +351,8 @@
   /* Avisos de "no hay nada" que deben esconderse mientras se pinta la silueta */
   var VACIOS = { 'com-cards': 'com-empty', 'usr-cards': 'usr-empty', 'conta-cards': 'conta-empty',
                  'nive-cards': 'nive-empty', 'ofe-cards': 'ofe-empty',
-                 'veri-cards': 'veri-empty', 'seg-cards': 'seg-empty', 'vis-cards': 'vis-empty' };
+                 'veri-cards': 'veri-empty', 'seg-cards': 'seg-empty', 'vis-cards': 'vis-empty',
+                 'rcs-cards': 'rcs-empty' };
 
   /* ---- Pintar / retirar -------------------------------------------------- */
   function pintar(plan) {
