@@ -3,6 +3,22 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * ANCHO DE PANTALLA Y AVIÓN DE ESCRITURA (10/10/2026).
+ *   · Monitores grandes: las rejillas suman columnas del mismo tamaño de
+ *     tarjeta del portátil (3 a 1600 px, 4 a 2080 px, 5 a 2540 px; las
+ *     tarjetas anchas de Seguimiento y Visas, 3 a 1880 y 4 a 2500). La
+ *     cabecera, KPIs, pastillas y buscadores van al mismo ancho. Portátil
+ *     igual que antes; teléfono, 1 columna. Modales anchos más grandes en
+ *     monitor y sin desbordarse en el teléfono.
+ *   · Avión de escritura (pieza única con SEP-AGENDA, efecto de
+ *     CONTRATISTA-FLANDES): toda escritura lo abre desde apiPost; se van el
+ *     girador global y los Swal.showLoading. Las lecturas, solo esqueleto.
+ *     Escudo, rid y mensajes de éxito/error se conservan.
+ *   Archivos: index.html, app.js, js/avion.js (nuevo), css/avion.css
+ *   (nuevo), css/ancho.css (nuevo), js/contador.js, js/nivel.js,
+ *   js/nivel-docs.js, js/ofertas.js, js/recursos.js, js/verif.js,
+ *   js/visas.js, version.js, sw.js (caché v56).
+ * ------------------------------------------------------------
  * AJUSTES FASE 5 · ELIMINAR CON PURGA COMPLETA (09/10/2026 noche).
  *   · Eliminar desde Comercial o Contador también borra el expediente de
  *     las fases 4 y 5: documentos (y sus archivos), ofertas (el cupo
@@ -758,4 +774,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.09.03";
+var APP_VERSION = "2026.10.10.01";

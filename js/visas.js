@@ -584,7 +584,7 @@ async function visGuardar_(r, cambios) {
   const quien = currentUser && currentUser.id;
   const t0 = Date.now();
   try {
-    const out = await apiPost('visasGuardar', { usuarioId: quien, id: id, cambios: cambios }, { silent: true });
+    const out = await apiPost('visasGuardar', { usuarioId: quien, id: id, cambios: cambios }, { avion: { titulo: 'Guardando la visa…' } });
     visMed_('visasGuardar', t0);
     if (!currentUser || currentUser.id !== quien) return;          // sesión vieja
     visParchar_(out.fila);

@@ -385,15 +385,11 @@ function renderOfeCards_() {
    se quiere el archivo al día sin esperar a que alguien lo abra.
    ============================================================ */
 async function ofePdf_(id, forzar) {
-  Swal.fire({
-    title: forzar ? 'Rehaciendo el PDF…' : 'Preparando el PDF…',
-    html: 'Esto puede tardar unos segundos.',
-    allowOutsideClick: false, didOpen: () => Swal.showLoading()
-  });
   try {
     const d = await apiPost('ofertaPdf', {
       usuarioId: currentUser.id, id: id, forzar: !!forzar
-    });
+    }, { avion: { titulo: forzar ? 'Rehaciendo el PDF…' : 'Preparando el PDF…', sub: 'Esto puede tardar unos segundos.',
+                  pasos: ['Leyendo la oferta…', 'Armando el documento…', 'Generando el PDF…', 'Casi listo…'] } });
     const avisos = (d.avisos || []);
     const admin = ofeEsAdmin_();
     const r = await Swal.fire({

@@ -1423,14 +1423,15 @@ async function contaZonaSubir_(id, file, reemplazaIdx) {
   if (!res.isConfirmed) return false;
 
   try {
-    Swal.fire({ title: 'Subiendo…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-    const base64 = await contaBase64_(file);
-    const out = await apiPost('subirComprobante', {
-      usuarioId: currentUser.id, n: r.n, tipo: z.tipo,
-      filename: contaNombreDe_(file, z.multiple ? z.urls.length + 1 : 0),
-      mime: file.type || '', base64: base64
+    /* 10/10/2026 — el avión cubre también la lectura del archivo. */
+    const out = await SEPAvion.durante({ titulo: 'Subiendo el comprobante…', pasos: ['Leyendo el archivo…', 'Subiendo a Drive…', 'Guardando…'] }, async () => {
+      const base64 = await contaBase64_(file);
+      return apiPost('subirComprobante', {
+        usuarioId: currentUser.id, n: r.n, tipo: z.tipo,
+        filename: contaNombreDe_(file, z.multiple ? z.urls.length + 1 : 0),
+        mime: file.type || '', base64: base64
+      });
     });
-    Swal.close();
     if (reemplazaIdx !== null && reemplazaIdx !== undefined && z.urls[reemplazaIdx] !== undefined) z.urls[reemplazaIdx] = out.url;
     else if (z.multiple) z.urls.push(out.url);
     else z.urls = [out.url];
@@ -1505,7 +1506,6 @@ async function eliminarInscripcion_(r) {
   if (!res.isConfirmed) return;
 
   try {
-    Swal.fire({ title: 'Eliminando…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     const out = await apiPost('purgarContador', { usuarioId: currentUser.id, n: r.n, confirmar: res.value });
     await recargarContador_(true);
     const fallidos = (out.archivos && out.archivos.fallidos) ? out.archivos.fallidos.length : 0;

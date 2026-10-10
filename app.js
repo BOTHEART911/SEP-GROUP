@@ -39,15 +39,49 @@ const API_BASE = 'https://script.google.com/macros/s/AKfycbyrb7dXsicBPJwEkkMJJfo
 const $  = (s, c = document) => c.querySelector(s);
 const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
 
-/* ================== LOADER ================== */
-const loader = $('#loader');
-let loadingCount = 0, loaderTimer = null;
-function startLoading(){ loadingCount++; if (loadingCount === 1){ loaderTimer = setTimeout(()=>{ loader.classList.remove('hidden'); loaderTimer=null; }, 120); } }
-function stopLoading(){ if (loadingCount===0) return; loadingCount--; if (loadingCount===0){ if (loaderTimer){clearTimeout(loaderTimer);loaderTimer=null;} loader.classList.add('hidden'); } }
+/* ================== ESPERAS (10/10/2026) ==================
+   Ya no hay girador. Dos esperas y nada más:
+   · LECTURAS → esqueleto (capa 5). apiGet nunca tapa la pantalla.
+   · ESCRITURAS → el avión (js/avion.js, pieza única con SEP-AGENDA).
+     apiPost lo toma y lo suelta solo; varias escrituras seguidas
+     comparten un solo avión. opts.silent = sin avión (llamados de fondo
+     como el chat o avisosAhora). opts.avion = { titulo, sub, pasos }
+     para cambiar el texto. Las lecturas que pasan por apiPost van en
+     AVION_LECTURAS y no lo abren. */
+const AVION_LECTURAS = { listArchivosPrograma: 1, historialChat: 1, verClave: 1, verifVerClave: 1 };
+const AVION_TITULOS = {
+  purgarComercial: 'Eliminando con purga…', purgarContador: 'Eliminando con purga…', purgarNivel: 'Eliminando con purga…',
+  eliminarOferta: 'Eliminando la oferta…', eliminarUsuario: 'Eliminando el usuario…', deletePromo: 'Eliminando…',
+  recursoEliminar: 'Eliminando el recurso…', vaciarChat: 'Vaciando el chat…',
+  subirComprobante: 'Subiendo el comprobante…', docSubirSep: 'Subiendo el documento…', uploadBrochure: 'Subiendo el brochure…',
+  uploadCondiciones: 'Subiendo las condiciones…', uploadFotoUsuario: 'Subiendo la foto…', subirFotoOferta: 'Subiendo la foto…',
+  exportDatos: 'Generando el Excel…', exportPdf: 'Generando el PDF…', ofertaPdf: 'Generando el PDF…',
+  nivelRegenerarHv: 'Generando la hoja de vida…', nivelAprobar: 'Aprobando el perfil…', nivelReabrir: 'Reabriendo el bloque…',
+  docRevisar: 'Guardando la revisión…', verifGuardar: 'Guardando la verificación…', visasGuardar: 'Guardando la visa…',
+  aplicarParticipante: 'Aplicando al participante…', habilitarSeleccion: 'Habilitando la selección…', liberarCupo: 'Liberando el cupo…',
+  retirarParticipante: 'Retirando al participante…', reactivarParticipante: 'Reactivando al participante…',
+  botReiniciar: 'Reiniciando el bot…', botEliminarSesion: 'Cerrando la sesión del bot…', botMute: 'Enviando al bot…',
+  crearComercial: 'Creando el registro…', crearTemporada: 'Creando la temporada…', enviarMensajeChat: 'Enviando…',
+  nivelInvitacion: 'Enviando la invitación…'
+};
+function avionTitulo_(accion){
+  if (AVION_TITULOS[accion]) return AVION_TITULOS[accion];
+  if (/^(purgar|eliminar|delete|borrar)/i.test(accion)) return 'Eliminando…';
+  if (/^(subir|upload)/i.test(accion)) return 'Subiendo…';
+  if (/pdf|export/i.test(accion)) return 'Generando…';
+  if (/^(enviar|send)/i.test(accion)) return 'Enviando…';
+  return 'Guardando…';
+}
+function avionTomar_(accion, opts){
+  if (typeof SEPAvion === 'undefined') return null;
+  const o = Object.assign({ auto: !opts.avion, titulo: avionTitulo_(accion) }, opts.avion || {});
+  return SEPAvion.tomar(o);
+}
+function avionSoltar_(ficha, bien){ if (ficha && typeof SEPAvion !== 'undefined') SEPAvion.soltar(ficha, bien); }
 
 /* ================== API (text/plain evita preflight CORS) ==================
-   opts.silent = true  → no muestra el spinner global (para refrescos en
-   segundo plano como el polling del chat). */
+   Lecturas: nunca tapan la pantalla (esqueleto de la capa 5). Con
+   opts.avion (solo el login) abren el avión de "Entrando…". */
 /* 07/10/2026 — RESPUESTA COMPRIMIDA Y MEDICIÓN.
    · z=1: si el navegador sabe abrir gzip (DecompressionStream), el
      servidor manda las respuestas grandes comprimidas ({ok, gz}) y aquí
@@ -86,7 +120,8 @@ function apiRehidratar_(x){
   return x;
 }
 async function apiGet(action, params = {}, opts = {}){
-  if (!opts.silent) startLoading();
+  const avion = opts.avion ? avionTomar_(action, opts) : null;   // solo el login
+  let bien = false;
   const t0 = performance.now();
   try{
     const url = new URL(API_BASE);
@@ -106,8 +141,9 @@ async function apiGet(action, params = {}, opts = {}){
     if (j && j.gz) j = await apiAbrirGz_(j.gz);
     medAnotarFront_(action, performance.now() - t0, txt.length / 1024, j && j.ok === false ? 'error' : '');
     if(!j.ok) throw new Error(j.error || 'Error');
+    bien = true;
     return apiRehidratar_(j.data);
-  } finally { if (!opts.silent) stopLoading(); }
+  } finally { avionSoltar_(avion, bien); }
 }
 /* FASE 5.1 (07/10/2026) — toda escritura lleva un id de petición (rid).
    El backend guarda la respuesta por rid: si la red corta o Google
@@ -119,7 +155,10 @@ function ridNuevo_(){
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
 async function apiPost(action, body = {}, opts = {}){
-  if (!opts.silent) startLoading();
+  /* 10/10/2026 — el avión desde el primer instante de la escritura (con
+     150 ms de gracia: lo que vuelve antes no alcanza a pintar). */
+  const avion = (!opts.silent && !AVION_LECTURAS[action]) ? avionTomar_(action, opts) : null;
+  let bien = false;
   try{
     const url = API_BASE + '?action=' + encodeURIComponent(action);
     const conRid = Object.assign({}, body, { rid: body.rid || opts.rid || ridNuevo_() });
@@ -145,8 +184,9 @@ async function apiPost(action, body = {}, opts = {}){
        al participante sale ahora en un llamado de fondo (no a los 30
        min del reloj). Ver avisosDespachar_. */
     if (AVISO_ACCIONES[action] && j.data && j.data.aviso === 'cola') avisosDespachar_();
+    bien = true;
     return j.data;
-  } finally { if (!opts.silent) stopLoading(); }
+  } finally { avionSoltar_(avion, bien); }
 }
 
 /* AJUSTES FASE 5 (09/10/2026) — DESPACHO INMEDIATO DE AVISOS.
@@ -485,7 +525,7 @@ $('#btn-login-doc')?.addEventListener('click', async ()=>{
   const doc = onlyDigits($('#login-doc').value);
   if (!doc){ Swal.fire({icon:'warning', title:'Ingresa tu documento'}); return; }
   try{
-    const u = await apiGet('login', { documento: doc });
+    const u = await apiGet('login', { documento: doc }, { avion: { titulo: 'Entrando…', sub: 'Estamos revisando tu acceso.', pasos: ['Revisando tu documento…', 'Abriendo tu sesión…'] } });
     if (!u.encontrado){ Swal.fire({icon:'error', title:'Usuario no encontrado o inactivo'}); return; }
     entrar_(u);
   }catch(e){ manejarErrorLogin_(e); }
@@ -504,7 +544,7 @@ $$('.pin-key').forEach(key=>{
     if (pinBuffer.length === 4){
       const pin = pinBuffer;
       try{
-        const u = await apiGet('loginPin', { pin });
+        const u = await apiGet('loginPin', { pin }, { avion: { titulo: 'Entrando…', sub: 'Estamos revisando tu acceso.', pasos: ['Revisando tu PIN…', 'Abriendo tu sesión…'] } });
         if (!u.encontrado){ Swal.fire({icon:'error', title:'PIN incorrecto'}); pinBuffer=''; pintarPinDots_(); return; }
         entrar_(u);
       }catch(e){ pinBuffer=''; pintarPinDots_(); manejarErrorLogin_(e); }
@@ -1472,7 +1512,6 @@ async function eliminarComercial_(r){
   });
   if (!res.isConfirmed) return;
   try{
-    Swal.fire({ title:'Eliminando…', allowOutsideClick:false, didOpen:()=> Swal.showLoading() });
     const out = await apiPost('purgarComercial', { id:r.id, usuarioId: currentUser.id, confirmar: res.value });
     await recargarComercial_(true, true);   // Fase 25: el apiPost ya mostró el loader
     const partes = [];

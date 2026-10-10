@@ -65,6 +65,10 @@
   <link rel="stylesheet" href="css/recursos.css" />
   <link rel="stylesheet" href="css/seguimiento.css" />
   <link rel="stylesheet" href="css/estadisticas.css" />
+  <!-- 10/10/2026 — avión de escritura (pieza única, igual en SEP-AGENDA) y
+       ancho de pantalla: van los ÚLTIMOS para mandar sobre lo anterior -->
+  <link rel="stylesheet" href="css/avion.css" />
+  <link rel="stylesheet" href="css/ancho.css" />
   <!-- MODO OSCURO · ANTIPARPADEO (11/08)
        Deja puesto data-tema ANTES del primer pintado; si no, la app
        nace clara y parpadea a oscuro al cargar el JS. Sin elección
@@ -89,12 +93,6 @@
 <body>
 
   <!-- LOADER -->
-  <div id="loader" class="loader hidden">
-    <div class="spinner">
-      <i></i><i></i><i></i><i></i><i></i><i></i>
-      <i></i><i></i><i></i><i></i><i></i><i></i>
-    </div>
-  </div>
 
   <!-- ============================================================
        VISTA INSTALAR
@@ -1519,6 +1517,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="version.js"></script>
+  <!-- 10/10/2026 — avión de escritura: antes de app.js (apiPost lo usa) -->
+  <script src="js/avion.js"></script>
   <!-- FASE 5.1 · A (07/10/2026) — selector de temporada (año), compartido por las vistas -->
   <script src="js/temporada.js"></script>
   <script src="js/temporadas-cfg.js"></script>

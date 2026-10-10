@@ -240,11 +240,10 @@ async function rcsEditar_(r) {
 async function rcsGuardar_(cuerpo, okTxt) {
   if (RCS.ocupado) return;                      // escudo: nada de doble envío
   RCS.ocupado = true;
-  Swal.fire({ title: 'Guardando…', allowOutsideClick: false, allowEscapeKey: false, didOpen: () => Swal.showLoading() });
   const t0 = Date.now();
   const quien = currentUser && currentUser.id;
   try {
-    const out = await apiPost('recursoGuardar', Object.assign({ usuarioId: quien }, cuerpo), { silent: true });
+    const out = await apiPost('recursoGuardar', Object.assign({ usuarioId: quien }, cuerpo), { avion: { titulo: 'Guardando el recurso…' } });
     rcsMed_('recursoGuardar', t0);
     if (!currentUser || currentUser.id !== quien) return;
     const nuevo = out.recurso;
@@ -265,10 +264,9 @@ async function rcsEliminar_(r) {
     showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626' });
   if (!ok.isConfirmed) return;
   RCS.ocupado = true;
-  Swal.fire({ title: 'Eliminando…', allowOutsideClick: false, allowEscapeKey: false, didOpen: () => Swal.showLoading() });
   const t0 = Date.now();
   try {
-    await apiPost('recursoEliminar', { usuarioId: currentUser.id, id: r.id }, { silent: true });
+    await apiPost('recursoEliminar', { usuarioId: currentUser.id, id: r.id }, { avion: { titulo: 'Eliminando el recurso…' } });
     rcsMed_('recursoEliminar', t0);
     RCS.lista = RCS.lista.filter(x => x.id !== r.id);
     rcsPintar_();

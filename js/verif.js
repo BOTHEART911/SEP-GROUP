@@ -605,10 +605,9 @@ async function veriRevisarCert_(clave, accion) {
   }
   if (VERI.ocupado || VERI.actual !== r) return;
   VERI.ocupado = true; veriBloquear_(true);
-  Swal.fire({ title: 'Guardando…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
   const t0 = Date.now();
   try {
-    const out = await apiPost('docRevisar', cuerpo, { silent: true });
+    const out = await apiPost('docRevisar', cuerpo, { avion: { titulo: accion === 'APROBAR' ? 'Aprobando el certificado…' : 'Rechazando el certificado…' } });
     veriMed_('docRevisar', t0);
     if (VERI.det && VERI.actual === r) {
       const nuevos = (out.documentos || []).filter(d => d.clave === 'CERT_ENE_JUL' || d.clave === 'CERT_AGO_DIC');

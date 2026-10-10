@@ -1,0 +1,113 @@
+/* ============================================================================
+ * SEP GROUP · ANCHO DE PANTALLA (10/10/2026)
+ * ----------------------------------------------------------------------------
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * Software propietario; cualquier modificación por terceros anula la garantía.
+ * ----------------------------------------------------------------------------
+ * QUÉ HACE
+ *   En monitores grandes las rejillas ya no estiran 2 columnas ni dejan los
+ *   lados vacíos: se agrega una 3.ª columna (y las que quepan) con el MISMO
+ *   tamaño de tarjeta que se ve en un portátil. La cabecera, los KPIs, las
+ *   pastillas y los buscadores van dentro del mismo ancho.
+ *
+ *   Portátil (hasta 1599 px) → exactamente como antes: contenedor de
+ *   1080 px y 2 columnas de ~518 px. Teléfono (< 720 px) → 1 columna.
+ *
+ * DOS FAMILIAS DE TARJETA (cada una conserva su tamaño de portátil)
+ *   · ESTÁNDAR (Comercial, Contador, Participantes, Verificación, Recursos,
+ *     y el contenedor de Configuración, Usuarios, Ofertas, Inicio…):
+ *     tarjeta de 480–540 px.
+ *        < 720 → 1 · 720 → 2 · 1600 → 3 · 2080 → 4 · 2540 → 5 columnas
+ *   · ANCHA (Seguimiento y Visas, que son tarjetas grandes): 600–680 px.
+ *        Seguimiento: < 1100 → 1 · 1100 → 2 · 1880 → 3 · 2500 → 4
+ *        Visas:       < 1500 → 1 · 1500 → 2 · 1880 → 3 · 2500 → 4
+ *   Las rejillas de tarjetas chicas (Usuarios, Plantillas, Ofertas,
+ *   Escala SEA, menú de Inicio) ya eran "las que quepan": ganan columnas
+ *   solas al crecer el contenedor.
+ *
+ * CÓMO
+ *   Solo variables y reglas de rejilla; ningún JS. Va el ÚLTIMO de los
+ *   estilos para mandar sobre styles.css y los css de cada vista.
+ * ========================================================================== */
+
+:root {
+  --anc-n: 1;          /* columnas de la familia estándar   */
+  --anc-max: 1080px;   /* contenedor de la familia estándar */
+  --anc-a-n: 1;        /* columnas de Seguimiento           */
+  --anc-v-n: 1;        /* columnas de Visas                 */
+  --anc-a-max: 1344px; /* contenedor de la familia ancha    */
+}
+@media (min-width: 720px)  { :root { --anc-n: 2; } }
+@media (min-width: 1100px) { :root { --anc-a-n: 2; } }
+@media (min-width: 1500px) { :root { --anc-v-n: 2; } }
+@media (min-width: 1600px) { :root { --anc-n: 3; --anc-max: 1630px; } }
+@media (min-width: 1880px) { :root { --anc-a-n: 3; --anc-v-n: 3; --anc-a-max: 2096px; } }
+@media (min-width: 2080px) { :root { --anc-n: 4; --anc-max: 2140px; } }
+@media (min-width: 2500px) { :root { --anc-a-n: 4; --anc-v-n: 4; --anc-a-max: 2784px; } }
+@media (min-width: 2540px) { :root { --anc-n: 5; --anc-max: 2650px; } }
+
+/* ── Contenedor de cada vista y su cabecera, al mismo ancho ────────────── */
+.view { --anc-vista: var(--anc-max); }
+#view-seguimiento, #view-visas, #view-estadisticas { --anc-vista: var(--anc-a-max); }
+/* El tablero va en filas de tres gráficas: hasta el ancho de 3 columnas. */
+#view-dashboard { --anc-vista: min(var(--anc-max), 1630px); }
+
+.view > .container,
+#view-seguimiento .container--ancho,
+#view-visas .container--ancho,
+#view-estadisticas .container--ancho { max-width: var(--anc-vista); }
+
+/* La barra de la cabecera sigue de lado a lado (su fondo); lo de adentro
+   (volver, título, botones) se alinea con el borde del contenido. */
+.view > .app-header {
+  padding-left:  calc(max(0px, (100% - var(--anc-vista)) / 2) + 16px);
+  padding-right: calc(max(0px, (100% - var(--anc-vista)) / 2) + 16px);
+}
+
+/* ── Familia ESTÁNDAR: las listas de tarjetas ──────────────────────────── */
+@media (min-width: 720px) {
+  .com-cards,
+  #conta-cards.com-cards,
+  #nive-cards.com-cards,
+  #veri-cards.com-cards,
+  #rcs-cards.com-cards { grid-template-columns: repeat(var(--anc-n), minmax(0, 1fr)); }
+
+  /* Detalle de Comercial (la vista, no los modales): los campos
+     acompañan el ancho (2 en portátil). Dentro de un modal no cambia. */
+  .detalle-grid:not(.modal-card .detalle-grid) { grid-template-columns: repeat(var(--anc-n), minmax(0, 1fr)); }
+}
+
+/* ── Familia ANCHA ─────────────────────────────────────────────────────── */
+.com-cards.seg-cards { grid-template-columns: repeat(var(--anc-a-n), minmax(0, 1fr)); }
+.com-cards.vis-cards { grid-template-columns: repeat(var(--anc-v-n), minmax(0, 1fr)); }
+
+/* ── Rejillas de tarjetas chicas: "las que quepan" ─────────────────────── */
+/* Inicio y Procesos: 4 mosaicos en portátil, más si el monitor da. */
+@media (min-width: 900px) {
+  .menu-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+}
+
+/* Configuración: los campos de 2 en 2 en portátil; en monitor grande, los
+   que quepan con un mínimo legible (nunca un campo estirado a 1300 px). */
+@media (min-width: 1600px) {
+  .cfg-grid:not(.modal-card .cfg-grid)   { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
+  .form-grid:not(.modal-card .form-grid) { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  /* En los modales que crecen, los campos pasan a 3 si caben (mín. 300). */
+  .modal-card--xl .form-grid, .modal-card--wide .form-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+}
+
+/* ── Modales anchos: crecen en monitores grandes, nunca se desbordan ───── */
+@media (min-width: 1600px) {
+  .modal-card--xl     { max-width: 1180px; width: min(94vw, 1180px); }
+  .modal-card--wide   { max-width: 1280px; width: min(94vw, 1280px); }
+  .modal-card--visor  { max-width: 1280px; width: min(94vw, 1280px); }
+}
+@media (min-width: 2080px) {
+  .modal-card--xl     { max-width: 1320px; width: min(92vw, 1320px); }
+  .modal-card--wide   { max-width: 1440px; width: min(92vw, 1440px); }
+  .modal-card--visor  { max-width: 1500px; width: min(92vw, 1500px); }
+}
+/* En pantallas chicas ningún modal ancho pasa del ancho visible. */
+@media (max-width: 640px) {
+  .modal-card--xl, .modal-card--wide, .modal-card--visor { width: 100%; max-width: 100%; }
+}

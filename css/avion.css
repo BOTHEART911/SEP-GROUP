@@ -1,0 +1,186 @@
+/* ============================================================================
+ * SEP · AVIÓN DE ESCRITURA — estilos (pareja de js/avion.js)
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * 10/10/2026 — Efecto de CONTRATISTA-FLANDES con el avión de SEP.
+ * IDÉNTICO en SEP-GROUP y SEP-AGENDA. Usa la paleta de cada app con
+ * respaldos, así entra en claro y en oscuro sin reglas aparte.
+ * ========================================================================== */
+
+.sep-avion {
+  position: fixed; inset: 0; z-index: 12500;
+  display: none; align-items: center; justify-content: center;
+  padding: 18px;
+  background: var(--scrim, rgba(19, 26, 36, .55));
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.sep-avion.is-on { display: flex; }
+
+.sep-avion__caja {
+  width: min(400px, 100%);
+  background: var(--bg-card, #fff);
+  color: var(--text-main, #16202e);
+  border-radius: var(--r-lg, 20px);
+  box-shadow: var(--sh-xl, 0 24px 48px rgba(19, 26, 36, .22));
+  padding: 0 22px 22px;
+  text-align: center; overflow: hidden;
+  animation: sep-avion-entra .26s cubic-bezier(.2, .9, .3, 1) both;
+}
+@keyframes sep-avion-entra {
+  from { opacity: 0; transform: translateY(18px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── el cielo por el que VIAJA el avión ──
+   El viaje va en .__nave y la inclinación en .__avion: dos transform
+   separados que no se pisan. El cielo es azul marino fijo (no var): en
+   oscuro --primary se aclara para leerse como texto. */
+.sep-avion__cielo {
+  position: relative; height: 128px; margin: 0 -22px 18px;
+  background: linear-gradient(180deg, #131a24 0%, #263143 70%, #38465c 100%);
+  overflow: hidden; color: #fff;
+}
+.sep-avion__nave {
+  position: absolute; left: 50%; bottom: 40px; margin-left: -17px;
+  animation: sep-avion-viaja 3.1s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+.sep-avion__avion {
+  position: relative; display: block;
+  transform: rotate(66deg);          /* la nariz hacia donde va */
+  filter: drop-shadow(0 5px 9px rgba(0, 0, 0, .35));
+}
+.sep-avion__avion svg { display: block; color: #fff; }
+@keyframes sep-avion-viaja {
+  0%   { transform: translate(-104px, 40px);  opacity: 0; }
+  14%  { opacity: 1; }
+  78%  { opacity: 1; }
+  100% { transform: translate(104px, -52px);  opacity: 0; }
+}
+
+/* el humo: una estela corta que sale de la cola */
+.sep-avion__humo {
+  position: absolute; left: 50%; top: 100%;
+  width: 3px; height: 22px; margin-left: -1.5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .75), rgba(255, 255, 255, 0));
+  transform-origin: 50% 0;
+  animation: sep-avion-humo .22s ease-in-out infinite alternate;
+}
+@keyframes sep-avion-humo {
+  from { transform: scaleY(.75); opacity: .7; }
+  to   { transform: scaleY(1.15); opacity: 1; }
+}
+
+/* estelas que pasan al revés: el que se mueve es el avión */
+.sep-avion__estela {
+  position: absolute; width: 34px; height: 2px; border-radius: 999px;
+  background: rgba(255, 255, 255, .7);
+  animation: sep-avion-estela 1.7s linear infinite;
+}
+.sep-avion__estela.e1 { top: 26px; }
+.sep-avion__estela.e2 { top: 62px; animation-delay: .55s; width: 22px; }
+.sep-avion__estela.e3 { top: 96px; animation-delay: 1.1s; width: 44px; }
+@keyframes sep-avion-estela {
+  from { transform: translateX(240px); opacity: 0; }
+  25%  { opacity: .7; }
+  to   { transform: translateX(-90px); opacity: 0; }
+}
+
+/* estrellas que corren hacia atrás (la sensación de velocidad) */
+.sep-avion__estrellas { position: absolute; inset: 0; pointer-events: none; }
+.sep-avion__estrellas i {
+  position: absolute; right: -8px; width: 2px; height: 2px; border-radius: 50%;
+  background: rgba(255, 255, 255, .85);
+  animation: sep-avion-estrella 2.2s linear infinite;
+}
+.sep-avion__estrellas i.s0 { top: 12%; animation-duration: 1.9s; animation-delay: -.2s; }
+.sep-avion__estrellas i.s1 { top: 26%; animation-duration: 2.6s; animation-delay: -.9s; width: 3px; height: 3px; }
+.sep-avion__estrellas i.s2 { top: 38%; animation-duration: 1.6s; animation-delay: -1.4s; }
+.sep-avion__estrellas i.s3 { top: 54%; animation-duration: 2.9s; animation-delay: -.5s; }
+.sep-avion__estrellas i.s4 { top: 67%; animation-duration: 2.1s; animation-delay: -1.8s; width: 3px; height: 3px; }
+.sep-avion__estrellas i.s5 { top: 79%; animation-duration: 2.4s; animation-delay: -1.1s; }
+.sep-avion__estrellas i.s6 { top: 90%; animation-duration: 1.8s; animation-delay: -.7s; }
+@keyframes sep-avion-estrella {
+  0%   { transform: translateX(0) scaleX(1); opacity: 0; }
+  10%  { opacity: .9; }
+  80%  { opacity: .9; }
+  100% { transform: translateX(-340px) scaleX(4); opacity: 0; }
+}
+
+.sep-avion__ok {
+  position: absolute; inset: 0; display: none;
+  align-items: center; justify-content: center;
+}
+
+/* ── textos ── */
+.sep-avion__t { font: 700 18px/1.3 var(--font-display, system-ui, sans-serif); margin-bottom: 8px; }
+.sep-avion__p { font: 400 14px/1.45 var(--font-body, system-ui, sans-serif); color: var(--text-soft, #44546b); margin-bottom: 18px; overflow-wrap: anywhere; }
+.sep-avion__p b { color: var(--text-main, #16202e); }
+
+.sep-avion__pista {
+  height: 7px; border-radius: 999px; overflow: hidden; margin-bottom: 12px;
+  background: var(--bg-soft, #e9edf3);
+}
+.sep-avion__bar {
+  display: block; height: 100%; width: 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-2, #bcc007), var(--accent, #d6da09));
+  transition: width .3s ease;
+}
+.sep-avion__paso {
+  font: 500 13px/1.3 var(--font-body, system-ui, sans-serif);
+  color: var(--text-muted, #8893a4); min-height: 17px;
+  transition: opacity .16s ease, transform .16s ease;
+}
+.sep-avion__paso.is-cambia { opacity: 0; transform: translateY(-5px); }
+
+/* un punto por paso: dice cuánto falta de verdad */
+.sep-avion__puntos { display: flex; justify-content: center; gap: 7px; margin-top: 12px; }
+.sep-avion__puntos i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--border-strong, rgba(38, 49, 67, .22));
+  transition: background .25s ease, transform .25s ease;
+}
+.sep-avion__puntos i.is-ok { background: var(--ok, #16a34a); }
+.sep-avion__puntos i.is-ahora { background: var(--primary, #263143); animation: sep-avion-punto 1s ease-in-out infinite; }
+@keyframes sep-avion-punto { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.45); } }
+
+/* ── final feliz ── */
+.sep-avion.is-listo .sep-avion__cielo { background: linear-gradient(180deg, #0b5f3e 0%, #16a34a 100%); }
+.sep-avion.is-listo .sep-avion__nave { animation: sep-avion-despega .45s cubic-bezier(.4, 0, .2, 1) forwards; }
+.sep-avion.is-listo .sep-avion__estela { animation: none; opacity: 0; }
+.sep-avion.is-listo .sep-avion__estrellas,
+.sep-avion.is-listo .sep-avion__humo { opacity: 0; transition: opacity .3s ease; }
+@keyframes sep-avion-despega { to { transform: translate(150px, -120px) scale(.7); opacity: 0; } }
+.sep-avion.is-listo .sep-avion__ok { display: flex; animation: sep-avion-sello .38s cubic-bezier(.2, 1.4, .4, 1) .3s both; }
+.sep-avion.is-listo .sep-avion__bar { background: var(--ok, #16a34a); }
+@keyframes sep-avion-sello { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+
+/* confeti del final */
+.sep-avion__confeti { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.sep-avion.is-listo .sep-avion__confeti { opacity: 1; }
+.sep-avion__confeti i { position: absolute; top: -12px; width: 7px; height: 11px; border-radius: 1px; opacity: 0; }
+.sep-avion.is-listo .sep-avion__confeti i { animation: sep-avion-papel 1.3s cubic-bezier(.3, .7, .5, 1) forwards; }
+.sep-avion__confeti i.c0 { left: 10%; background: #d6da09; animation-delay: .04s; }
+.sep-avion__confeti i.c1 { left: 22%; background: #fff;    animation-delay: .16s; }
+.sep-avion__confeti i.c2 { left: 35%; background: #8ae6b4; animation-delay: 0s; }
+.sep-avion__confeti i.c3 { left: 48%; background: #d6da09; animation-delay: .22s; }
+.sep-avion__confeti i.c4 { left: 62%; background: #fff;    animation-delay: .10s; }
+.sep-avion__confeti i.c5 { left: 76%; background: #8ae6b4; animation-delay: .28s; }
+.sep-avion__confeti i:nth-child(n+7) { width: 5px; height: 8px; margin-left: 4%; }
+@keyframes sep-avion-papel {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translateY(150px) rotate(420deg); opacity: 0; }
+}
+
+/* ── modo oscuro: el cielo ya es oscuro; la caja toma la paleta de la app ── */
+html[data-tema="oscuro"] .sep-avion { background: rgba(4, 8, 13, .72); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sep-avion__caja, .sep-avion__nave, .sep-avion__estela,
+  .sep-avion.is-listo .sep-avion__nave, .sep-avion.is-listo .sep-avion__ok,
+  .sep-avion__puntos i.is-ahora { animation: none !important; }
+  .sep-avion__nave { transform: none; opacity: 1; }
+  .sep-avion__estela { opacity: .45; transform: none; }
+  .sep-avion__estrellas, .sep-avion__confeti, .sep-avion__humo { display: none; }
+  .sep-avion__paso.is-cambia { opacity: 1; transform: none; }
+}

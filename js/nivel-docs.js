@@ -332,9 +332,8 @@ var NDOCS = (function () {
         if (!c.isConfirmed) return;
       }
 
-      Swal.fire({ title: 'Guardando…', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
       var t0 = Date.now();
-      D.data = await apiPost('docRevisar', cuerpoApi_(cuerpo), { silent: true });
+      D.data = await apiPost('docRevisar', cuerpoApi_(cuerpo), { avion: { titulo: accion === 'APROBAR' ? 'Aprobando el documento…' : 'Rechazando el documento…' } });
       medir_('docRevisar', t0);
       pintar();
       avisarCambio_(D.data);
@@ -379,18 +378,16 @@ var NDOCS = (function () {
     lector.onerror = function () { Swal.fire({ icon: 'error', title: 'No se pudo leer el archivo' }); };
     lector.onload = function () {
       var base64 = String(lector.result).split(',')[1];
-      /* Girador (no esqueleto): esto es una ESCRITURA. Escudo desde el
+      /* Avión (no esqueleto): esto es una ESCRITURA. Escudo desde el
          primer toque: D.ocupado bloquea cualquier otra acción. */
       if (D.ocupado) return;
       D.ocupado = true;
-      Swal.fire({ title: 'Subiendo el documento…', allowOutsideClick: false,
-        didOpen: function () { Swal.showLoading(); } });
       var t0 = Date.now();
 
       apiPost('docSubirSep', cuerpoApi_({
         id: D.r.id, doc: clave, filename: String(file.name || ''),
         mime: mimeDe_(String(file.name || ''), file), base64: base64
-      }), { silent: true }).then(function (r) {
+      }), { avion: { titulo: 'Subiendo el documento…' } }).then(function (r) {
         medir_('docSubirSep', t0);
         D.data = r;
         Swal.close();

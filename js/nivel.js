@@ -928,7 +928,6 @@ async function niveEliminar_(r) {
   if (!res.isConfirmed) return;
 
   try {
-    Swal.fire({ title: 'Eliminando…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     const out = await apiPost('purgarNivel', {
       usuarioId: currentUser.id, n: r.n, documento: r.documento, confirmar: res.value
     });
