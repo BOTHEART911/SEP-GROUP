@@ -96,8 +96,22 @@ function niveAsesorDe_(r) { return String(r.asesorProcesos || '').trim() || NIVE
 /* La RAÍZ de la cascada. Aquí se aplican las tres capas nuevas antes
    que cualquier pastilla, para que todos los conteos cuadren solos:
    retirados sí/no (2.3), asesor (3.2) e indicador del tablero (3.4). */
+/* 5.5-D — raíz de todos los conteos: retirados/activos + buscador. Así
+   el número de cada pastilla, de cada opción y de los KPIs es lo que
+   queda en pantalla. */
+function niveRaiz_() {
+  const base = NIVE.registros.filter(r => !!r.retirado === !!NIVE.verRetirados);
+  const txt = niveNormBusq_(String(NIVE.filtroTexto || '').trim());
+  if (!txt) return base;
+  return base.filter(r =>
+    niveNormBusq_(r.nombres + ' ' + r.apellidos).includes(txt) ||
+    String(r.documento || '').includes(txt) ||
+    String(r.whatsapp || '').includes(txt) ||
+    String(r.n).includes(txt) ||
+    niveNormBusq_(r.correo).includes(txt));
+}
 function niveVisibles_() {
-  let base = NIVE.registros.filter(r => !!r.retirado === !!NIVE.verRetirados);
+  let base = niveRaiz_();
   if (NIVE.filtroAsesorProc !== '__ALL__') {
     base = base.filter(r => niveAsesorDe_(r) === NIVE.filtroAsesorProc);
   }
@@ -153,7 +167,7 @@ async function abrirNivel_() {
 
 async function cargarNivel_() {
   try {
-    const d = await apiGet('nivelInit', { usuarioId: currentUser.id });
+    const d = await apiGet('nivelInit', { usuarioId: currentUser.id }, { vista: 'nivel' });
     NIVE.catalogo  = d.catalogo;
     estPartCargar_(d.catalogo && d.catalogo.estadosPart);         // FASE 5.1 · D
     TEMP.set(d.temporadas); TEMP.montar('nivel');                  // FASE 5.1
@@ -162,6 +176,7 @@ async function cargarNivel_() {
     NIVE.cargado   = true;
     renderNiveFiltros_(); renderNiveCards_(); renderNiveResumen_();
   } catch (e) {
+    if (esCorte_(e)) return;
     Swal.fire({ icon: 'error', title: 'No se pudo cargar', text: String(e.message || e) });
   }
 }
@@ -175,11 +190,11 @@ TEMP.alCambiar(() => {
 
 async function recargarNivel_(silencioso) {
   try {
-    NIVE.todos = await apiGet('listNivel', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    NIVE.todos = await apiGet('listNivel', { usuarioId: currentUser.id }, { silent: !!silencioso, vista: 'nivel' });
     NIVE.registros = TEMP.filtrar(NIVE.todos);                      // FASE 5.1
     renderNiveFiltros_(); renderNiveCards_(); renderNiveResumen_();
   } catch (e) {
-    if (!silencioso) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
+    if (!silencioso && !esCorte_(e)) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
   }
 }
 
@@ -263,7 +278,7 @@ function niveOpciones_(key) {
   if (key === 'asesorProc') {
     /* ENTREGA 5 · 3.2 — se cuenta sobre la lista sin el filtro de
        asesor puesto: si no, la pastilla solo se vería a sí misma. */
-    NIVE.registros.filter(r => !!r.retirado === !!NIVE.verRetirados)
+    niveRaiz_()
       .forEach(r => { const k = niveAsesorDe_(r); c[k] = (c[k] || 0) + 1; });
     return Object.keys(c).sort((a, b) => a.localeCompare(b))
       .map(k => ({ valor: k, label: k, count: c[k], ic: '🧭' }));
@@ -286,7 +301,7 @@ function niveOpciones_(key) {
   }).map(k => ({ valor: k, label: k, count: c[k], ic: '🗣️' }));
 }
 function niveTotalFiltro_(k) {
-  if (k === 'asesorProc') return NIVE.registros.filter(r => !!r.retirado === !!NIVE.verRetirados).length;
+  if (k === 'asesorProc') return niveRaiz_().length;
   if (k === 'estado') return niveVisibles_().length;
   if (k === 'nivel')  return niveBaseEstado_().length;
   if (k === 'oferta') return niveBaseInvitacion_().length;   // FASE 3.3 · tanda B
@@ -461,18 +476,11 @@ function niveFoto_(r) {
 function renderNiveCards_() {
   const cont = document.querySelector('#nive-cards'), vacio = document.querySelector('#nive-empty');
   if (!cont) return;
-  const txt = niveNormBusq_(NIVE.filtroTexto.trim());
-  let list = niveBaseOferta_().slice().sort((a, b) => b.n - a.n);
-  if (txt) list = list.filter(r =>
-    niveNormBusq_(r.nombres + ' ' + r.apellidos).includes(txt) ||
-    String(r.documento || '').includes(txt) ||
-    String(r.whatsapp || '').includes(txt) ||
-    String(r.n).includes(txt) ||
-    niveNormBusq_(r.correo).includes(txt));
-
+  /* 5.5-D — niveBaseOferta_ ya trae el buscador; se pinta por tandas
+     (el índice i es el de la lista completa). */
+  const list = niveBaseOferta_().slice().sort((a, b) => b.n - a.n);
   vacio?.classList.toggle('hidden', list.length > 0);
-  cont.innerHTML = list.map(niveCardHtml_).join('');
-  list.forEach((r, i) => {
+  tandaPintar_(cont, list, (r, i) => niveCardHtml_(r, i), (r, i) => {
     const card = document.querySelector('#nive-card-i' + i); if (!card) return;
     card.querySelector('[data-act="abrir"]')?.addEventListener('click', () => abrirModalNivel_(r));
     card.querySelector('[data-act="foto"]')?.addEventListener('click', () => abrirFotoNivel_(r));
@@ -1486,7 +1494,7 @@ function niveLiveOff_() { niveDejarDeEscuchar_(); niveDetenerSondeo_(); }
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#nive-search')?.addEventListener('input', e => {
-    NIVE.filtroTexto = e.target.value; renderNiveCards_();
+    NIVE.filtroTexto = e.target.value; renderNiveFiltros_(); renderNiveCards_(); renderNiveResumen_();
   });
   document.querySelector('#nive-refresh')?.addEventListener('click', () => recargarNivel_(false));
   document.querySelector('#nive-modal-close')?.addEventListener('click', cerrarModalNivel_);

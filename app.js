@@ -97,7 +97,10 @@ async function apiGet(action, params = {}, opts = {}){
     url.search = new URLSearchParams({ action, ...params, ...extra }).toString();
     /* FASE 5.2-A — opts.signal: la vista que pidió la lectura la puede
        cortar al salir (AbortController). Las escrituras no lo usan. */
-    const r = await fetch(url.toString(), opts.signal ? { method:'GET', signal: opts.signal } : { method:'GET' });
+    /* 5.5-D — opts.vista: la lectura queda atada a esa vista y se corta
+       sola al salir de ella (showView → cortarVistas_). */
+    const senal = opts.signal || (opts.vista ? corteDe_(opts.vista) : null);
+    const r = await fetch(url.toString(), senal ? { method:'GET', signal: senal } : { method:'GET' });
     const txt = await r.text();
     let j = JSON.parse(txt);
     if (j && j.gz) j = await apiAbrirGz_(j.gz);
@@ -154,7 +157,69 @@ function cerrarSesion_(){
 }
 
 /* ================== VISTAS ================== */
+/* ================== 5.5-D · CORTE AL SALIR DE UNA VISTA ==================
+   Cada vista tiene su AbortController. Al cambiar de vista se cortan las
+   lecturas de la que se deja, salvo que la nueva sea su "hija" (el detalle
+   de Comercial hereda la lista) o comparta la carga (Seguimiento y
+   Estadísticas usan seguimientoInit). Las escrituras nunca se cortan. */
+const VISTA_CORTE = {};
+const VISTA_HEREDA = { 'comercial-detalle': ['comercial'], 'comercial': ['comercial-detalle'], 'dashboard': ['comercial'] };
+function corteDe_(vista){
+  let c = VISTA_CORTE[vista];
+  if (!c || c.signal.aborted){ if (typeof AbortController !== 'function') return null; c = VISTA_CORTE[vista] = new AbortController(); }
+  return c.signal;
+}
+function cortarVistas_(nueva){
+  const quedan = [nueva].concat(VISTA_HEREDA[nueva] || []);
+  Object.keys(VISTA_CORTE).forEach(v => {
+    if (quedan.indexOf(v) >= 0) return;
+    try { VISTA_CORTE[v].abort(); } catch(_){}
+    delete VISTA_CORTE[v];
+  });
+}
+/* Una lectura cortada no es un error para el usuario: no se avisa. */
+function esCorte_(e){ return !!e && (e.name === 'AbortError' || /abort/i.test(String(e.message || ''))); }
+
+/* ================== 5.5-D · PINTADO POR TANDAS ==================
+   Listas largas de tarjetas: se pintan 24 y el resto al acercarse al
+   final (o con "Ver más"). Los filtros y conteos siguen sobre la lista
+   COMPLETA en memoria; solo el DOM va por partes. html(r, i) y bind(r, i)
+   reciben el índice global. */
+const TANDA_N = 24;
+const TANDAS = {};
+function tandaPintar_(cont, lista, html, bind){
+  if (!cont) return;
+  const id = cont.id;
+  const prev = TANDAS[id];
+  if (prev && prev.obs) { try { prev.obs.disconnect(); } catch(_){} }
+  const st = TANDAS[id] = { lista: lista, pint: 0, html: html, bind: bind, obs: null };
+  let mas = document.getElementById(id + '-mas');
+  if (!mas){ mas = document.createElement('div'); mas.id = id + '-mas'; mas.className = 'tanda-mas'; cont.insertAdjacentElement('afterend', mas); }
+  cont.innerHTML = ''; mas.innerHTML = '';
+  tandaMas_(id);
+  if (typeof IntersectionObserver === 'function' && st.pint < lista.length){
+    st.obs = new IntersectionObserver(ent => { if (ent.some(x => x.isIntersecting)) tandaMas_(id); }, { rootMargin: '700px' });
+    st.obs.observe(mas);
+  }
+}
+function tandaMas_(id){
+  const st = TANDAS[id]; const cont = document.getElementById(id); if (!st || !cont) return;
+  const desde = st.pint, hasta = Math.min(st.lista.length, desde + TANDA_N);
+  if (desde >= hasta) return;
+  const parte = st.lista.slice(desde, hasta);
+  cont.insertAdjacentHTML('beforeend', parte.map((r, k) => st.html(r, desde + k)).join(''));
+  if (st.bind) parte.forEach((r, k) => st.bind(r, desde + k));
+  st.pint = hasta;
+  const mas = document.getElementById(id + '-mas');
+  const resta = st.lista.length - hasta;
+  if (mas) mas.innerHTML = resta > 0
+    ? `<button class="btn btn-ghost btn-sm" data-tanda-mas="${id}">Ver ${Math.min(TANDA_N, resta)} más · ${hasta} de ${st.lista.length}</button>` : '';
+  if (resta <= 0 && st.obs){ try { st.obs.disconnect(); } catch(_){} st.obs = null; }
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-tanda-mas]'); if (b) tandaMas_(b.getAttribute('data-tanda-mas')); });
+
 function showView(id){
+  cortarVistas_(id);   // 5.5-D
   $$('.view').forEach(el => el.classList.remove('active'));
   const el = document.getElementById('view-' + id) || document.getElementById(id);
   el?.classList.add('active');
@@ -743,7 +808,7 @@ async function abrirComercial_(){
          listComercial. Eran tres ejecuciones de Apps Script, cada una pagando
          su propio arranque de contenedor (~1,3 s medidos) y abriendo el libro
          de cero. 'comercialInit' devuelve las tres cosas de una. */
-      const ini = await apiGet('comercialInit', { usuarioId: currentUser.id });
+      const ini = await apiGet('comercialInit', { usuarioId: currentUser.id }, { vista: 'comercial' });
       COM.catalogo = ini.catalogo;
       COM.ubic     = ini.ubicaciones;
       /* FASE 5.1 — la vista ve solo la temporada elegida (filtro local). */
@@ -757,7 +822,7 @@ async function abrirComercial_(){
       // Si ya hay tarjetas en memoria, la vista se refresca en silencio.
       await recargarComercial_(COM.registros.length > 0);
     }
-  }catch(e){ Swal.fire({icon:'error', title:'No se pudo cargar', text:String(e.message||e)}); }
+  }catch(e){ if (esCorte_(e)) return; Swal.fire({icon:'error', title:'No se pudo cargar', text:String(e.message||e)}); }
 }
 
 /* Fase 25 (Ajuste 1) — El flag `silencioso` AHORA SÍ viaja a apiGet.
@@ -775,7 +840,7 @@ TEMP.alCambiar(() => {
 
 async function recargarComercial_(silencioso, forzar){
   const registros = await apiGet('listComercial', { usuarioId: currentUser.id },
-                                 { silent: !!silencioso });
+                                 { silent: !!silencioso, vista: 'comercial' });
   const sig = JSON.stringify(registros);
   // En modo silencioso (sondeo en segundo plano) solo re-renderiza si algo
   // cambió realmente; así no se interrumpe el scroll/uso si no hay novedades.
@@ -972,10 +1037,22 @@ function setFiltro_(key, valor){
   else { COM.filtroEstado = valor; }
 }
 
-/* ── Bases en cascada ── */
+/* ── Bases en cascada ──
+   5.5-D — la cascada arranca DESPUÉS del buscador: el número de cada
+   pastilla y de cada opción es exactamente lo que queda en pantalla. */
+function comTexto_(){
+  const txt = normBusq_(String(COM.filtroTexto || '').trim());
+  if (!txt) return COM.registros;
+  return COM.registros.filter(r =>
+    normBusq_(`${r.nombres} ${r.apellidos}`).includes(txt) ||
+    String(r.whatsapp||'').includes(txt) ||
+    normBusq_(r.usuarioWhatsapp).includes(txt) ||
+    normBusq_(r.correo).includes(txt));
+}
 function baseAsesor_(){
-  if (COM.filtroAsesor === '__ALL__') return COM.registros;
-  return COM.registros.filter(r => normAsesor_(r) === COM.filtroAsesor);
+  const base = comTexto_();
+  if (COM.filtroAsesor === '__ALL__') return base;
+  return base.filter(r => normAsesor_(r) === COM.filtroAsesor);
 }
 function basePrograma_(){
   const b = baseAsesor_();
@@ -1003,7 +1080,7 @@ function estadoDef_(clave){
 function opcionesFiltro_(key){
   if (key === 'asesor'){
     const c = {};
-    COM.registros.forEach(r => { const k = normAsesor_(r); c[k] = (c[k]||0)+1; });
+    comTexto_().forEach(r => { const k = normAsesor_(r); c[k] = (c[k]||0)+1; });
     return Object.keys(c).sort((a,b)=>a.localeCompare(b))
       .map(k => ({ valor:k, label:k, count:c[k], ic:'👤' }));
   }
@@ -1021,7 +1098,7 @@ function opcionesFiltro_(key){
 }
 /* Total de la opción «Todos los X» de cada hoja. */
 function totalFiltro_(key){
-  if (key === 'asesor')   return COM.registros.length;
+  if (key === 'asesor')   return comTexto_().length;
   if (key === 'programa') return baseAsesor_().length;
   return basePrograma_().length;
 }
@@ -1059,7 +1136,7 @@ function fpillHtml_(f){
       const img = iconoPrograma_(val);
       if (img) icHtml = `<span class="fpill__ic"><img src="${esc_(img)}" alt=""></span>`;
     } else {
-      label = nombreCortoAsesor_(val);
+      label = val;   // 5.5-D — nombre completo (parte en dos líneas si no cabe)
     }
   }
   const titulo = on ? val : f.allLabel;             // tooltip con el valor completo
@@ -1125,18 +1202,11 @@ function normBusq_(s){
 
 function renderCards_(){
   const cont = $('#com-cards'); const empty = $('#com-empty'); if (!cont) return;
-  const txt = normBusq_(COM.filtroTexto.trim());
-  let list = registrosVisibles_().slice(); // respeta el asesor elegido; más antiguas primero
-  if (COM.filtroEstado !== '__ALL__') list = list.filter(r => r.estado === COM.filtroEstado);
-  if (txt) list = list.filter(r =>
-    normBusq_(`${r.nombres} ${r.apellidos}`).includes(txt) ||
-    String(r.whatsapp||'').includes(txt) ||
-    normBusq_(r.usuarioWhatsapp).includes(txt) ||
-    normBusq_(r.correo).includes(txt));
-
+  /* baseEstado_ ya trae buscador + asesor + programa + estado (5.5-D). */
+  const list = baseEstado_();
   empty.classList.toggle('hidden', list.length > 0);
-  cont.innerHTML = list.map(cardHtml_).join('');
-  list.forEach(r => bindCard_(r));
+  /* 5.5-D — 1.268 tarjetas de una vez eran 3 s y 1,7 MB de DOM: por tandas. */
+  tandaPintar_(cont, list, r => cardHtml_(r), r => bindCard_(r));
 }
 
 function fuenteIcon_(nombre){
@@ -1194,7 +1264,7 @@ function bindCard_(r){
 }
 
 /* ── Buscar ── */
-$('#com-search')?.addEventListener('input', (e)=>{ COM.filtroTexto = e.target.value; renderCards_(); });
+$('#com-search')?.addEventListener('input', (e)=>{ COM.filtroTexto = e.target.value; renderFiltros_(); renderCards_(); });
 $('#com-dashboard-btn')?.addEventListener('click', ()=>{ abrirDashboard_(); });
 /* Fase 14: botón CRM → abre el CRM de BuilderBot en pestaña nueva */
 $('#com-crm-btn')?.addEventListener('click', ()=>{
@@ -1205,6 +1275,15 @@ $('#com-crm-btn')?.addEventListener('click', ()=>{
 
 /* ── Detalle (Ver) ── */
 async function verComercial_(id){
+  /* 5.5-D — cabecera antes que datos: la vista se abre al instante con el
+     nombre y el estado de la fila (la capa 5 pone la silueta del cuerpo).
+     Si se sale antes de que llegue, la lectura se corta y no se pinta. */
+  const fila = (COM.registros || []).find(x => x.id === id);
+  $('#com-detalle').innerHTML = fila ? `<div class="detalle-card"><div class="detalle-hero">
+      <h2>${esc_(fila.nombres)} ${esc_(fila.apellidos)}</h2>
+      <span class="com-badge" style="background:${fila.estadoColor}">${esc_(fila.estadoLabel)}</span></div></div><div id="com-detalle-cuerpo"></div>` : '<div id="com-detalle-cuerpo"></div>';
+  showView('comercial-detalle');
+  COM.verPedido = id;
   try{
     /* 🔴 ARREGLO 19/08/2026 (regresión de la Fase 3.1 · Entrega 1).
        Desde que la vista Comercial tiene puerta por rol, TODA llamada
@@ -1212,7 +1291,8 @@ async function verComercial_(id){
        verificar el WhatsApp— iban sin usuarioId y el servidor las
        rechazaba con "Sesión inválida", que en pantalla salía como
        "No se pudo verificar el número": nadie podía crear un lead. */
-    const r = await apiGet('verComercial', { id, usuarioId: currentUser.id });
+    const r = await apiGet('verComercial', { id, usuarioId: currentUser.id }, { vista: 'comercial-detalle' });
+    if (COM.verPedido !== id || !$('#view-comercial-detalle')?.classList.contains('active')) return;
     COM.detalleActual = r;
     const puedeEliminar = comPuedePurgar_();   // AJUSTE 4 (19/08/2026)
     const d = (l,v)=>`<div class="d-item"><label>${l}</label><div class="d-val">${esc_(v)||'—'}</div></div>`;
@@ -1263,8 +1343,11 @@ async function verComercial_(id){
     $('#det-editar')?.addEventListener('click', ()=> abrirModalComercial_(r));
     $('#det-chat')?.addEventListener('click', ()=> abrirChat_(r));
     $('#det-eliminar')?.addEventListener('click', ()=> eliminarComercial_(r).then(()=> showView('comercial')));
-    showView('comercial-detalle');
-  }catch(e){ Swal.fire({icon:'error', title:'Error', text:String(e.message||e)}); }
+  }catch(e){
+    if (esCorte_(e)) return;
+    if ($('#view-comercial-detalle')?.classList.contains('active')) showView('comercial');
+    Swal.fire({icon:'error', title:'Error', text:String(e.message||e)});
+  }
 }
 
 /* ── Eliminar ── */
@@ -1364,11 +1447,11 @@ async function abrirDashboard_(){
   showView('dashboard');
   dashBind_();
   try { await dashLoad_(false); }
-  catch(e){ Swal.fire({icon:'error', title:'No se pudo cargar el dashboard', text:String(e.message||e)}); }
+  catch(e){ if (esCorte_(e)) return; Swal.fire({icon:'error', title:'No se pudo cargar el dashboard', text:String(e.message||e)}); }
 }
 
 async function dashLoad_(silent){
-  const d = await apiGet('dashboard', { usuarioId: currentUser.id, rango: DASH.rango, asesor: DASH.asesor }, { silent: !!silent });
+  const d = await apiGet('dashboard', { usuarioId: currentUser.id, rango: DASH.rango, asesor: DASH.asesor }, { silent: !!silent, vista: 'dashboard' });
   DASH.data = d;
   if (!DASH.asesoresCargados){
     const sel = $('#dsh-asesor');
@@ -1594,7 +1677,9 @@ async function abrirChat_(lead){
   const puedeVaciar = !!currentUser && (currentUser.isDev || currentUser.isSuper ||
     tengoRol_('ADMINISTRADOR'));
   const vb = $('#chat-vaciar'); if (vb) vb.style.display = puedeVaciar ? '' : 'none';
-  $('#chat-msgs').innerHTML = `<div class="chat-empty">Cargando notas…</div>`;
+  /* 5.5-D — silueta de burbujas (forma real del chat), nunca texto. */
+  $('#chat-msgs').innerHTML = `<div class="sep-sk-msgs" aria-busy="true" aria-label="Cargando notas">${
+    ['', 'yo', '', 'yo'].map(c => `<span class="sep-sk sep-sk-msg ${c}"></span>`).join('')}</div>`;
   chatStatus_('');
   chatAbrirUI_();
 
@@ -2251,11 +2336,11 @@ let CFG = { data:null };
 async function abrirConfig_(){
   showView('config');
   try{
-    CFG.data = await apiGet('getConfigFull', { usuarioId: currentUser.id });
+    CFG.data = await apiGet('getConfigFull', { usuarioId: currentUser.id }, { vista: 'config' });
     $('#cfg-tab-avanzado').style.display = CFG.data.esDev ? '' : 'none';
     renderCfgGeneral_(); renderCfgProgramas_(); renderCfgPromos_(); renderCfgAgenda_(); renderCfgPlantillas_(); renderCfgListas_(); renderCfgNivel_(); renderCfgAvanzado_();
     activarCfgTab_('general');
-  }catch(e){ Swal.fire({icon:'error', title:'No se pudo cargar', text:String(e.message||e)}); }
+  }catch(e){ if (esCorte_(e)) return; Swal.fire({icon:'error', title:'No se pudo cargar', text:String(e.message||e)}); }
 }
 
 /* Tabs */
@@ -3774,8 +3859,9 @@ async function abrirUsuarios_(){
 
 async function usrLoad_(silent){
   try{
-    USR.all = await apiGet('listUsuarios', { usuarioId: currentUser.id }, { silent: !!silent });
+    USR.all = await apiGet('listUsuarios', { usuarioId: currentUser.id }, { silent: !!silent, vista: 'usuarios' });
   }catch(e){
+    if (esCorte_(e)) return;
     Swal.fire({ icon:'error', title:'No se pudo cargar', text:String(e.message||e) });
     USR.all = [];
   }
@@ -4126,8 +4212,17 @@ function botRenderConexion_(){
   botEstado_();
 }
 
-async function botEstado_(){
+async function botEstado_(silencioso){
   const box = $('#bot-status'); if (!box) return;
+  /* 5.5-D — silueta con la forma de la tarjeta de estado (ícono, título y
+     subtítulo), nunca el reloj de arena con "Consultando…". El sondeo del
+     QR (silencioso) no tapa el estado que ya se ve. */
+  if (!silencioso){
+    box.className = 'bot-status bot-status--unknown';
+    box.innerHTML = '<span class="sep-sk sep-sk-ring" style="width:40px;height:40px;margin:0 auto 8px" aria-hidden="true"></span>' +
+      '<span class="sep-sk sep-sk-l tit" style="width:55%;margin:0 auto 6px"></span><span class="sep-sk sep-sk-l" style="width:70%;margin:0 auto"></span>';
+    box.setAttribute('aria-busy', 'true');
+  }
   try{
     const r = await apiGet('botEstado', { usuarioId: currentUser.id, area: MB.area }, { silent:true });
     if (r.configurado === false){
@@ -4144,7 +4239,7 @@ async function botEstado_(){
   }catch(e){
     box.className='bot-status bot-status--unknown';
     box.innerHTML=`<div class="bot-status__icon">⚪</div><div class="bot-status__txt">No se pudo consultar</div><div class="bot-status__sub">${esc_(String(e.message||e))}</div>`;
-  }
+  }finally{ box.removeAttribute('aria-busy'); }
 }
 
 async function botQR_(){
@@ -4180,7 +4275,7 @@ function botPollingStart_(){
     const img = $('#bot-qr-box .bot-qr-img');
     if (!img){ botPollingStop_(); return; }
     try{
-      await botEstado_();
+      await botEstado_(true);
       if ($('#bot-status')?.classList.contains('bot-status--online')){
         botPollingStop_();
         img.classList.add('bot-qr-img--connected');

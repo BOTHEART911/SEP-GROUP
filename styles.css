@@ -1291,3 +1291,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-2); box-s
 .uchip-pop__nom{ font-family: var(--font-display); font-weight: 800; color: var(--primary); font-size: .96rem; line-height: 1.25; }
 .uchip-pop__roles{ display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .uchip-pop__foto{ margin-top: 12px; width: 100%; }
+
+/* 5.5-D (09/10/2026) — "Ver más" de las listas por tandas y opciones de
+   filtro con el texto completo (en dos líneas si no cabe, nunca "…"). */
+.tanda-mas { text-align: center; padding: 14px 10px 24px; }
+.tanda-mas:empty { padding: 0; }
+.fopt__label { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.25; }

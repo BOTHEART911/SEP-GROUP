@@ -146,8 +146,19 @@ function visPuedeClave_() { return !!(VIS.catalogo && VIS.catalogo.permisos && V
 function visAsesorDe_(r) { return visTxt_(r.asesorProcesos) || VIS_SIN; }
 function visSponsorDe_(r) { return visTxt_(r.sponsor) || VIS_SIN; }
 
+/* 5.5-D — el buscador entra a la raíz de la cascada: pastillas, opciones
+   e indicadores cuentan exactamente lo que queda en pantalla. */
+function visTexto_() {
+  const q = visNorm_(String(VIS.texto || '').trim());
+  if (!q) return VIS.registros;
+  return VIS.registros.filter(r =>
+    visNorm_(r.nombres + ' ' + r.apellidos).includes(q) || String(r.documento || '').includes(q) ||
+    String(r.telefono || '').includes(q) || visNorm_(r.correo).includes(q) || String(r.n).includes(q) ||
+    visNorm_(r.pasaporte).includes(q) || visNorm_(r.ds160iNum).includes(q) || visNorm_(r.ds160rNum).includes(q) ||
+    visNorm_(r.sevisNum).includes(q));
+}
 function visBaseAsesor_() {
-  const b = VIS.registros;
+  const b = visTexto_();
   return VIS.filtroAsesor === '__ALL__' ? b : b.filter(r => visAsesorDe_(r) === VIS.filtroAsesor);
 }
 function visBaseSponsor_() {
@@ -172,22 +183,13 @@ function visSetPill_(k, v) {
 }
 function visOpciones_(k) {
   const c = {};
-  const base = k === 'asesor' ? VIS.registros : visBaseAsesor_();
+  const base = k === 'asesor' ? visTexto_() : visBaseAsesor_();
   base.forEach(r => { const v = k === 'asesor' ? visAsesorDe_(r) : visSponsorDe_(r); c[v] = (c[v] || 0) + 1; });
   return Object.keys(c).sort((a, b) => a.localeCompare(b)).map(v => ({ valor: v, label: v, count: c[v] }));
 }
 
 function visNorm_(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
-function visVisibles_() {
-  const q = visNorm_(VIS.texto.trim());
-  let l = visBaseTop_();
-  if (q) l = l.filter(r =>
-    visNorm_(r.nombres + ' ' + r.apellidos).includes(q) || String(r.documento || '').includes(q) ||
-    String(r.telefono || '').includes(q) || visNorm_(r.correo).includes(q) || String(r.n).includes(q) ||
-    visNorm_(r.pasaporte).includes(q) || visNorm_(r.ds160iNum).includes(q) || visNorm_(r.ds160rNum).includes(q) ||
-    visNorm_(r.sevisNum).includes(q));
-  return l;
-}
+function visVisibles_() { return visBaseTop_(); }   // 5.5-D — el buscador ya está en la raíz
 
 /* ============================================================
    PINTADO
@@ -672,7 +674,7 @@ async function visEditarClave_(id) {
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#proc-tile-visas')?.addEventListener('click', abrirVisas_);
   document.querySelector('#vis-refresh')?.addEventListener('click', () => { if (!VIS.cargando) recargarVisas_(); });
-  document.querySelector('#vis-search')?.addEventListener('input', e => { VIS.texto = e.target.value || ''; visPintarTabla_(); });
+  document.querySelector('#vis-search')?.addEventListener('input', e => { VIS.texto = e.target.value || ''; visPintarTodo_(); });
 });
 
 /* Puerta para las pruebas automatizadas. */

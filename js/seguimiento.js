@@ -175,8 +175,17 @@ const SEG_PILLS = [
 function segPill_(k) { return SEG_PILLS.find(p => p.k === k); }
 
 /* Base con TODOS los filtros menos `salvo` (para contar opciones). */
+/* 5.5-D — el buscador entra a la base: el número de cada pastilla y de
+   cada opción es exactamente lo que queda en pantalla. */
+function segTextoOk_(r, q) {
+  return segNorm_(r.nom + ' ' + r.ape).includes(q) || String(r.doc || '').includes(q) ||
+    String(r.tel || '').includes(q) || segNorm_(r.cor).includes(q) || String(r.n) === q ||
+    segNorm_(r.emp).includes(q) || segNorm_(r.spo).includes(q);
+}
 function segBase_(salvo) {
   let l = SEG.registros;
+  const q = segNorm_(String(SEG.texto || '').trim());
+  if (q) l = l.filter(r => segTextoOk_(r, q));
   if (SEG.esp && SEG.esp.set) l = l.filter(r => SEG.esp.set.has(Number(r.n)));
   SEG_PILLS.forEach(p => {
     if (p.k === salvo) return;
@@ -186,15 +195,7 @@ function segBase_(salvo) {
   });
   return l;
 }
-function segVisibles_() {
-  let l = segBase_(null);
-  const q = segNorm_(SEG.texto.trim());
-  if (q) l = l.filter(r =>
-    segNorm_(r.nom + ' ' + r.ape).includes(q) || String(r.doc || '').includes(q) ||
-    String(r.tel || '').includes(q) || segNorm_(r.cor).includes(q) || String(r.n) === q ||
-    segNorm_(r.emp).includes(q) || segNorm_(r.spo).includes(q));
-  return l;
-}
+function segVisibles_() { return segBase_(null); }   // 5.5-D — el buscador ya está en la base
 function segOpciones_(k) {
   const p = segPill_(k), c = {};
   segBase_(k).forEach(r => { const v = p.v(r); c[v] = (c[v] || 0) + 1; });
@@ -218,6 +219,7 @@ function segPintarTodo_() { segPintarPills_(); segPintarLeyenda_(); segPintarTab
 function segPintarPills_() {
   const cont = segQ_('#seg-filters'); if (!cont) return;
   const activos = Object.keys(SEG.filtros).length + (SEG.esp ? 1 : 0);
+  const nVis = segBase_(null).length;   // 5.5-D — filtros Y buscador: lo que se ve
   cont.innerHTML = (SEG.esp ? `<button class="fpill is-on seg-esp" data-seg-esp-quitar style="--fp:#be123c" title="Viene de Estadísticas. Toca para quitar esta lista.">
       <span class="fpill__ic">📊</span><span class="fpill__label">${esc_(SEG.esp.l)} (${SEG.esp.set.size})</span><span aria-hidden="true">✕</span></button>` : '') +
     SEG_PILLS.map(f => {
@@ -225,6 +227,7 @@ function segPintarPills_() {
     return `<button class="fpill ${on ? 'is-on' : ''}" data-segp="${f.k}" style="--fp:${f.color}" aria-haspopup="dialog"
         title="${esc_(f.tit)}">
       <span class="fpill__ic">${f.ic}</span><span class="fpill__label">${esc_(on ? val : f.all)}</span>
+      <span class="fpill__count">${nVis}</span>
       <svg class="fpill__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>`;
   }).join('') + (activos ? `<button class="fpill seg-limpiar" data-seg-limpiar>✕ Limpiar filtros (${activos})</button>` : '');
@@ -648,6 +651,6 @@ document.addEventListener('click', e => {
   document.addEventListener('input', e => {
     if (e.target.id !== 'seg-search') return;
     clearTimeout(t);
-    t = setTimeout(() => { SEG.texto = e.target.value || ''; segPintarTabla_(); }, 160);
+    t = setTimeout(() => { SEG.texto = e.target.value || ''; segPintarPills_(); segPintarTabla_(); }, 160);
   });
 })();

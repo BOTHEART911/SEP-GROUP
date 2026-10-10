@@ -79,8 +79,8 @@ const TEMP = {
     const anios = (this.meta && this.meta.anios) || (this.anio && this.anio !== 'TODOS' ? [this.anio] : []);
     const arch = (this.meta && this.meta.archivados) || [];
     const html = anios.map(a =>
-      `<option value="${a}"${a === this.anio ? ' selected' : ''}>📅 ${a}${arch.indexOf(a) >= 0 ? ' · archivada' : ''}</option>`).join('') +
-      `<option value="TODOS"${this.anio === 'TODOS' ? ' selected' : ''}>📅 Todos</option>`;
+      `<option value="${a}"${a === this.anio ? ' selected' : ''}>${a}${arch.indexOf(a) >= 0 ? ' · archivada' : ''}</option>`).join('') +
+      `<option value="TODOS"${this.anio === 'TODOS' ? ' selected' : ''}>Todos</option>`;
     document.querySelectorAll('.temp-sel').forEach(s => { s.innerHTML = html; });
   }
 };

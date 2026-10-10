@@ -109,7 +109,7 @@ async function abrirOfertas_() {
 
 async function cargarOfertas_() {
   try {
-    const d = await apiGet('ofertasInit', { usuarioId: currentUser.id });
+    const d = await apiGet('ofertasInit', { usuarioId: currentUser.id }, { vista: 'ofertas' });
     OFE.catalogo  = d.catalogo;
     OFE.config    = d.config;
     TEMP.set(d.temporadas); TEMP.montar('ofertas');                // FASE 5.1
@@ -118,6 +118,7 @@ async function cargarOfertas_() {
     OFE.cargado   = true;
     renderOfeFiltros_(); renderOfeCards_(); renderOfeResumen_();
   } catch (e) {
+    if (esCorte_(e)) return;
     Swal.fire({ icon: 'error', title: 'No se pudo cargar', text: String(e.message || e) });
   }
 }
@@ -131,11 +132,11 @@ TEMP.alCambiar(() => {
 
 async function recargarOfertas_(silencioso) {
   try {
-    OFE.todos = await apiGet('listOfertas', { usuarioId: currentUser.id }, { silent: !!silencioso });
+    OFE.todos = await apiGet('listOfertas', { usuarioId: currentUser.id }, { silent: !!silencioso, vista: 'ofertas' });
     OFE.registros = TEMP.filtrar(OFE.todos);                        // FASE 5.1
     renderOfeFiltros_(); renderOfeCards_(); renderOfeResumen_();
   } catch (e) {
-    if (!silencioso) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
+    if (!silencioso && !esCorte_(e)) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
   }
 }
 
@@ -193,12 +194,23 @@ function ofeEtiquetaFiltro_(k, valor) {
 
 /* Opciones de una pastilla: lo que quedaría si SOLO se aplicaran las
    otras pastillas (cascada, igual que en el Contador). */
-function ofeOpcionesFiltro_(k) {
-  const base = OFE.registros.filter(r => OFE_FILTROS.every(f => {
+/* 5.5-D — base de una pastilla: TODOS los demás filtros + buscador.
+   Antes cada pastilla contaba sobre las 38 sin mirar las otras: el número
+   no cuadraba con las tarjetas que quedaban en pantalla. */
+function ofeTextoOk_(r) {
+  const q = ofeNormalizar_(OFE.filtroTexto).trim();
+  if (!q) return true;
+  return ofeNormalizar_([r.empleador, r.posicion, r.ciudad, r.estadoUsa, r.sponsor, r.id].join(' ')).indexOf(q) >= 0;
+}
+function ofeBaseSin_(k) {
+  return OFE.registros.filter(r => ofeTextoOk_(r) && OFE_FILTROS.every(f => {
     if (f.key === k) return true;
     const v = ofeValFiltro_(f.key);
     return v === '__ALL__' || ofeCampoFiltro_(r, f.key) === v;
   }));
+}
+function ofeOpcionesFiltro_(k) {
+  const base = ofeBaseSin_(k);
   const mapa = {};
   base.forEach(r => {
     const v = ofeCampoFiltro_(r, k);
@@ -208,9 +220,9 @@ function ofeOpcionesFiltro_(k) {
 }
 
 function ofeConteoPill_(k) {
-  const v = ofeValFiltro_(k);
-  if (v === '__ALL__') return OFE.registros.length;
-  return OFE.registros.filter(r => ofeCampoFiltro_(r, k) === v).length;
+  const v = ofeValFiltro_(k), base = ofeBaseSin_(k);
+  if (v === '__ALL__') return base.length;
+  return base.filter(r => ofeCampoFiltro_(r, k) === v).length;
 }
 
 function ofePillHtml_(f) {
@@ -258,7 +270,7 @@ function abrirFsheetOfe_(key) {
   document.querySelector('#ofe-fsheet-title').textContent = f.titulo;
 
   const actual = ofeValFiltro_(key);
-  let html = ofeOptHtml_({ valor: '__ALL__', label: f.allLabel, n: OFE.registros.length, ic: f.ic }, actual === '__ALL__', true);
+  let html = ofeOptHtml_({ valor: '__ALL__', label: f.allLabel, n: ofeBaseSin_(key).length, ic: f.ic }, actual === '__ALL__', true);
   ofeOpcionesFiltro_(key).forEach(o => {
     const est = key === 'estado' ? (OFE.catalogo?.estados || []).find(x => x.clave === o.valor) : null;
     html += ofeOptHtml_({ valor: o.valor, label: o.label, n: o.n, ic: est ? est.ic : f.ic, color: est ? est.color : '' },
@@ -290,15 +302,12 @@ function ofeNormalizar_(s) {
 }
 
 function ofeFiltradas_() {
-  const q = ofeNormalizar_(OFE.filtroTexto).trim();
   return OFE.registros.filter(r => {
     for (const f of OFE_FILTROS) {
       const v = ofeValFiltro_(f.key);
       if (v !== '__ALL__' && ofeCampoFiltro_(r, f.key) !== v) return false;
     }
-    if (!q) return true;
-    const heno = ofeNormalizar_([r.empleador, r.posicion, r.ciudad, r.estadoUsa, r.sponsor, r.id].join(' '));
-    return heno.indexOf(q) >= 0;
+    return ofeTextoOk_(r);
   });
 }
 
@@ -543,9 +552,23 @@ function ofeFormHtml_() {
 
 async function abrirModalOferta_(id) {
   if (!OFE.catalogo) { await cargarOfertas_(); if (!OFE.catalogo) return; }
+  /* 5.5-D — botones al instante: con una oferta existente el modal se
+     abre YA con lo que dice la tarjeta y la silueta de sus 7 secciones
+     (capa 5); el formulario llega después. Antes no se veía nada hasta
+     que respondía el servidor. Si se cierra antes, no se reabre. */
+  const pedido = OFE.abriendo = (id || '') + ':' + Date.now();
+  if (id) {
+    const fila = (OFE.registros || []).find(x => String(x.id) === String(id)) || {};
+    document.querySelector('#ofe-modal-title').textContent = 'Editar oferta';
+    document.querySelector('#ofe-modal-sub').textContent =
+      id + (fila.estadoLabel ? ' · ' + fila.estadoLabel : '') + (fila.empleador ? ' · ' + fila.empleador : '');
+    document.querySelector('#ofe-modal-body').innerHTML = '';
+    document.querySelector('#modal-oferta').classList.remove('hidden');
+  }
   try {
     if (id) {
-      const o = await apiGet('verOferta', { usuarioId: currentUser.id, id });
+      const o = await apiGet('verOferta', { usuarioId: currentUser.id, id }, { vista: 'ofertas' });
+      if (OFE.abriendo !== pedido || document.querySelector('#modal-oferta').classList.contains('hidden')) return;
       OFE.edit = { id: o.id, datos: o, cuposTotal: o.cupos.total, ocupados: o.cupos.ocupados };
       OFE.edit.datos.cuposTotal = String(o.cupos.total || '');
       document.querySelector('#ofe-modal-title').textContent = 'Editar oferta';
@@ -561,11 +584,15 @@ async function abrirModalOferta_(id) {
     ofeEngancharForm_();
     document.querySelector('#modal-oferta').classList.remove('hidden');
   } catch (e) {
+    if (OFE.abriendo !== pedido) return;
+    if (id) document.querySelector('#modal-oferta')?.classList.add('hidden');
+    if (esCorte_(e)) return;
     Swal.fire({ icon: 'error', title: 'No se pudo abrir', text: String(e.message || e) });
   }
 }
 
 function cerrarModalOferta_() {
+  OFE.abriendo = null;
   document.querySelector('#modal-oferta')?.classList.add('hidden');
   /* El botón pudo quedar bloqueado por un tope pasado (punto 6): se
      devuelve a su sitio, si no la próxima oferta nace sin Guardar. */
@@ -853,13 +880,14 @@ async function abrirOfertasConfig_() {
   }
   showView('ofertas-config');
   try {
-    const d = await apiGet('ofertasConfig', { usuarioId: currentUser.id });
+    const d = await apiGet('ofertasConfig', { usuarioId: currentUser.id }, { vista: 'ofertas-config' });
     OFECFG.data = d.config;
     OFECFG.listas = d.listas;
     OFECFG.puedeEditar = !!d.puedeEditar;
     OFECFG.politicas = d.politicasCupo || [];
     pintarOfertasConfig_();
   } catch (e) {
+    if (esCorte_(e)) return;
     Swal.fire({ icon: 'error', title: 'No se pudo cargar', text: String(e.message || e) });
   }
 }
@@ -1064,8 +1092,7 @@ async function abrirParticipantes_(id) {
   if (!modal) return;
   OFE.part = { ofertaId: id, datos: null, pantalla: 'lista', resultados: [], buscado: '' };
   modal.classList.remove('hidden');
-  document.querySelector('#ofe-part-body').innerHTML =
-    '<p class="muted center" style="padding:26px 0">Cargando participantes…</p>';
+  document.querySelector('#ofe-part-body').innerHTML = '';   // 5.5-D — la silueta la pone la capa 5
   await recargarParticipantes_();
 }
 
@@ -1293,7 +1320,7 @@ function renderPartBuscador_() {
     <div class="conta-search"><input id="ofe-part-q" type="search"
       placeholder="Nombre, documento, correo, WhatsApp o ID interno…" autocomplete="off"
       value="${esc_(OFE.part.buscado)}" /></div>
-    <div class="ofe-part__list">${filas}</div>`;
+    <div class="ofe-part__list" id="ofe-part-res">${filas}</div>`;
 
   document.querySelector('#ofe-part-volver')?.addEventListener('click', () => {
     OFE.part.pantalla = 'lista'; renderParticipantes_();
@@ -1312,6 +1339,10 @@ async function buscarParticipantes_(q) {
   if (!OFE.part) return;
   OFE.part.buscado = q || '';
   if (String(q || '').trim().length < 2) { OFE.part.resultados = []; renderPartBuscador_(); return; }
+  /* 5.5-D — mientras busca, silueta de las tarjetas de resultado (la
+     lectura va en silencio: no tapa el buscador ni mueve el foco). */
+  const res = document.querySelector('#ofe-part-res');
+  if (res && window.SEPEsqueleto) res.innerHTML = SEPEsqueleto.html('verif', 2);
   try {
     const d = await apiGet('buscarParticipantes',
       { usuarioId: currentUser.id, id: OFE.part.ofertaId, q: q }, { silent: true });
@@ -1652,8 +1683,7 @@ async function abrirOfertasDeParticipante_(idRegistro, nombre) {
   if (!modal) return;
   OFE.part = { modo: 'participante', idRegistro: idRegistro, nombre: nombre || '', datos: null };
   modal.classList.remove('hidden');
-  document.querySelector('#ofe-part-body').innerHTML =
-    '<p class="muted center" style="padding:26px 0">Buscando ofertas para este participante…</p>';
+  document.querySelector('#ofe-part-body').innerHTML = '';   // 5.5-D — la silueta la pone la capa 5
   await recargarOfertasDeParticipante_();
 }
 
@@ -1854,7 +1884,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#proc-tile-ofertas-config')?.addEventListener('click', abrirOfertasConfig_);
 
   document.querySelector('#ofe-search')?.addEventListener('input', e => {
-    OFE.filtroTexto = e.target.value; renderOfeCards_();
+    OFE.filtroTexto = e.target.value; renderOfeFiltros_(); renderOfeCards_();
   });
   document.querySelector('#ofe-refresh')?.addEventListener('click', () => recargarOfertas_(false));
   document.querySelector('#ofe-nueva')?.addEventListener('click', () => abrirModalOferta_(null));

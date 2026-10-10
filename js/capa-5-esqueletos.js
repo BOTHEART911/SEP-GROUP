@@ -25,20 +25,14 @@
  *       pantalla y taparlos con siluetas sería peor.
  *     · Cualquier otra acción → pasa intacta, con su girador de siempre.
  *
- * LECTURAS MAPEADAS (ids reales de esta app, todos rellenados con innerHTML)
- *   listComercial        → #com-cards
- *   contadorInit         → #conta-resumen (KPIs) + #conta-cards   (Fase 4)
- *   listContador         → #conta-resumen (KPIs) + #conta-cards   (Fase 4)
- *   listUsuarios         → #usr-cards
- *   verComercial         → #com-detalle
- *   getConfigFull        → los 6 paneles #cfg-*
- *   dashboard            → #dsh-kpis #dsh-rend #dsh-estados #dsh-ventas #dsh-alertas
- *   listArchivosPrograma → #arch-list
- *   nivelInit · listNivel → #nive-resumen (KPIs) + #nive-cards   (17/08/2026)
- *   nivelFormulario      → #nform-body (bloques del formulario)  (17/08/2026)
- *   exportInit           → #exp-body (modal de exportar)         (17/08/2026)
- *   bootstrap · me · getCatalogoComercial · getUbicaciones → sin silueta, solo
- *   sin girador (no pintan ningún contenedor; son de fondo).
+ * LECTURAS MAPEADAS — ver LECTURAS más abajo (fuente única).
+ *   5.5-D (09/10/2026): auditoría completa. Cada lectura que pinta una vista
+ *   o un modal tiene la forma de lo que llega y se pinta DENTRO de la
+ *   rejilla real (formas "pieza": display contents), con los KPIs y las
+ *   pastillas que la vista va a mostrar. Lecturas que se piden en silencio
+ *   (búsquedas, detalles con corte propio) usan SEPEsqueleto.html(forma, n).
+ *   bootstrap · me · getCatalogoComercial · getUbicaciones → sin silueta,
+ *   solo sin girador (no pintan ningún contenedor; son de fondo).
  *
  * LO QUE NO TOCA
  *   · #loader sigue existiendo y sigue saliendo en las acciones de escritura.
@@ -80,13 +74,14 @@
         '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn"></span>', 2) + '</div>'
       );
     },
-    /* Ficha de detalle de un lead */
+    /* Ficha de detalle de un lead (5.5-D: forma real — pares rótulo/valor
+       en 2 columnas, botones y el ciclo de seguimientos) */
     detalle: function () {
+      var par = '<div class="sep-sk-campo">' + l(30) + l(60) + '</div>';
       return card(
-        '<div class="sep-sk-top">' + l(45, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-badge"></span></div>' +
-        '<div class="sep-sk-grid" style="margin-top:16px">' + rep('<span class="sep-sk sep-sk-field"></span>', 8) + '</div>' +
-        '<div class="sep-sk-rows">' + l(95) + l(80) + l(60) + '</div>' +
-        '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn"></span>', 3) + '</div>'
+        '<div class="sep-sk-campos sep-sk-campos--2" style="margin-top:4px">' + rep(par, 14) + '</div>' +
+        '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn sep-sk-btn--s"></span>', 4) + '</div>' +
+        '<div class="sep-sk-rows">' + l(30, true) + '<span class="sep-sk sep-sk-input"></span><span class="sep-sk sep-sk-input"></span></div>'
       );
     },
     /* Rejilla de campos de un formulario de configuración */
@@ -188,61 +183,163 @@
         '<div class="sep-sk-top">' + l(45, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-badge"></span></div>' +
         '<div class="sep-sk-grid" style="margin-top:12px">' + rep('<span class="sep-sk sep-sk-field"></span>', 4) + '</div>'
       );
+    },
+
+    /* ---- 5.5-D (09/10/2026) — formas medidas sobre la tarjeta real ----
+       Las formas "pieza" (ver PIEZAS) se pintan como hijas directas del
+       contenedor: la rejilla real (2 columnas en Comercial, 3 en Ofertas,
+       KPIs en fila…) las acomoda igual que a las tarjetas que llegan. */
+    /* Indicador de la fila de KPIs (.conta-kpi): número + rótulo */
+    kpi: function () {
+      return '<div class="sep-sk-card sep-sk-kpic">' + l(30, true) + '<span class="sep-sk sep-sk-l sep-sk-w80" style="height:10px"></span></div>';
+    },
+    /* Pastilla de filtro mientras llega el catálogo */
+    pill: function () { return '<span class="sep-sk sep-sk-pill"></span>'; },
+    /* Tarjeta de lead de Comercial: nombre + estado, correo, 4 datos y 5 botones */
+    comercial: function () {
+      return card(
+        '<div class="sep-sk-top">' + l(60, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-badge" style="width:96px"></span></div>' +
+        '<div class="sep-sk-rows" style="margin-top:8px">' + l(45) + '</div>' +
+        '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 4) + '</div>' +
+        '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn sep-sk-btn--s"></span>', 5) + '</div>',
+        'rayada'
+      );
+    },
+    /* Tarjeta del Contador: nombre + etapa, correo, datos, archivos y 2 botones */
+    conta: function () {
+      return card(
+        '<div class="sep-sk-top">' + l(60, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-badge" style="width:110px"></span></div>' +
+        '<div class="sep-sk-rows" style="margin-top:8px">' + l(45) + '</div>' +
+        '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 3) + '</div>' +
+        '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-dot"></span>', 6) + '</div>' +
+        '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn sep-sk-btn--s"></span>', 2) + '</div>',
+        'rayada'
+      );
+    },
+    /* Tarjeta de Nivel de Inglés: foto, nombre, datos, panel del puntaje,
+       6 accesos y la fila de acciones */
+    nivel: function () {
+      return card(
+        '<div class="sep-sk-top"><span class="sep-sk sep-sk-av"></span><span class="sep-sk-id">' + l(80, true) + l(60) + l(45) + '</span>' +
+        '<span class="sep-sk sep-sk-badge" style="width:84px;align-self:flex-start"></span></div>' +
+        '<span class="sep-sk sep-sk-panel"></span>' +
+        '<div class="sep-sk-tiles">' + rep('<span class="sep-sk sep-sk-tile"></span>', 6) + '</div>' +
+        '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn sep-sk-btn--s"></span>', 4) + '</div>',
+        'rayada'
+      );
+    },
+    /* Tarjeta de oferta: foto 16:9, empleador, cargo, datos y botones */
+    oferta: function () {
+      return '<div class="sep-sk-card sep-sk-ofe"><span class="sep-sk sep-sk-foto"></span><div class="sep-sk-ofe__in">' +
+        l(30) + l(60, true) + '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 3) + '</div>' +
+        '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn sep-sk-btn--s"></span>', 3) + '</div></div></div>';
+    },
+    /* Tarjeta compacta de usuario del equipo: foto, nombre, dato, 2 insignias
+       y los íconos a la derecha */
+    persona: function () {
+      return card(
+        '<div class="sep-sk-top"><span class="sep-sk sep-sk-av"></span>' +
+        '<span class="sep-sk-id">' + l(80, true) + l(60) + '<span class="sep-sk-chips" style="margin-top:2px">' +
+        rep('<span class="sep-sk sep-sk-chip" style="width:52px"></span>', 2) + '</span></span>' +
+        '<span class="sep-sk-col">' + rep('<span class="sep-sk sep-sk-ico" style="width:26px;height:26px"></span>', 2) + '</span></div>',
+        'rayada sep-sk-persona'
+      );
+    },
+    /* Sección de formulario de configuración: título + filas rótulo/campo */
+    formsec: function () {
+      var fila = '<div class="sep-sk-campo">' + l(30) + '<span class="sep-sk sep-sk-input"></span></div>';
+      return card(l(30, true) + '<div class="sep-sk-campos">' + rep(fila, 4) + '</div>');
+    },
+    /* Leyenda de una dona del Dashboard: punto + nombre + cifra */
+    leyenda: function () {
+      var f = '<div class="sep-sk-ley"><span class="sep-sk sep-sk-dot" style="width:10px;height:10px"></span>' + l(60) + '<span class="sep-sk sep-sk-l" style="width:30px"></span></div>';
+      return rep(f, 5);
+    },
+    anillo: function () { return '<span class="sep-sk sep-sk-ring sep-sk-ring--l"></span>'; },
+    /* Cabecera de la oferta en "Participantes" + lista de participantes */
+    participantes: function () {
+      return card('<div class="sep-sk-top"><span class="sep-sk-id">' + l(45, true) + l(60) + l(45) + '</span><span class="sep-sk sep-sk-btn" style="flex:0 0 170px"></span></div>') +
+        rep(card('<div class="sep-sk-top">' + l(60, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-badge"></span></div>' +
+          '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 3) + '</div>'), 2);
+    },
+    /* "Ofertas para este participante": cabecera, aviso y rejilla de ofertas */
+    ofertasPart: function () {
+      var o = '<div class="sep-sk-card" style="margin:0">' + l(45, true) + '<div class="sep-sk-rows" style="margin-top:8px">' + l(80) + l(60) + '</div>' +
+        '<span class="sep-sk sep-sk-panel" style="height:64px"></span><div class="sep-sk-acts"><span class="sep-sk sep-sk-btn sep-sk-btn--s" style="flex:0 0 90px"></span></div></div>';
+      return card(l(45, true) + '<div class="sep-sk-rows" style="margin-top:8px">' + l(60) + '</div><span class="sep-sk sep-sk-panel" style="height:56px"></span>') +
+        '<div class="sep-sk-par">' + rep(o, 4) + '</div>';
+    },
+    /* Documentos del participante (modal): aviso, pestañas del panel y
+       una fila por documento (nombre + estado, datos y botones) */
+    ndoc: function () {
+      return '<div class="sep-sk-rows" style="margin:0 0 10px">' + l(95) + l(60) + '</div>' +
+        '<div class="sep-sk-chips" style="margin:0 0 12px">' + rep('<span class="sep-sk sep-sk-chip" style="width:70px;height:22px"></span>', 5) + '</div>' +
+        rep(card('<div class="sep-sk-top">' + l(45, true) + '<span style="flex:1"></span><span class="sep-sk sep-sk-badge" style="width:130px"></span></div>' +
+          '<div class="sep-sk-rows">' + l(45) + l(30) + '</div>' +
+          '<div class="sep-sk-acts">' + rep('<span class="sep-sk sep-sk-btn sep-sk-btn--s"></span>', 4) + '</div>'), 4);
+    },
+    /* Detalle de oferta (modal): las 7 secciones plegables */
+    acordeon: function () {
+      return rep('<span class="sep-sk sep-sk-acc"></span>', 7);
+    },
+    /* Modal de exportar: formato (2 tarjetas) + alcance (fechas y chips) */
+    exportar: function () {
+      return card(l(30, true) + '<div class="sep-sk-par" style="margin-top:12px">' + rep('<span class="sep-sk sep-sk-field" style="height:70px"></span>', 2) + '</div>') +
+        card(l(30, true) + '<span class="sep-sk sep-sk-input" style="margin-top:12px"></span>' +
+          '<div class="sep-sk-chips">' + rep('<span class="sep-sk sep-sk-chip"></span>', 10) + '</div>');
     }
   };
 
+  /* Formas que se pintan como hijas directas del contenedor (sin caja
+     propia): así la rejilla real decide columnas y tamaños. */
+  var PIEZAS = { kpi: 1, pill: 1, comercial: 1, conta: 1, nivel: 1, oferta: 1, persona: 1, visa: 1, verif: 1, seguimiento: 1, leyenda: 1, anillo: 1 };
+
   /* ---- Mapa: acción de lectura → [contenedor, forma, cuántas] ------------ */
   var LECTURAS = {
-    comercialInit:        [['com-cards', 'lead', 4]],
-    listComercial:        [['com-cards', 'lead', 4]],
-    listUsuarios:         [['usr-cards', 'persona', 4]],
-    verComercial:         [['com-detalle', 'detalle', 1]],
+    /* 5.5-D — cada lectura con la forma de lo que llega, en su rejilla
+       real, con las pastillas y los KPIs que la vista pinta. */
+    comercialInit:        [['com-filters', 'pill', 3], ['com-cards', 'comercial', 6]],
+    listComercial:        [['com-cards', 'comercial', 6]],
+    listUsuarios:         [['usr-cards', 'persona', 9]],
+    verComercial:         [['com-detalle-cuerpo', 'detalle', 1]],   /* 5.5-D la cabecera ya está pintada */
     listArchivosPrograma: [['arch-list', 'archivo', 3]],
-    /* Fase 4 — la vista Contador ya no usa girador: silueta como el resto */
-    contadorInit:         [['conta-resumen', 'kpis', 1], ['conta-cards', 'lead', 4]],
-    listContador:         [['conta-resumen', 'kpis', 1], ['conta-cards', 'lead', 4]],
+    contadorInit:         [['conta-resumen', 'kpi', 8], ['conta-filters', 'pill', 3], ['conta-cards', 'conta', 6]],
+    listContador:         [['conta-resumen', 'kpi', 8], ['conta-cards', 'conta', 6]],
     getConfigFull: [
-      ['cfg-general', 'campos', 1],
+      ['cfg-general', 'formsec', 3],
       ['cfg-programas', 'tarjeta', 3],
       ['cfg-promos', 'tarjeta', 2],
-      ['cfg-agenda', 'campos', 1],
+      ['cfg-agenda', 'formsec', 2],
       ['cfg-plantillas', 'tarjeta', 2],
-      ['cfg-avanzado', 'campos', 1]
+      ['cfg-listas', 'formsec', 2],
+      ['cfg-nivel', 'formsec', 2],
+      ['cfg-avanzado', 'formsec', 2]
     ],
     dashboard: [
-      ['dsh-kpis', 'kpis', 1],
-      ['dsh-rend', 'minis', 1],     /* 5.5-C */
+      ['@view-dashboard', 'marca'],                 /* las gráficas (canvas) brillan mientras llegan */
+      ['dsh-kpis', 'kpi', 6],
+      ['dsh-ctr-prog', 'anillo', 1], ['dsh-lg-prog', 'leyenda', 1],
+      ['dsh-ctr-fuente', 'anillo', 1], ['dsh-lg-fuente', 'leyenda', 1],
+      ['dsh-rend', 'minis', 1],
       ['dsh-estados', 'barras', 1],
-      ['dsh-ventas', 'minis', 1],   /* 5.5-C */
+      ['dsh-ventas', 'minis', 1],
       ['dsh-alertas', 'texto', 1]
     ],
-    /* 17/08/2026 — Nivel de Inglés: el arranque de la vista y el modal
-       "Ver formulario" tenían girador. Ahora esqueleto, como el resto. */
-    nivelInit:            [['nive-resumen', 'kpis', 1], ['nive-cards', 'lead', 4]],
-    listNivel:            [['nive-resumen', 'kpis', 1], ['nive-cards', 'lead', 4]],
+    nivelInit:            [['nive-resumen', 'kpi', 6], ['nive-proc', 'kpi', 5], ['nive-filters', 'pill', 5], ['nive-cards', 'nivel', 4]],
+    listNivel:            [['nive-resumen', 'kpi', 6], ['nive-proc', 'kpi', 5], ['nive-cards', 'nivel', 4]],
     nivelFormulario:      [['nform-body', 'bloque', 4]],
-    /* 17/08/2026 — catálogo del modal de EXPORTAR */
-    exportInit:           [['exp-body', 'campos', 2]],
-    /* FASE 4 (03 y 04/09/2026) — las lecturas de Ofertas de empleo y las
-       de Documentos del participante también van con silueta. Las de
-       ofertas venían sin mapear desde la Entrega 1. */
-    /* 04/09/2026 — se suma el resumen de arriba: al entrar, la vista de
-       Ofertas queda con silueta COMPLETA (KPIs + tarjetas), como la de
-       Contador y la de Nivel de Inglés. */
-    ofertasInit:             [['ofe-resumen', 'kpis', 1], ['ofe-cards', 'lead', 4]],
-    listOfertas:             [['ofe-resumen', 'kpis', 1], ['ofe-cards', 'lead', 4]],
-    verOferta:               [['ofe-modal-body', 'campos', 2]],
-    ofertasConfig:           [['ofecfg-body', 'campos', 3]],
-    ofertaParticipantes:     [['ofe-part-body', 'lead', 3]],
-    buscarParticipantes:     [['ofe-part-body', 'lead', 3]],
-    ofertasParaParticipante: [['ofe-part-body', 'lead', 3]],
-    docsParticipante:        [['ndocs-body', 'bloque', 4]],
-    /* FASE 5.2-A — Verificación Académica: lista y detalle con silueta. */
-    verifInit:               [['veri-resumen', 'kpis', 1], ['veri-cards', 'verif', 4]],   /* 5.5-B */
+    exportInit:           [['exp-body', 'exportar', 1]],
+    ofertasInit:             [['ofe-resumen', 'kpi', 5], ['ofe-filters', 'pill', 8], ['ofe-cards', 'oferta', 6]],
+    listOfertas:             [['ofe-resumen', 'kpi', 5], ['ofe-cards', 'oferta', 6]],
+    verOferta:               [['ofe-modal-body', 'acordeon', 1]],
+    ofertasConfig:           [['ofecfg-body', 'formsec', 3]],
+    ofertaParticipantes:     [['ofe-part-body', 'participantes', 1]],
+    ofertasParaParticipante: [['ofe-part-body', 'ofertasPart', 1]],
+    docsParticipante:        [['ndocs-body', 'ndoc', 1]],
+    verifInit:               [['veri-resumen', 'kpi', 3], ['veri-filters', 'pill', 2], ['veri-cards', 'verif', 4]],
     verifDetalle:            [['veri-det-body', 'verifdet', 1]],
-    visasInit:               [['vis-resumen', 'kpis', 1], ['vis-cards', 'visa', 3]],   /* 5.5-B forma de tarjeta */
-    /* FASE 5.4-A — Seguimiento: la tabla con silueta mientras llega. */
-    seguimientoInit:         [['seg-cards', 'seguimiento', 4], ['est-cuerpo', 'seccion', 3]],   /* 5.4-C misma carga · 5.5-A forma de tarjeta */
+    visasInit:               [['vis-resumen', 'kpi', 13], ['vis-filters', 'pill', 2], ['vis-cards', 'visa', 2]],
+    seguimientoInit:         [['seg-filters', 'pill', 10], ['seg-cards', 'seguimiento', 4], ['est-filters', 'pill', 4], ['est-cuerpo', 'seccion', 3]],
     /* Lecturas de fondo: sin girador y sin silueta (no pintan contenedor) */
     bootstrap: [],
     me: [],
@@ -260,12 +357,19 @@
     var puestos = [], restaurar = [];
 
     plan.forEach(function (t) {
+      /* '@id' + 'marca': no se pinta nada dentro; el elemento queda
+         marcado y el CSS hace brillar lo que no admite silueta (canvas). */
+      if (t[0].charAt(0) === '@') {
+        var el = document.getElementById(t[0].slice(1));
+        if (el) { el.classList.add('sep-sk-cargando'); restaurar.push({ quitarMarca: el }); }
+        return;
+      }
       var cont = document.getElementById(t[0]);
       if (!cont) return;
 
       var forma = FORMAS[t[1]] || FORMAS.texto;
       var wrap = document.createElement('div');
-      wrap.className = 'sep-sk-wrap';
+      wrap.className = 'sep-sk-wrap' + (PIEZAS[t[1]] ? ' sep-sk-piezas' : '');
       wrap.setAttribute('aria-busy', 'true');
       wrap.setAttribute('aria-label', 'Cargando');
       wrap.innerHTML = rep(forma(), t[2]);
@@ -286,7 +390,10 @@
 
     return function retirar() {
       puestos.forEach(function (w) { if (w.parentNode) w.parentNode.removeChild(w); });
-      restaurar.forEach(function (el) { el.classList.remove('hidden'); });
+      restaurar.forEach(function (el) {
+        if (el.quitarMarca) el.quitarMarca.classList.remove('sep-sk-cargando');
+        else el.classList.remove('hidden');
+      });
     };
   }
 
@@ -319,4 +426,13 @@
 
   envolver('apiGet');
   envolver('apiPost');
+
+  /* 5.5-D — para las lecturas que se piden en silencio (búsquedas,
+     detalles con su propio corte): window.SEPEsqueleto.html('forma', n). */
+  window.SEPEsqueleto = {
+    html: function (forma, n) {
+      var f = FORMAS[forma] || FORMAS.texto;
+      return '<div class="sep-sk-wrap' + (PIEZAS[forma] ? ' sep-sk-piezas' : '') + '" aria-busy="true" aria-label="Cargando">' + rep(f(), n || 1) + '</div>';
+    }
+  };
 })();

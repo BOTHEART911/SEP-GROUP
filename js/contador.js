@@ -65,7 +65,7 @@ async function abrirContador_() {
 
 async function cargarContador_() {
   try {
-    const d = await apiGet('contadorInit', { usuarioId: currentUser.id, lig: '1' });   // 07/10 — listado ligero
+    const d = await apiGet('contadorInit', { usuarioId: currentUser.id, lig: '1' }, { vista: 'contador' });   // 07/10 — listado ligero
     CONTA.catalogo  = d.catalogo;
     estPartCargar_(d.catalogo && d.catalogo.estadosPart);         // FASE 5.1 · D
     TEMP.set(d.temporadas); TEMP.montar('contador');               // FASE 5.1
@@ -74,6 +74,7 @@ async function cargarContador_() {
     CONTA.cargado   = true;
     renderContaFiltros_(); renderContaCards_(); renderContaResumen_();
   } catch (e) {
+    if (esCorte_(e)) return;
     Swal.fire({ icon: 'error', title: 'No se pudo cargar', text: String(e.message || e) });
   }
 }
@@ -90,11 +91,11 @@ async function recargarContador_(silencioso) {
     /* Fase 4 — el refresco de fondo va SILENCIOSO de verdad: sin esto
        salía el girador (y ahora saldría el esqueleto) encima de datos
        que ya están pintados. */
-    CONTA.todos = await apiGet('listContador', { usuarioId: currentUser.id, lig: '1' }, { silent: !!silencioso });
+    CONTA.todos = await apiGet('listContador', { usuarioId: currentUser.id, lig: '1' }, { silent: !!silencioso, vista: 'contador' });
     CONTA.registros = TEMP.filtrar(CONTA.todos);                    // FASE 5.1
     renderContaFiltros_(); renderContaCards_(); renderContaResumen_();
   } catch (e) {
-    if (!silencioso) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
+    if (!silencioso && !esCorte_(e)) Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: String(e.message || e) });
   }
 }
 
@@ -120,8 +121,22 @@ function contaSetFiltro_(k, v) {
 function contaVisibles_() {
   return CONTA.registros.filter(r => !!r.retirado === !!CONTA.verRetirados);
 }
-function contaBaseAsesor_() {
+/* 5.5-D — el buscador entra a la cascada: el número de cada pastilla y
+   de cada opción es exactamente lo que queda en pantalla. Los KPIs del
+   resumen siguen sobre contaVisibles_ (totales de la temporada). */
+function contaTexto_() {
+  const txt = contaNormBusq_(String(CONTA.filtroTexto || '').trim());
   const base = contaVisibles_();
+  if (!txt) return base;
+  return base.filter(r =>
+    contaNormBusq_(r.nombres + ' ' + r.apellidos).includes(txt) ||
+    String(r.documento || '').includes(txt) ||
+    String(r.whatsapp || '').includes(txt) ||
+    String(r.n).includes(txt) ||
+    contaNormBusq_(r.correo).includes(txt));
+}
+function contaBaseAsesor_() {
+  const base = contaTexto_();
   if (CONTA.filtroAsesor === '__ALL__') return base;
   return base.filter(r => contaAsesorDe_(r) === CONTA.filtroAsesor);
 }
@@ -143,7 +158,7 @@ function contaEtapaDef_(clave) {
 function contaOpciones_(key) {
   const c = {};
   if (key === 'asesor') {
-    contaVisibles_().forEach(r => { const k = contaAsesorDe_(r); c[k] = (c[k] || 0) + 1; });
+    contaTexto_().forEach(r => { const k = contaAsesorDe_(r); c[k] = (c[k] || 0) + 1; });
     return Object.keys(c).sort((a, b) => a.localeCompare(b))
       .map(k => ({ valor: k, label: k, count: c[k], ic: '👤' }));
   }
@@ -157,7 +172,7 @@ function contaOpciones_(key) {
     .map(k => ({ valor: k, label: k, count: c[k], ic: '🎯' }));
 }
 function contaTotalFiltro_(k) {
-  return k === 'asesor' ? contaVisibles_().length
+  return k === 'asesor' ? contaTexto_().length
        : k === 'etapa'  ? contaBaseAsesor_().length
        :                  contaBaseEtapa_().length;
 }
@@ -318,20 +333,12 @@ function contaFechaTexto_(iso) {
 function renderContaCards_() {
   const cont = document.querySelector('#conta-cards'), vacio = document.querySelector('#conta-empty');
   if (!cont) return;
-  const txt = contaNormBusq_(CONTA.filtroTexto.trim());
   /* FASE 5 — de la más reciente a la más antigua. El backend ya manda
-     así la lista; esto es la red de seguridad del front. */
-  let list = contaBasePlan_().slice().sort((a, b) => b.n - a.n);
-  if (txt) list = list.filter(r =>
-    contaNormBusq_(r.nombres + ' ' + r.apellidos).includes(txt) ||
-    String(r.documento || '').includes(txt) ||
-    String(r.whatsapp || '').includes(txt) ||
-    String(r.n).includes(txt) ||
-    contaNormBusq_(r.correo).includes(txt));
-
+     así la lista; esto es la red de seguridad del front.
+     5.5-D — contaBasePlan_ ya trae el buscador; se pinta por tandas. */
+  const list = contaBasePlan_().slice().sort((a, b) => b.n - a.n);
   vacio?.classList.toggle('hidden', list.length > 0);
-  cont.innerHTML = list.map(contaCardHtml_).join('');
-  list.forEach(r => {
+  tandaPintar_(cont, list, r => contaCardHtml_(r), r => {
     const card = document.querySelector('#conta-card-' + r.n); if (!card) return;
     card.querySelector('[data-act="editar"]')?.addEventListener('click', () => abrirModalContador_(r));
     card.querySelector('[data-act="eliminar"]')?.addEventListener('click', () => eliminarInscripcion_(r));
@@ -347,7 +354,7 @@ function renderContaCards_() {
    al abrirla y se queda en la fila. */
 async function contaFilaCompleta_(r) {
   if (!r || !r.lig) return r;
-  const f = await apiGet('verContador', { usuarioId: currentUser.id, n: r.n }, { silent: true });
+  const f = await apiGet('verContador', { usuarioId: currentUser.id, n: r.n }, { silent: true, vista: 'contador' });
   Object.keys(f || {}).forEach(k => { r[k] = f[k]; });
   delete r.lig;
   return r;
@@ -361,6 +368,7 @@ async function contaVerArchivo_(r, campo, i, titulo, btn) {
     const url = Array.isArray(v) ? v[i] : v;
     if (typeof url === 'string' && url) abrirVisorConta_(url, titulo);
   } catch (e) {
+    if (esCorte_(e)) return;
     Swal.fire({ icon: 'error', title: 'No se pudo abrir el archivo', text: String(e.message || e) });
   } finally {
     if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
@@ -851,7 +859,9 @@ async function abrirModalContador_(r) {
   document.querySelector('#conta-modal-sub').innerHTML =
     `<span class="com-badge" style="background:${r.etapaColor}">${r.etapaIc} ${esc_(r.etapaLabel)}</span>`;
   document.querySelector('#conta-modal-body').innerHTML =
-    '<div class="sep-sk-rows" role="status" aria-label="Cargando la ficha"><span class="sep-sk sep-sk-field"></span><span class="sep-sk sep-sk-field"></span><span class="sep-sk sep-sk-field"></span></div>';
+    /* 5.5-D — forma real de la ficha: secciones con campos en 2 columnas */
+    ((window.SEPEsqueleto && SEPEsqueleto.html) ? SEPEsqueleto.html('formsec', 2) :
+    '<div class="sep-sk-rows" role="status" aria-label="Cargando la ficha"><span class="sep-sk sep-sk-field"></span><span class="sep-sk sep-sk-field"></span><span class="sep-sk sep-sk-field"></span></div>');
   document.querySelector('#modal-contador').classList.remove('hidden');
   try {
     const f = await contaFilaCompleta_(r);
@@ -860,6 +870,7 @@ async function abrirModalContador_(r) {
   } catch (e) {
     if (CONTA.abriendo !== pedido) return;
     cerrarModalContador_();
+    if (esCorte_(e)) return;
     Swal.fire({ icon: 'error', title: 'No se pudo abrir la ficha', text: String(e.message || e) });
   }
 }
@@ -1749,7 +1760,7 @@ async function guardarContadorUnaVez_() {
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#conta-search')?.addEventListener('input', e => {
-    CONTA.filtroTexto = e.target.value; renderContaCards_();
+    CONTA.filtroTexto = e.target.value; renderContaFiltros_(); renderContaCards_();
   });
   document.querySelector('#conta-refresh')?.addEventListener('click', () => recargarContador_(false));
   document.querySelector('#conta-modal-close')?.addEventListener('click', cerrarModalContador_);

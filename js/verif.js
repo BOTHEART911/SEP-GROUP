@@ -143,8 +143,17 @@ function veriResDef_(clave) {
 
 /* Cascada: asesor → sponsor → filtro superior. Los conteos de cada
    capa se calculan sobre lo que dejó la anterior. */
+/* 5.5-D — el buscador entra a la raíz de la cascada: pastillas, opciones
+   y KPIs cuentan exactamente lo que queda en pantalla. */
+function veriTexto_() {
+  const q = veriNorm_(String(VERI.texto || '').trim());
+  if (!q) return VERI.registros;
+  return VERI.registros.filter(r =>
+    veriNorm_(r.nombres + ' ' + r.apellidos).includes(q) || String(r.documento || '').includes(q) ||
+    String(r.whatsapp || '').includes(q) || veriNorm_(r.correo).includes(q) || String(r.n).includes(q));
+}
 function veriBaseAsesor_() {
-  const b = VERI.registros;
+  const b = veriTexto_();
   return VERI.filtroAsesor === '__ALL__' ? b : b.filter(r => veriAsesorDe_(r) === VERI.filtroAsesor);
 }
 function veriBaseSponsor_() {
@@ -168,7 +177,7 @@ function veriSetPill_(k, v) {
 }
 function veriOpciones_(k) {
   const c = {};
-  const base = k === 'asesor' ? VERI.registros : veriBaseAsesor_();
+  const base = k === 'asesor' ? veriTexto_() : veriBaseAsesor_();
   base.forEach(r => { const v = k === 'asesor' ? veriAsesorDe_(r) : veriSponsorDe_(r); c[v] = (c[v] || 0) + 1; });
   return Object.keys(c).sort((a, b) => a.localeCompare(b)).map(v => ({ valor: v, label: v, count: c[v] }));
 }
@@ -236,14 +245,7 @@ document.addEventListener('click', e => { if (e.target.closest('[data-veri-fshee
 
 function veriNorm_(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 
-function veriVisibles_() {
-  const q = veriNorm_(VERI.texto.trim());
-  let l = veriBaseTop_();
-  if (q) l = l.filter(r =>
-    veriNorm_(r.nombres + ' ' + r.apellidos).includes(q) || String(r.documento || '').includes(q) ||
-    String(r.whatsapp || '').includes(q) || veriNorm_(r.correo).includes(q) || String(r.n).includes(q));
-  return l;
-}
+function veriVisibles_() { return veriBaseTop_(); }   // 5.5-D — el buscador ya está en la raíz
 
 /* Sello de verificación de una fila: resultado + consentimiento. */
 function veriSelloHtml_(r) {
@@ -288,7 +290,7 @@ function veriPintarCards_() {
   if (!cont) return;
   const l = veriVisibles_();
   vacio?.classList.toggle('hidden', l.length > 0);
-  cont.innerHTML = l.map(veriCardHtml_).join('');
+  tandaPintar_(cont, l, r => veriCardHtml_(r));   // 5.5-D — por tandas (clics por delegado)
 }
 
 /* Delegado: un solo oyente para todas las tarjetas. */
@@ -385,7 +387,7 @@ function veriResultadoHtml_(r, v) {
     </section>
     <section class="veri-sec">
       <h4 class="veri-sec__t">🗒️ Notas de Verificación Académica <small>(internas · el participante no las ve)</small></h4>
-      ${notas === null ? '<div class="veri-cargando">Cargando notas…</div>' : `
+      ${notas === null ? '<div class="veri-cargando" aria-busy="true" aria-label="Cargando notas"><span class="sep-sk" style="height:96px;border-radius:12px"></span><div class="veri-notas-pie"><span class="sep-sk sep-sk-l sep-sk-w45"></span><span class="sep-sk sep-sk-btn" style="flex:0 0 150px;height:38px"></span></div></div>' : `
         <textarea id="veri-notas" maxlength="3000" rows="4" placeholder="Escribe aquí lo que revisaste…"${ocupado}>${esc_(notas)}</textarea>
         <div class="veri-notas-pie">
           <span class="veri-meta">${v.notasPor ? 'Última edición: ' + esc_(v.notasPor) + ' · ' + esc_(v.notasFecha) : ''}</span>
@@ -631,7 +633,7 @@ async function veriRevisarCert_(clave, accion) {
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#proc-tile-verif')?.addEventListener('click', abrirVerif_);
   document.querySelector('#veri-refresh')?.addEventListener('click', () => { if (!VERI.cargando) recargarVerif_(); });
-  document.querySelector('#veri-search')?.addEventListener('input', e => { VERI.texto = e.target.value || ''; veriPintarCards_(); });
+  document.querySelector('#veri-search')?.addEventListener('input', e => { VERI.texto = e.target.value || ''; veriPintarTodo_(); });
   document.querySelector('#veri-det-close')?.addEventListener('click', veriCerrarDetalle_);
 });
 

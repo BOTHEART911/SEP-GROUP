@@ -116,3 +116,65 @@
 .sep-sk-mini .sep-sk-chips { margin-top: 8px; }
 .sep-sk-mini .sep-sk-chip { flex: 1 1 70px; width: auto; height: 34px; border-radius: 9px; }
 .sep-sk-ring--s { width: 46px; height: 46px; }
+
+/* ============================================================================
+ * 5.5-D (09/10/2026) — AUDITORÍA: la silueta toma la forma y la REJILLA real.
+ * Las formas "pieza" se pintan como hijas directas del contenedor
+ * (display: contents): 2 columnas en Comercial/Contador/Nivel, 3 en
+ * Ofertas, KPIs en su fila y pastillas en la fila de filtros.
+ * ========================================================================== */
+.sep-sk-wrap.sep-sk-piezas { display: contents; }
+.sep-sk-piezas > .sep-sk-card { margin-bottom: 0; }
+
+/* KPI (.conta-kpi): 4 px de franja, número y rótulo */
+.sep-sk-kpic { padding: 10px 12px; border-left: 4px solid var(--border, #E3E9F2); border-radius: 12px; display: flex; flex-direction: column; gap: 7px; min-height: 52px; animation: none; }
+.dsh-kpis .sep-sk-kpic { min-height: 96px; border-radius: 16px; }
+/* Pastilla de filtro */
+.sep-sk-pill { flex: 1 1 150px; height: 38px; border-radius: 999px; }
+/* Botones más bajos de las tarjetas de lista */
+.sep-sk-btn--s { height: 30px; flex: 1 1 64px; border-radius: 10px; }
+.sep-sk-dot { width: 26px; height: 26px; border-radius: 50%; flex: none; }
+/* Nivel de Inglés */
+.sep-sk-panel { display: block; height: 58px; border-radius: 12px; margin-top: 12px; }
+.sep-sk-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.sep-sk-tile { height: 46px; border-radius: 10px; }
+/* Ofertas: foto 16:9 sin margen y el cuerpo con su relleno */
+.sep-sk-ofe { padding: 0; display: flex; flex-direction: column; }
+.sep-sk-ofe .sep-sk-foto { display: block; aspect-ratio: 16 / 9; border-radius: 0; }
+.sep-sk-ofe__in { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+/* Usuarios: tarjeta compacta con íconos a la derecha */
+.sep-sk-persona .sep-sk-av { width: 54px; height: 54px; }
+.sep-sk-col { display: flex; flex-direction: column; gap: 8px; flex: none; }
+/* Formularios de configuración */
+.sep-sk-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 16px; margin-top: 14px; }
+.sep-sk-campo { display: flex; flex-direction: column; gap: 7px; }
+.sep-sk-input { display: block; height: 40px; border-radius: 10px; }
+/* Dashboard: leyenda de las donas, anillo central y gráficas en canvas */
+.sep-sk-ley { display: flex; align-items: center; gap: 8px; }
+.sep-sk-ley .sep-sk-l { flex: 1; height: 10px; }
+.sep-sk.sep-sk-ring--l { width: 118px; height: 118px; background: none; border: 16px solid var(--border, #E3E9F2); animation: none; }
+.sep-sk-cargando .dsh-canvas-box,
+.sep-sk-cargando .dsh-donut-box canvas {
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--border, #E3E9F2) 25%, #F1F5FA 37%, var(--border, #E3E9F2) 63%);
+  background-size: 400% 100%; animation: sep5-brillo 1.3s ease infinite; opacity: .55;
+}
+/* Pares (2 columnas) dentro de un modal */
+.sep-sk-par { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.sep-sk-campos--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; }
+/* Secciones plegables (detalle de oferta) */
+.sep-sk-acc { display: block; height: 42px; border-radius: 12px; margin-bottom: 10px; }
+/* Mensajes del chat de notas */
+.sep-sk-msgs { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.sep-sk-msg { height: 46px; width: 62%; border-radius: 14px 14px 14px 4px; }
+.sep-sk-msg.yo { align-self: flex-end; width: 48%; border-radius: 14px 14px 4px 14px; }
+@media (max-width: 560px) {
+  .sep-sk-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sep-sk-pill { flex-basis: 120px; height: 34px; }
+}
+/* Modo oscuro (el brillo general ya lo pone css/tema-oscuro.css) */
+html[data-tema="oscuro"] .sep-sk-kpic { border-left-color: rgba(255,255,255,.10); }
+html[data-tema="oscuro"] .sep-sk.sep-sk-ring--l { background: none; border-color: rgba(255,255,255,.09); }
+@media (prefers-reduced-motion: reduce) {
+  .sep-sk-cargando .dsh-canvas-box, .sep-sk-cargando .dsh-donut-box canvas { animation: none; }
+}

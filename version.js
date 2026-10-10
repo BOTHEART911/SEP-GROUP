@@ -3,6 +3,26 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 5.5 · ENTREGA D (09/10/2026) — AUDITORÍA DE ESQUELETOS Y FILTROS.
+ *   · Toda lectura con la silueta de lo que llega, dentro de la rejilla
+ *     real (2 columnas en Comercial/Contador/Nivel, 3 en Ofertas, KPIs y
+ *     pastillas incluidos); detalle de lead y de oferta se abren al
+ *     instante con la cabecera; chat, bot y búsquedas sin "Cargando…".
+ *   · Pastillas con texto completo (nombre del asesor entero, opciones en
+ *     2 líneas) y conteos que incluyen el buscador = lo que se ve;
+ *     conteo nuevo en Seguimiento y Estadísticas.
+ *   · Corte al salir (AbortController) en Comercial, detalle, Dashboard,
+ *     Contador, Nivel, Ofertas, Configuración de ofertas, Usuarios y
+ *     Configuración. Tarjetas por tandas de 24 en Comercial, Contador,
+ *     Nivel y Verificación (Comercial pasó de 3 s a 0,3 s al abrir).
+ *   · Teléfono: el año de la cabecera ya no sale cortado ("📅 202");
+ *     el calendario pasa a ícono de fondo en PC.
+ *   Archivos: app.js, styles.css, js/contador.js, js/nivel.js,
+ *   js/ofertas.js, js/verif.js, js/visas.js, js/seguimiento.js,
+ *   js/estadisticas.js, js/temporada.js, css/temporada.css,
+ *   js/capa-5-esqueletos.js, css/capa-5-esqueletos.css, version.js,
+ *   sw.js (caché v53).
+ * ------------------------------------------------------------
  * FASE 5.5 · ENTREGA C (08/10/2026) — DASHBOARD, ESCALA SEA Y VER FORMULARIO
  * EN TARJETAS (cero tablas).
  *   · Dashboard comercial: Rendimiento por asesor y Ventas por programa
@@ -718,4 +738,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.08.12";
+var APP_VERSION = "2026.10.09.01";

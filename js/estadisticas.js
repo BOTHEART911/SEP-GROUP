@@ -335,6 +335,7 @@ function estPintarPills_() {
     const val = EST.filtros[f.k], on = val !== undefined;
     return `<button class="fpill ${on ? 'is-on' : ''}" data-estp="${f.k}" style="--fp:${f.color}" aria-haspopup="dialog" title="${esc_(f.tit)}">
       <span class="fpill__ic">${f.ic}</span><span class="fpill__label">${esc_(on ? val : f.all)}</span>
+      <span class="fpill__count">${estBase_(null).length}</span>
       <svg class="fpill__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>`;
   }).join('') + (activos ? `<button class="fpill seg-limpiar" data-est-limpiar>✕ Limpiar filtros (${activos})</button>` : '');
