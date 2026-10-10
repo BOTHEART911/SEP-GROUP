@@ -254,8 +254,13 @@
     });
     h.push('</div>');
     h.push('<div class="exp-fechas">' +
-      '<label>Desde <input type="date" id="exp-desde" value="' + esc(E.desde) + '"></label>' +
-      '<label>Hasta <input type="date" id="exp-hasta" value="' + esc(E.hasta) + '"></label></div>');
+      /* 10/10/2026 — rueda iOS (js/rueda.js) en vez del calendario del
+         navegador; #exp-desde / #exp-hasta siguen siendo los inputs que
+         se leen, con el mismo 'aaaa-mm-dd'. */
+      '<label>Desde ' + RUEDA.campo({ modo: 'fecha', valor: E.desde, attrs: 'id="exp-desde"',
+        titulo: 'Desde', vaciable: true, desde: new Date().getFullYear() - 5 }) + '</label>' +
+      '<label>Hasta ' + RUEDA.campo({ modo: 'fecha', valor: E.hasta, attrs: 'id="exp-hasta"',
+        titulo: 'Hasta', vaciable: true, desde: new Date().getFullYear() - 5 }) + '</label></div>');
 
     if (d.rangoNum) {
       h.push('<div class="exp-fechas"><label>' + esc(d.rangoNum.label) + ' desde ' +
@@ -432,8 +437,8 @@
       E.desde = iso_(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1));
       E.hasta = iso_(new Date(hoy.getFullYear(), hoy.getMonth(), 0));
     }
-    if (q('#exp-desde')) q('#exp-desde').value = E.desde;
-    if (q('#exp-hasta')) q('#exp-hasta').value = E.hasta;
+    RUEDA.fijar(q('#exp-desde'), E.desde);
+    RUEDA.fijar(q('#exp-hasta'), E.hasta);
     contar_();
   }
 

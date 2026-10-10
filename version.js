@@ -3,6 +3,16 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * RUEDAS iOS EN VEZ DE FECHAS DEL NAVEGADOR (10/10/2026 · 2).
+ *   · Pieza única js/rueda.js + css/rueda.css: fecha, hora o fecha y
+ *     hora (12 h, a. m./p. m.), con "Quitar" donde el campo puede
+ *     quedar vacío. Reemplaza los 11 campos nativos que quedaban:
+ *     Visas (Start Date, CAS, Consulado), Exportar (Desde, Hasta) y
+ *     Configuración (6 horas: acceso Comercial, silencio del bot y
+ *     envío de recordatorios). El valor que viaja no cambia.
+ *   Archivos: index.html, app.js, js/rueda.js (nuevo), css/rueda.css
+ *   (nuevo), js/visas.js, js/exportar.js, version.js, sw.js (caché v57).
+ * ------------------------------------------------------------
  * ANCHO DE PANTALLA Y AVIÓN DE ESCRITURA (10/10/2026).
  *   · Monitores grandes: las rejillas suman columnas del mismo tamaño de
  *     tarjeta del portátil (3 a 1600 px, 4 a 2080 px, 5 a 2540 px; las
@@ -774,4 +784,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.10.01";
+var APP_VERSION = "2026.10.10.02";

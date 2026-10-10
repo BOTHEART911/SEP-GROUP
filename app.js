@@ -2532,8 +2532,8 @@ function renderCfgGeneral_(){
     <div class="cfg-card">
       <h3 class="cfg-card__title">⏰ Acceso del rol COMERCIAL</h3>
       <div class="cfg-grid">
-        <div class="cfg-field"><label>Desde</label><input id="cf-COMERCIAL_ACCESO_INICIO" type="time" value="${esc_(g.COMERCIAL_ACCESO_INICIO||'')}"></div>
-        <div class="cfg-field"><label>Hasta</label><input id="cf-COMERCIAL_ACCESO_FIN" type="time" value="${esc_(g.COMERCIAL_ACCESO_FIN||'')}"></div>
+        <div class="cfg-field"><label>Desde</label>${RUEDA.campo({modo:'hora', valor:g.COMERCIAL_ACCESO_INICIO||'', attrs:'id="cf-COMERCIAL_ACCESO_INICIO"', titulo:'Acceso desde', vaciable:true})}</div>
+        <div class="cfg-field"><label>Hasta</label>${RUEDA.campo({modo:'hora', valor:g.COMERCIAL_ACCESO_FIN||'', attrs:'id="cf-COMERCIAL_ACCESO_FIN"', titulo:'Acceso hasta', vaciable:true})}</div>
       </div>
       <div class="cfg-hint">Con las dos casillas <b>vacías no hay restricción</b>: el asesor entra a cualquier hora.
         Si pones un horario, el que <b>solo</b> tenga el rol COMERCIAL no podrá iniciar sesión fuera de esa franja
@@ -2563,8 +2563,8 @@ function renderCfgGeneral_(){
         <div class="cfg-field"><label>Silencio nocturno</label>
           <select id="cf-ALERTA_BOT_SILENCIO_NOCTURNO"><option value="FALSE">Desactivado</option><option value="TRUE">Activado</option></select>
         </div>
-        <div class="cfg-field"><label>Desde</label><input id="cf-ALERTA_BOT_SILENCIO_INICIO" type="time" value="${esc_(g.ALERTA_BOT_SILENCIO_INICIO||'22:00')}"></div>
-        <div class="cfg-field"><label>Hasta</label><input id="cf-ALERTA_BOT_SILENCIO_FIN" type="time" value="${esc_(g.ALERTA_BOT_SILENCIO_FIN||'06:00')}"></div>
+        <div class="cfg-field"><label>Desde</label>${RUEDA.campo({modo:'hora', valor:g.ALERTA_BOT_SILENCIO_INICIO||'22:00', attrs:'id="cf-ALERTA_BOT_SILENCIO_INICIO"', titulo:'Silencio desde'})}</div>
+        <div class="cfg-field"><label>Hasta</label>${RUEDA.campo({modo:'hora', valor:g.ALERTA_BOT_SILENCIO_FIN||'06:00', attrs:'id="cf-ALERTA_BOT_SILENCIO_FIN"', titulo:'Silencio hasta'})}</div>
       </div>
       <div class="cfg-hint">Durante el silencio nocturno no se envían correos (la caída igual se registra y se avisa al terminar la ventana).${g.ALERTA_BOT_ULTIMA_ALERTA?` Última alerta enviada: <b>${esc_(cfgSelloHumano_(g.ALERTA_BOT_ULTIMA_ALERTA))}</b>.`:''}</div>
       <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-alertas">Guardar alertas</button></div>
@@ -2578,8 +2578,8 @@ function renderCfgGeneral_(){
           <select id="cf-RECORDATORIOS_ACTIVOS"><option value="TRUE">Encendidos</option><option value="FALSE">Apagados</option></select>
         </div>
         ${field_('cf-PROCESOS_TELEFONO','Número de Procesos (aparece en el correo)', g.PROCESOS_TELEFONO, 'text')}
-        <div class="cfg-field"><label>Enviar desde</label><input id="cf-REC_HORA_INICIO" type="time" value="${esc_(g.REC_HORA_INICIO||'07:00')}"></div>
-        <div class="cfg-field"><label>Hasta</label><input id="cf-REC_HORA_FIN" type="time" value="${esc_(g.REC_HORA_FIN||'19:00')}"></div>
+        <div class="cfg-field"><label>Enviar desde</label>${RUEDA.campo({modo:'hora', valor:g.REC_HORA_INICIO||'07:00', attrs:'id="cf-REC_HORA_INICIO"', titulo:'Enviar desde'})}</div>
+        <div class="cfg-field"><label>Hasta</label>${RUEDA.campo({modo:'hora', valor:g.REC_HORA_FIN||'19:00', attrs:'id="cf-REC_HORA_FIN"', titulo:'Enviar hasta'})}</div>
       </div>
       <div class="cfg-hint">La lista del día se arma a las 6 a. m. y se envía por lotes dentro de esta franja. Sin número de Procesos, el correo muestra el teléfono del asesor de Procesos asignado.</div>
       <div class="cfg-actions"><button class="btn btn-primary" id="cf-save-rec">Guardar recordatorios</button></div>

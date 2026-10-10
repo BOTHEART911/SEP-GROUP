@@ -298,6 +298,16 @@ function visLeida_(etiqueta, on, fecha, por, falta) {
 }
 function visInput_(r, k, tipo, etiqueta, ph) {
   const v = r[k] || '';
+  /* 10/10/2026 — fechas y citas en la rueda iOS (js/rueda.js), no en el
+     calendario del navegador. El input oculto conserva data-vk y el valor
+     de siempre ('aaaa-mm-dd' o 'aaaa-mm-dd HH:MM'), así el guardado
+     delegado de abajo no cambia. */
+  if (tipo === 'date' || tipo === 'datetime-local') {
+    return `<label class="vis-campo"><span>${esc_(etiqueta)}</span>${RUEDA.campo({
+      modo: tipo === 'date' ? 'fecha' : 'fechahora', valor: v, attrs: `data-vk="${k}"`,
+      cls: 'vis-in vis-in--fecha', titulo: etiqueta, vaciable: true, ph: 'Elegir',
+      disabled: !!VIS.ocupado[r.id] })}</label>`;
+  }
   const val = tipo === 'datetime-local' ? v.replace(' ', 'T') : v;
   const dis = VIS.ocupado[r.id] ? ' disabled' : '';
   const cls = tipo === 'text' ? 'vis-in vis-in--num' : 'vis-in vis-in--fecha';

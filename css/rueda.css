@@ -1,0 +1,32 @@
+/* ============================================================
+ * SEP GROUP — RUEDA iOS (pieza única · js/rueda.js) — 10/10/2026
+ * Las ruedas, la tarjeta y el tema oscuro vienen de .iosp-* en
+ * styles.css y css/tema-oscuro.css. Aquí solo lo propio de la pieza.
+ * ============================================================ */
+
+/* Campo visible: conserva las clases del input que reemplaza; solo se
+   asegura de verse como campo tocable y de no sacar teclado. */
+.rueda-vis { cursor: pointer; caret-color: transparent; text-overflow: ellipsis; }
+.rueda-vis::placeholder { color: var(--text-soft); opacity: .85; }
+.rueda-vis:disabled { cursor: not-allowed; }
+
+/* Fecha y hora juntas: dos filas compactas para caber en el teléfono.
+   176 px de alto con relleno de 67 px centra el primer y el último
+   valor (renglones de 42 px). */
+.rueda-pk .rueda-fila + .rueda-fila { border-top: 1px solid var(--border); margin-top: 2px; }
+.rueda-pk.rueda-dos .iosp-wheels { height: 176px; }
+.rueda-pk.rueda-dos .iosp-pad { height: 67px; }
+.rueda-pk.rueda-dos .iosp-arrow { padding: 2px 0; }
+.rueda-pk .iosp-col + .iosp-col { margin-left: 2px; }
+
+/* Quitar (solo en los campos que pueden quedar en blanco). */
+.rueda-quitar {
+  display: block; margin: 6px auto 12px; padding: 6px 16px; border: none; cursor: pointer;
+  background: transparent; color: var(--danger, #c0392b); font-weight: 700; font-size: .88rem;
+  border-radius: var(--r-pill, 999px);
+}
+.rueda-quitar:hover { background: var(--primary-soft); }
+.rueda-quitar.hidden { display: none; }
+@supports (padding: max(0px)) {
+  .rueda-pk .iosp-card { padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+}
