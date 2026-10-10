@@ -3,6 +3,12 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTES FASE 5 · ELIMINAR CON PURGA COMPLETA (09/10/2026 noche).
+ *   · Eliminar desde Comercial o Contador también borra el expediente de
+ *     las fases 4 y 5: documentos (y sus archivos), ofertas (el cupo
+ *     vuelve a la oferta), visa, verificación académica y recordatorios.
+ *   Archivos: app.js, js/contador.js, version.js, sw.js (caché v55).
+ * ------------------------------------------------------------
  * AJUSTES FASE 5 · NOTAS DE JAVIER (09/10/2026).
  *   · Documento rechazado / aprobado y felicitación de visa: el aviso
  *     sale en segundos (llamado de fondo 'avisosAhora' tras guardar),
@@ -752,4 +758,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.09.02";
+var APP_VERSION = "2026.10.09.03";

@@ -1490,7 +1490,8 @@ async function eliminarInscripcion_(r) {
     icon: 'warning',
     title: 'Eliminar definitivamente',
     html: `Se borra a <b>${esc_(r.nombres + ' ' + r.apellidos)}</b> (inscripción <b>N° ${r.n}</b>) de ` +
-          `<b>CONTADOR</b>, su ficha de <b>Nivel de Inglés</b>, su <b>formulario</b>` +
+          `<b>CONTADOR</b>, su ficha de <b>Nivel de Inglés</b>, su <b>formulario</b>, sus <b>documentos</b>, ` +
+          `sus <b>ofertas</b> (el cupo vuelve a la oferta), su <b>visa</b> y su <b>verificación académica</b>` +
           `${archivos ? ` y <b>todos sus archivos</b> de Drive` : ''}.<br><br>` +
           `<small>Esto <b>no se puede deshacer</b> y los archivos no van a la papelera. ` +
           `El lead <b>sigue en Comercial</b> con su estado y sus notas.<br>` +
@@ -1511,6 +1512,7 @@ async function eliminarInscripcion_(r) {
     const arrastre = [];
     if (out.filas.nivel) arrastre.push('su ficha de Nivel de Inglés');
     if (out.filas.formulario) arrastre.push('su formulario');
+    if (typeof purgaPartesExpediente_ === 'function') arrastre.push(...purgaPartesExpediente_(out.filas));
     Swal.fire({
       icon: fallidos ? 'warning' : 'success',
       title: 'Inscripción eliminada',

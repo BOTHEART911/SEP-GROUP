@@ -1436,6 +1436,18 @@ function comPuedePurgar_(){
   return ['DESARROLLADOR','SUPERUSUARIO','PROCESOS'].some(x => roles.indexOf(x) >= 0);
 }
 
+/* Ajustes Fase 5 (09/10/2026) — lo que la purga borró del expediente
+   de las fases 4 y 5 (documentos, ofertas, visa, verificación…). */
+function purgaPartesExpediente_(f){
+  f = f || {}; const p = [];
+  if (f.documentos)    p.push(f.documentos + ' documento(s)');
+  if (f.ofertas)       p.push(f.ofertas + ' selección(es) de oferta' + (f.cupos ? ' (' + f.cupos + ' cupo(s) devuelto(s))' : ''));
+  if (f.visas)         p.push('su ficha de Visas');
+  if (f.verificacion)  p.push('su Verificación Académica');
+  if (f.recordatorios) p.push('sus recordatorios');
+  return p;
+}
+
 /* AJUSTE 4 — Eliminar con PURGA: se lleva el lead, su ficha del
    Contador, su ficha de Nivel de Inglés, su formulario, todos sus
    archivos de Drive (definitivo, no papelera), su chat y su reunión.
@@ -1447,7 +1459,8 @@ async function eliminarComercial_(r){
     icon:'warning', title:'Eliminar definitivamente',
     html:`Se borra a <b>${esc_(r.nombres)} ${esc_(r.apellidos)}</b> y TODO su rastro: ` +
          `su lead, su ficha del <b>Contador</b>, su ficha de <b>Nivel de Inglés</b>, su ` +
-         `<b>formulario</b>, sus <b>archivos de Drive</b>, sus <b>notas del chat</b> y su reunión.<br><br>` +
+         `<b>formulario</b>, sus <b>documentos</b>, sus <b>ofertas</b> (el cupo vuelve a la oferta), su ` +
+         `<b>visa</b>, su <b>verificación académica</b>, sus <b>archivos de Drive</b>, sus <b>notas del chat</b> y su reunión.<br><br>` +
          `<small>Esto <b>no se puede deshacer</b> y los archivos no van a la papelera. ` +
          `Lo único que se conserva es el registro en <b>AUDITORÍA</b>.<br>` +
          `Escribe el ID <b>${esc_(r.id)}</b> para confirmar.</small>`,
@@ -1467,6 +1480,8 @@ async function eliminarComercial_(r){
     if (out.filas.nivel)      partes.push('su ficha de Nivel de Inglés');
     if (out.filas.formulario) partes.push('su formulario');
     if (out.filas.chat)       partes.push(out.filas.chat + ' mensaje(s) del chat');
+    /* Ajustes Fase 5 — expediente de las fases 4 y 5. */
+    partes.push(...purgaPartesExpediente_(out.filas));
     const fallidos = (out.archivos && out.archivos.fallidos) ? out.archivos.fallidos.length : 0;
     Swal.fire({ icon: fallidos ? 'warning' : 'success', title:'Eliminado',
       html: `Se borró el lead${partes.length ? ', ' + partes.join(', ') : ''} y ` +
