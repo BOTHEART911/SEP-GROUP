@@ -30,9 +30,9 @@
  * y los avisos, en español.
  *
  * Usa de app.js: apiGet, apiPost, showView, esc_, currentUser,
- *   tengoRol_, driveImg_. De js/contador.js: la rueda de fechas
- *   (CPICK) — si ese archivo no cargó, se cae a un campo de fecha
- *   normal y la pantalla sigue funcionando.
+ *   tengoRol_, driveImg_. De js/rueda.js: la rueda de fechas
+ *   (RUEDA.abrir) — si ese archivo no cargó, se cae a pedir la fecha
+ *   escrita y la pantalla sigue funcionando.
  * ============================================================ */
 
 const OFE = {
@@ -653,37 +653,26 @@ function ofeEngancharForm_() {
   });
 }
 
-/* Rueda de fechas: la misma del Contador, pero con años del actual en
-   adelante (las ofertas son del verano que viene). Si contador.js no
-   está cargado, se cae a un input de fecha del navegador. */
+/* Rueda de fechas: la pieza única js/rueda.js, con años del actual en
+   adelante (las ofertas son del verano que viene). Abre en la fecha
+   guardada si su año cabe; si no, en hoy. Si rueda.js no cargó, se cae
+   a pedir la fecha escrita. */
 const OFE_ANIOS_ADELANTE = 2;
 
 function abrirRuedaOferta_(valorISO, onOk) {
-  if (typeof CPICK === 'undefined' || typeof cpickBuild_ !== 'function' ||
-      !document.querySelector('#conta-picker')) {
+  if (typeof RUEDA === 'undefined' || !RUEDA.abrir) {
     const v = window.prompt('Fecha (aaaa-mm-dd)', valorISO || '');
     if (v && /^\d{4}-\d{2}-\d{2}$/.test(v.trim())) onOk(v.trim());
     return;
   }
-  CPICK.onOk = onOk;
-  const hoy = new Date();
-  const base = hoy.getFullYear();
-  CPICK.anios = [];
-  for (let a = base; a <= base + OFE_ANIOS_ADELANTE; a++) CPICK.anios.push(a);
-
-  let d = valorISO ? new Date(valorISO + 'T12:00:00') : null;
-  if (!d || isNaN(d.getTime())) d = hoy;
-  let anioPos = CPICK.anios.indexOf(d.getFullYear());
-  if (anioPos < 0) { anioPos = 0; d = hoy; }
-
-  if (typeof cpickTitulo_ === 'function') cpickTitulo_('Fecha');
-  document.querySelector('#conta-picker').classList.remove('hidden');
-  const total = cpickDiasMes_(d.getMonth(), CPICK.anios[anioPos]);
-  CPICK.dias = []; for (let i = 1; i <= total; i++) CPICK.dias.push(i);
-  cpickBuild_(document.querySelector('#cpick-dia'), CPICK.dias.map(String), d.getDate() - 1);
-  cpickBuild_(document.querySelector('#cpick-mes'),
-    CPICK_MESES.map(m => m.charAt(0).toUpperCase() + m.slice(1)), d.getMonth(), cpickRebuildDias_);
-  cpickBuild_(document.querySelector('#cpick-anio'), CPICK.anios.map(String), anioPos, cpickRebuildDias_);
+  const base = new Date().getFullYear();
+  const hasta = base + OFE_ANIOS_ADELANTE;
+  let v = String(valorISO || '').trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || +v.slice(0, 4) < base || +v.slice(0, 4) > hasta) v = '';
+  RUEDA.abrir({
+    modo: 'fecha', titulo: 'Fecha', desde: base, hasta, valor: v,
+    onOk: iso => { if (iso) onOk(iso); }
+  });
 }
 
 /* Lee la pantalla y la vuelca en OFE.edit.datos. Se llama antes de

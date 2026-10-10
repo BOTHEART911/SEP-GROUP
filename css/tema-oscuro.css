@@ -201,8 +201,7 @@ html[data-tema="oscuro"] option { background: #1a2431; color: #e9eef5; }
 html[data-tema="oscuro"] input[type="color"] { background: var(--bg-soft); }
 
 /* ── 5. Rueda de fecha (iOS picker) ────────────────────────── */
-html[data-tema="oscuro"] .iosp-card,
-html[data-tema="oscuro"] .conta-picker .iosp-card {
+html[data-tema="oscuro"] .iosp-card {
   background: linear-gradient(180deg, #1e2937, #151d28);
   color: var(--text-main);
 }

@@ -24,9 +24,8 @@
  * esta vista crece con las fases siguientes.
  *
  * Usa de app.js: apiGet, apiPost, showView, esc_, currentUser,
- * abrirRuedaFecha_ (rueda iOS de día/mes con año automático).
- * La rueda de FECHA DE NACIMIENTO es propia: necesita columna de
- * año y fechas pasadas, cosa que la rueda de la agenda no hace.
+ * abrirRuedaFecha_ (fechas máximas). Todas las ruedas salen de la
+ * pieza única js/rueda.js (RUEDA.abrir).
  * ============================================================ */
 
 const CONTA = {
@@ -489,122 +488,75 @@ function cerrarVisorConta_() {
 }
 
 /* ============================================================
-   RUEDA DE FECHA DE NACIMIENTO (día · mes · AÑO)
+   RUEDAS DE FECHA DEL CONTADOR (10/10/2026 · 2)
    ============================================================
-   La rueda de la agenda tiene el año fijo y no deja fechas
-   pasadas; para el nacimiento hace falta lo contrario. */
-const CPICK = { onOk: null, dias: [], meses: [], anios: [], H: 42 };
+   Antes eran una rueda propia (CPICK, #conta-picker); ahora usan la
+   pieza única js/rueda.js con las mismas reglas:
+     · Nacimiento: solo años que dan una edad del catálogo (17–28 por
+       defecto), arranca el 1 de enero del año más reciente.
+     · Inscripción y pago de oferta: fechas ya ocurridas — año actual y
+       los CONTA_INSCRIP_ANIOS anteriores (ajuste 25/08), abre en hoy.
+   onOk(iso 'aaaa-mm-dd', texto[, edad]) igual que siempre. */
 const CPICK_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const CONTA_INSCRIP_ANIOS = 3;
 
-function cpickBuild_(colEl, items, initIdx, onSettle) {
-  colEl.innerHTML = '<div class="iosp-pad"></div>' +
-    items.map((t, i) => `<div class="iosp-item" data-i="${i}">${t}</div>`).join('') +
-    '<div class="iosp-pad"></div>';
-  colEl.scrollTop = Math.max(0, initIdx) * CPICK.H;
-  cpickMarcar_(colEl);
-  let to = null;
-  colEl.onscroll = () => {
-    cpickMarcar_(colEl);
-    if (to) clearTimeout(to);
-    to = setTimeout(() => {
-      const i = cpickSel_(colEl);
-      colEl.scrollTo({ top: i * CPICK.H, behavior: 'smooth' });
-      if (onSettle) onSettle(i);
-    }, 90);
-  };
-  colEl.querySelectorAll('.iosp-item').forEach(el => {
-    el.addEventListener('click', () => {
-      const i = +el.dataset.i;
-      colEl.scrollTop = i * CPICK.H;
-      cpickMarcar_(colEl);
-      if (onSettle) onSettle(i);
-    });
-  });
+function cpickTexto_(iso) {
+  const [a, m, d] = iso.split('-').map(Number);
+  return d + ' de ' + CPICK_MESES[m - 1] + ' de ' + a;
 }
-function cpickSel_(colEl) { return Math.max(0, Math.round(colEl.scrollTop / CPICK.H)); }
-function cpickMarcar_(colEl) {
-  const i = cpickSel_(colEl);
-  colEl.querySelectorAll('.iosp-item').forEach(el => el.classList.toggle('sel', +el.dataset.i === i));
+/* 'aaaa-mm-dd' o 'dd/mm/aaaa' (como lo guarda la hoja a mano) → 'aaaa-mm-dd'. */
+function cpickIso_(valorISO) {
+  const v = String(valorISO || '').trim();
+  let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v);
+  if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  return '';
 }
-function cpickDiasMes_(mesIdx, anio) { return new Date(anio, mesIdx + 1, 0).getDate(); }
-function cpickRebuildDias_() {
-  const mes  = cpickSel_(document.querySelector('#cpick-mes'));
-  const anio = CPICK.anios[Math.min(cpickSel_(document.querySelector('#cpick-anio')), CPICK.anios.length - 1)];
-  const total = cpickDiasMes_(mes, anio);
-  const pos = Math.min(cpickSel_(document.querySelector('#cpick-dia')), total - 1);
-  CPICK.dias = []; for (let d = 1; d <= total; d++) CPICK.dias.push(d);
-  cpickBuild_(document.querySelector('#cpick-dia'), CPICK.dias.map(String), Math.max(0, pos));
+/* Un valor solo se respeta si su año cabe en la rueda. */
+function cpickValor_(valorISO, desde, hasta) {
+  const v = cpickIso_(valorISO);
+  if (!v) return '';
+  const a = +v.slice(0, 4);
+  return (a >= desde && a <= hasta) ? v : '';
 }
 
-/* Años admitidos: los que dan una edad entre el mínimo y el máximo. */
 function abrirRuedaNacimiento_(valorISO, onOk) {
-  CPICK.onOk = onOk;
   const min = CONTA.catalogo?.edad?.min || 17;
   const max = CONTA.catalogo?.edad?.max || 28;
-  const hoy = new Date();
-  CPICK.anios = [];
-  for (let a = hoy.getFullYear() - max; a <= hoy.getFullYear() - min; a++) CPICK.anios.push(a);
-
-  let d = valorISO ? new Date(valorISO + 'T12:00:00') : null;
-  if (!d || isNaN(d.getTime())) d = new Date(CPICK.anios[CPICK.anios.length - 1], 0, 1);
-  let anioPos = CPICK.anios.indexOf(d.getFullYear());
-  if (anioPos < 0) anioPos = CPICK.anios.length - 1;
-
-  cpickTitulo_('Nacimiento');
-  document.querySelector('#conta-picker').classList.remove('hidden');
-  const total = cpickDiasMes_(d.getMonth(), CPICK.anios[anioPos]);
-  CPICK.dias = []; for (let i = 1; i <= total; i++) CPICK.dias.push(i);
-
-  cpickBuild_(document.querySelector('#cpick-dia'), CPICK.dias.map(String), d.getDate() - 1);
-  cpickBuild_(document.querySelector('#cpick-mes'),
-    CPICK_MESES.map(m => m.charAt(0).toUpperCase() + m.slice(1)), d.getMonth(), cpickRebuildDias_);
-  cpickBuild_(document.querySelector('#cpick-anio'), CPICK.anios.map(String), anioPos, cpickRebuildDias_);
+  const y = new Date().getFullYear();
+  const desde = y - max, hasta = y - min;
+  /* Año fuera del rango: se conserva el día y el mes en el año más reciente. */
+  let v = cpickIso_(valorISO);
+  if (v && !cpickValor_(v, desde, hasta)) v = hasta + v.slice(4);
+  RUEDA.abrir({
+    modo: 'fecha', titulo: 'Nacimiento', desde, hasta,
+    valor: v, fechaDef: hasta + '-01-01',
+    onOk: iso => {
+      if (!iso || !onOk) return;
+      const [a, m, d] = iso.split('-').map(Number);
+      const hoy = new Date();
+      let edad = hoy.getFullYear() - a;
+      if (hoy.getMonth() < m - 1 || (hoy.getMonth() === m - 1 && hoy.getDate() < d)) edad--;
+      onOk(iso, cpickTexto_(iso), edad);
+    }
+  });
 }
-
-/* AJUSTE 25/08/2026 — la misma rueda, para la FECHA DE INSCRIPCIÓN.
-   Se usa CPICK y no abrirRuedaFecha_ de app.js porque aquélla es la de
-   las fechas MÁXIMAS de pago: tiene cota inferior en el día de hoy y no
-   deja elegir fechas pasadas, que es justo lo que aquí hace falta para
-   montar procesos atrasados.
-   El año arranca SIEMPRE en el actual; la columna ofrece además los
-   anteriores (CONTA_INSCRIP_ANIOS) por si el pago es viejo. */
-const CONTA_INSCRIP_ANIOS = 3;
 
 function abrirRuedaInscripcion_(valorISO, onOk) {
   return abrirRuedaFechaConta_(valorISO, onOk, 'Inscripción');
 }
 
-/* La misma rueda para cualquier fecha ya ocurrida del modal
-   (inscripción y pago de oferta): año actual por defecto, sin cota
-   inferior en hoy. El rótulo lo pone quien la abre. */
+/* Cualquier fecha ya ocurrida del modal (inscripción y pago de oferta):
+   año actual por defecto, sin cota inferior en hoy. */
 function abrirRuedaFechaConta_(valorISO, onOk, titulo) {
-  CPICK.onOk = onOk;
-  const hoy = new Date();
-  const base = hoy.getFullYear();
-  CPICK.anios = [];
-  for (let a = base - CONTA_INSCRIP_ANIOS; a <= base; a++) CPICK.anios.push(a);
-
-  /* Sin fecha guardada, la rueda abre en HOY. */
-  let d = valorISO ? new Date(valorISO + 'T12:00:00') : null;
-  if (!d || isNaN(d.getTime())) d = hoy;
-  let anioPos = CPICK.anios.indexOf(d.getFullYear());
-  if (anioPos < 0) { anioPos = CPICK.anios.length - 1; d = hoy; }
-
-  cpickTitulo_(titulo || 'Inscripción');
-  document.querySelector('#conta-picker').classList.remove('hidden');
-  const total = cpickDiasMes_(d.getMonth(), CPICK.anios[anioPos]);
-  CPICK.dias = []; for (let i = 1; i <= total; i++) CPICK.dias.push(i);
-
-  cpickBuild_(document.querySelector('#cpick-dia'), CPICK.dias.map(String), d.getDate() - 1);
-  cpickBuild_(document.querySelector('#cpick-mes'),
-    CPICK_MESES.map(m => m.charAt(0).toUpperCase() + m.slice(1)), d.getMonth(), cpickRebuildDias_);
-  cpickBuild_(document.querySelector('#cpick-anio'), CPICK.anios.map(String), anioPos, cpickRebuildDias_);
-}
-
-/* El rótulo de la rueda es uno solo en el HTML: lo pone quien la abre. */
-function cpickTitulo_(texto) {
-  const el = document.querySelector('#conta-picker .iosp-year');
-  if (el) el.textContent = texto;
+  const y = new Date().getFullYear();
+  const desde = y - CONTA_INSCRIP_ANIOS, hasta = y;
+  RUEDA.abrir({
+    modo: 'fecha', titulo: titulo || 'Inscripción', desde, hasta,
+    valor: cpickValor_(valorISO, desde, hasta),
+    onOk: iso => { if (iso && onOk) onOk(iso, cpickTexto_(iso)); }
+  });
 }
 
 /* ============================================================
@@ -1538,7 +1490,7 @@ const FBCO = { ref: null, primed: false, refrescoTimer: null, pollTimer: null, c
 /* Con un modal/visor/rueda abierto NO se repinta: se reintenta luego. */
 function contaOverlayAbierto_() {
   const abierto = sel => { const e = document.querySelector(sel); return !!e && !e.classList.contains('hidden'); };
-  if (abierto('#modal-contador') || abierto('#conta-visor') || abierto('#conta-picker') || abierto('#conta-fsheet')) return true;
+  if (abierto('#modal-contador') || abierto('#conta-visor') || abierto('#rueda-pk') || abierto('#conta-fsheet')) return true;
   return !!(window.Swal && Swal.isVisible && Swal.isVisible());
 }
 
@@ -1776,25 +1728,4 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#conta-visor')?.addEventListener('click', e => {
     if (e.target && e.target.id === 'conta-visor') cerrarVisorConta_();
   });
-  document.querySelector('#cpick-cancel')?.addEventListener('click', () =>
-    document.querySelector('#conta-picker').classList.add('hidden'));
-  document.querySelector('#cpick-ok')?.addEventListener('click', () => {
-    const dia  = CPICK.dias[Math.min(cpickSel_(document.querySelector('#cpick-dia')), CPICK.dias.length - 1)];
-    const mes  = cpickSel_(document.querySelector('#cpick-mes'));
-    const anio = CPICK.anios[Math.min(cpickSel_(document.querySelector('#cpick-anio')), CPICK.anios.length - 1)];
-    document.querySelector('#conta-picker').classList.add('hidden');
-    const pad = n => String(n).padStart(2, '0');
-    const iso = anio + '-' + pad(mes + 1) + '-' + pad(dia);
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - anio;
-    if (hoy.getMonth() < mes || (hoy.getMonth() === mes && hoy.getDate() < dia)) edad--;
-    if (CPICK.onOk) CPICK.onOk(iso, dia + ' de ' + CPICK_MESES[mes] + ' de ' + anio, edad);
-  });
-  document.querySelectorAll('.cpick-arrow').forEach(b => b.addEventListener('click', () => {
-    const col = document.querySelector('#' + b.dataset.col); if (!col) return;
-    const n = col.querySelectorAll('.iosp-item').length;
-    const i = Math.min(Math.max(cpickSel_(col) + (+b.dataset.d), 0), n - 1);
-    col.scrollTop = i * CPICK.H; cpickMarcar_(col);
-    if (b.dataset.col !== 'cpick-dia') cpickRebuildDias_();
-  }));
 });

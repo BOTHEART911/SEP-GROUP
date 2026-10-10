@@ -3544,180 +3544,60 @@ function renderCfgAvanzado_(){
 }
 
 /* ============================================================
- * SELECTOR FECHA/HORA ESTILO iOS (ruedas; año fijo al actual)
+ * RUEDA DE LA AGENDA Y DE LAS FECHAS MÁXIMAS (10/10/2026 · 2)
+ * ------------------------------------------------------------
+ * Antes era una rueda propia (IOSP, #ios-picker); ahora es la pieza
+ * única js/rueda.js con las mismas reglas:
+ *   · Agenda (fecha y hora): sin días pasados, año en curso (sin
+ *     columna de año), hora en bloques de 30 min de 6:00 a. m. a
+ *     8:00 p. m. (Fase 24). Devuelve 'aaaa-mm-ddTHH:MM'.
+ *   · soloFecha (fechas máximas de pago, agregar día de la agenda):
+ *     sin días pasados, columna de año con el actual y el siguiente
+ *     (ajuste 11/08). Devuelve 'aaaa-mm-dd'.
+ * onOk(iso, texto) igual que siempre.
  * ============================================================ */
-const IOSP = { onOk:null, year:new Date().getFullYear(),
-               anioBase:new Date().getFullYear(), anios:[new Date().getFullYear()] };
 const IOSP_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-const IOSP_HORAS = []; for (let h=6; h<=20; h++) IOSP_HORAS.push(h); // bloques exactos 6 AM–8 PM (chips de la agenda)
-/* Fase 24 — El asesor programa asesorías de 30 min: la rueda de la hora
-   avanza de media en media (6:00 AM … 8:00 PM). Se guarda en minutos
-   desde medianoche. Los chips de Configuración › Agenda siguen siendo
-   en punto (usan IOSP_HORAS / iospHoraLabel_). */
-const IOSP_SLOTS = []; for (let h=6; h<=20; h++){ IOSP_SLOTS.push(h*60); if (h<20) IOSP_SLOTS.push(h*60+30); }
-const IOSP_H = 42;
+/* Chips de Configuración › Agenda (en punto, 6 AM–8 PM). */
 function iospHoraLabel_(h){ const ap = h>=12?'PM':'AM'; let hh=h%12; if(hh===0)hh=12; return hh+':00 '+ap; }
 function iospSlotLabel_(m){
   const h = Math.floor(m/60), mi = m%60;
   const ap = h>=12?'PM':'AM'; let hh = h%12; if(hh===0) hh=12;
   return hh+':'+String(mi).padStart(2,'0')+' '+ap;
 }
-function iospDiasMes_(mesIdx, year){ return new Date(year, mesIdx+1, 0).getDate(); }
-
-function buildCol_(colEl, items, initIdx, onSettle){
-  colEl.innerHTML = '<div class="iosp-pad"></div>' +
-    items.map((t,i)=>`<div class="iosp-item" data-i="${i}">${t}</div>`).join('') +
-    '<div class="iosp-pad"></div>';
-  colEl.scrollTop = Math.max(0, initIdx)*IOSP_H;
-  marcarSel_(colEl);
-  let to=null;
-  colEl.onscroll = ()=>{ marcarSel_(colEl); if(to)clearTimeout(to); to=setTimeout(()=>{ const i=selCol_(colEl); colEl.scrollTo({top:i*IOSP_H, behavior:'smooth'}); if (onSettle) onSettle(i); }, 90); };
-  // Fase 22 — PC: clic directo en cualquier fila para seleccionarla
-  // (además del arrastre en móvil). Deja la fila centrada al instante.
-  colEl.querySelectorAll('.iosp-item').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      const i = +el.dataset.i;
-      colEl.scrollTop = i*IOSP_H;   // instantáneo → lectura fiable
-      marcarSel_(colEl);
-      if (onSettle) onSettle(i);
-    });
-  });
-}
-/* Fase 22 — Mueve una columna del picker ±1 (flechas ▲▼ para PC). */
-function iospNudge_(colId, delta){
-  const colEl = $('#'+colId); if (!colEl) return;
-  const n = colEl.querySelectorAll('.iosp-item').length;
-  let i = Math.min(Math.max(selCol_(colEl)+delta, 0), n-1);
-  colEl.scrollTop = i*IOSP_H;
-  marcarSel_(colEl);
-  if (colId==='iosp-mes')  iospRebuildDias_(i);  // el mes recalcula días
-  if (colId==='iosp-anio') iospSetAnio_(i);     // el año rehace meses y días
-}
-/* Reconstruye la columna de días para el mes en la posición dada. */
-function iospRebuildDias_(mesPos){
-  const nuevoMes = IOSP.meses[Math.min(mesPos, IOSP.meses.length-1)];
-  IOSP.dias = iospDiasArr_(nuevoMes);
-  const curPos = Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1);
-  buildCol_($('#iosp-dia'), IOSP.dias.map(String), Math.max(0, curPos));
-}
-function selCol_(colEl){ return Math.max(0, Math.round(colEl.scrollTop / IOSP_H)); }
-function marcarSel_(colEl){ const i=selCol_(colEl); colEl.querySelectorAll('.iosp-item').forEach(el=> el.classList.toggle('sel', +el.dataset.i===i)); }
-
-/* Días disponibles del mes elegido. Si es el MES ACTUAL del AÑO ACTUAL,
-   arranca en el día de HOY (Bug A: no se pueden elegir días pasados).
-   En el año siguiente no hay cota: todos los meses y días valen. */
-function iospDiasArr_(mesIdx){
-  const total = iospDiasMes_(mesIdx, IOSP.year);
-  const desde = (IOSP.year === IOSP.anioBase && mesIdx === IOSP.minMes) ? IOSP.minDia : 1;
-  const arr = []; for (let d=desde; d<=total; d++) arr.push(d);
-  return arr;
-}
-
-/* Meses disponibles para el año elegido: en el año en curso, del mes de
-   hoy a diciembre; en el siguiente, los doce. */
-function iospMesesArr_(anio){
-  const arr = []; for (let m = (anio === IOSP.anioBase ? IOSP.minMes : 0); m<=11; m++) arr.push(m);
-  return arr;
-}
-
-/* AJUSTE 11/08 — la rueda de FECHAS MÁXIMAS lleva columna de AÑO (el
-   actual y el siguiente). Al cambiar de año hay que rehacer meses y días,
-   porque las cotas de "hoy en adelante" solo aplican al año en curso.
-   La rueda de la AGENDA no muestra esta columna: sigue igual que antes. */
-function iospSetAnio_(pos){
-  IOSP.year = IOSP.anios[Math.min(Math.max(pos,0), IOSP.anios.length-1)];
-  const yEl = $('#iosp-year'); if (yEl) yEl.textContent = IOSP.year;
-  const mesActual = IOSP.meses[Math.min(selCol_($('#iosp-mes')), IOSP.meses.length-1)];
-  IOSP.meses = iospMesesArr_(IOSP.year);
-  let mesPos = IOSP.meses.indexOf(mesActual);
-  if (mesPos < 0) mesPos = 0;
-  buildCol_($('#iosp-mes'), IOSP.meses.map(m=>IOSP_MESES[m].charAt(0).toUpperCase()+IOSP_MESES[m].slice(1)),
-            mesPos, (pos2)=> iospRebuildDias_(pos2));
-  iospRebuildDias_(mesPos);
-}
-
-function abrirRuedaFecha_(valorISO, onOk, opts){
-  IOSP.onOk = onOk;
-  IOSP.soloFecha = !!(opts && opts.soloFecha);
-  const ahora = new Date();
-  IOSP.anioBase = ahora.getFullYear();
-  IOSP.anios  = [IOSP.anioBase, IOSP.anioBase + 1];   // AJUSTE 11/08 — año actual y siguiente
-  IOSP.year   = IOSP.anioBase;
-  IOSP.minMes = ahora.getMonth();   // Bug A: cota inferior = mes/día de hoy
-  IOSP.minDia = ahora.getDate();
-  $('#iosp-hora').style.display = IOSP.soloFecha ? 'none' : '';
-  $$('.iosp-arrow-hora').forEach(b=> b.style.display = IOSP.soloFecha ? 'none' : '');
-  /* La columna de año SOLO sale en las fechas máximas (soloFecha). En la
-     agenda estorba: allí el año siempre es el actual. */
-  $('#iosp-anio').style.display = IOSP.soloFecha ? '' : 'none';
-  $$('.iosp-arrow-anio').forEach(b=> b.style.display = IOSP.soloFecha ? '' : 'none');
-
-  let dRef = valorISO ? new Date(valorISO) : ahora;
-  if (isNaN(dRef.getTime())) dRef = ahora;
-  /* Con columna de año, una fecha guardada del año siguiente se respeta. */
-  let anioPos = 0;
-  if (IOSP.soloFecha){
-    const p = IOSP.anios.indexOf(dRef.getFullYear());
-    if (p >= 0) anioPos = p;
-    IOSP.year = IOSP.anios[anioPos];
-  }
-  let mesIdx = (dRef.getFullYear() === IOSP.year) ? dRef.getMonth() : IOSP.minMes;
-  if (IOSP.year === IOSP.anioBase && mesIdx < IOSP.minMes) mesIdx = IOSP.minMes;   // no meses pasados
-  let dia = dRef.getDate();
-  if (IOSP.year === IOSP.anioBase && mesIdx === IOSP.minMes && dia < IOSP.minDia) dia = IOSP.minDia;   // no días pasados
-  $('#iosp-year').textContent = IOSP.year;
-  // Fase 24 — slot de 30 min (minutos desde medianoche), redondeado al más cercano
-  let slot = dRef.getHours()*60 + (dRef.getMinutes() >= 30 ? 30 : 0);
-  if (slot < 6*60) slot = 9*60;
-  if (slot > 20*60) slot = 20*60;
-  const horaIdx = Math.max(0, IOSP_SLOTS.indexOf(slot) >= 0 ? IOSP_SLOTS.indexOf(slot) : IOSP_SLOTS.indexOf(9*60));
-
-  // Meses disponibles: del mes actual a diciembre en el año en curso (Bug A);
-  // los doce si se eligió el año siguiente.
-  IOSP.meses = iospMesesArr_(IOSP.year);
-  const mesPos = Math.max(0, IOSP.meses.indexOf(mesIdx));
-  IOSP.dias = iospDiasArr_(mesIdx);
-  const diaPos = Math.max(0, IOSP.dias.indexOf(dia));
-
-  // IMPORTANTE (Bug B): mostrar el picker ANTES de construir las columnas.
-  // Con el contenedor en display:none, asignar scrollTop NO surte efecto,
-  // así que la rueda quedaba en el índice 0 (la hora salía siempre 6:00 AM).
-  $('#ios-picker').classList.remove('hidden');
-
-  buildCol_($('#iosp-dia'), IOSP.dias.map(String), diaPos);
-  buildCol_($('#iosp-mes'), IOSP.meses.map(m=>IOSP_MESES[m].charAt(0).toUpperCase()+IOSP_MESES[m].slice(1)), mesPos, (pos)=>{
-    // Al cambiar el mes, recalcula los días disponibles (con cota de hoy).
-    iospRebuildDias_(pos);
-  });
-  buildCol_($('#iosp-anio'), IOSP.anios.map(String), anioPos, (pos)=> iospSetAnio_(pos));
-  buildCol_($('#iosp-hora'), IOSP_SLOTS.map(iospSlotLabel_), horaIdx);
-}
-
-$('#iosp-cancel')?.addEventListener('click', ()=> $('#ios-picker').classList.add('hidden'));
-/* Fase 22 — flechas ▲▼ del picker (PC) */
-$$('.iosp-arrow').forEach(b=> b.addEventListener('click', ()=> iospNudge_(b.dataset.col, +b.dataset.d)));
-$('#iosp-ok')?.addEventListener('click', ()=>{
-  // Leer TODAS las columnas ANTES de ocultar el picker: en un contenedor
-  // display:none, scrollTop vale 0. Antes la HORA se leía después de
-  // ocultar → siempre salía 6:00 AM (índice 0). Por eso mes/día salían
-  // bien y la hora no.
-  const mesIdx  = IOSP.meses[Math.min(selCol_($('#iosp-mes')), IOSP.meses.length-1)];
-  const dia     = IOSP.dias[Math.min(selCol_($('#iosp-dia')), IOSP.dias.length-1)];
-  /* El año se lee de su columna (fechas máximas); en la agenda esa columna
-     está oculta y IOSP.year sigue siendo el año en curso. */
-  if (IOSP.soloFecha) IOSP.year = IOSP.anios[Math.min(selCol_($('#iosp-anio')), IOSP.anios.length-1)];
-  const slotMin = IOSP_SLOTS[Math.min(selCol_($('#iosp-hora')), IOSP_SLOTS.length-1)];   // Fase 24
+/* Valor guardado → 'aaaa-mm-dd HH:MM' local. Lo que ya viene local
+   ('aaaa-mm-dd', 'aaaa-mm-dd 9:00:00', 'aaaa-mm-ddT16:30') se lee tal
+   cual: new Date() toma la fecha sola en UTC (en Bogotá daba el día
+   anterior) y Safari no entiende el espacio. Un ISO con zona (Z o
+   ±hh:mm) sí pasa por Date. Sin valor o ilegible: ahora. */
+function iospLocal_(valor){
   const pad = n => String(n).padStart(2,'0');
-  $('#ios-picker').classList.add('hidden');
-  if (IOSP.soloFecha){
-    const iso = `${IOSP.year}-${pad(mesIdx+1)}-${pad(dia)}`;
-    if (IOSP.onOk) IOSP.onOk(iso, `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year}`);
+  const v = String(valor || '').trim();
+  const m = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?)?$/.exec(v);
+  if (m) return m[1] + ' ' + (m[2] != null ? pad(+m[2]) + ':' + m[3] : '09:00');
+  let d = v ? new Date(v) : new Date();
+  if (isNaN(d.getTime())) d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function abrirRuedaFecha_(valorISO, onOk, opts){
+  const soloFecha = !!(opts && opts.soloFecha);
+  const pad = n => String(n).padStart(2,'0');
+  const hoy = new Date(), y = hoy.getFullYear();
+  const hoyIso = `${y}-${pad(hoy.getMonth()+1)}-${pad(hoy.getDate())}`;
+  const textoF = f => { const [a,m,d] = f.split('-').map(Number); return `${d} de ${IOSP_MESES[m-1]} de ${a}`; };
+  if (soloFecha){
+    RUEDA.abrir({ modo:'fecha', valor: iospLocal_(valorISO).slice(0,10), min: hoyIso, desde: y, hasta: y + 1,
+      onOk: v => { if (v && onOk) onOk(v, textoF(v)); } });
     return;
   }
-  const iso = `${IOSP.year}-${pad(mesIdx+1)}-${pad(dia)}T${pad(Math.floor(slotMin/60))}:${pad(slotMin%60)}`;
-  const texto = `${dia} de ${IOSP_MESES[mesIdx]} de ${IOSP.year} · ${iospSlotLabel_(slotMin)}`;
-  if (IOSP.onOk) IOSP.onOk(iso, texto);
-});
+  RUEDA.abrir({ modo:'fechahora', valor: iospLocal_(valorISO), min: hoyIso, conAnio:false,
+    horaDesde: 6*60, horaHasta: 20*60, paso: 30, horaDef: 9*60,
+    onOk: v => {
+      if (!v || !onOk) return;
+      const [f, h] = v.split(' ');
+      const [hh, mm] = h.split(':').map(Number);
+      onOk(`${f}T${h}`, `${textoF(f)} · ${iospSlotLabel_(hh*60+mm)}`);
+    } });
+}
 
 /* Botón de agenda en el modal Comercial */
 $('#f-agenda-btn')?.addEventListener('click', ()=>{

@@ -3,6 +3,21 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * UNA SOLA RUEDA EN TODA LA APP (10/10/2026 · 3).
+ *   · Las tres ruedas viejas (IOSP de la agenda en app.js, CPICK del
+ *     Contador y la de Ofertas) pasan a la pieza única js/rueda.js, que
+ *     suma RUEDA.abrir con fecha mínima/máxima, rango de años, columna
+ *     de año opcional y hora en bloques (desde/hasta/paso). Reglas
+ *     intactas: agenda sin días pasados y en bloques de 30 min de
+ *     6:00 a. m. a 8:00 p. m.; fechas máximas desde hoy con el año
+ *     siguiente; nacimiento con años por edad (17–28 del catálogo);
+ *     inscripción y pago de oferta con 3 años atrás; ofertas, año actual
+ *     y 2 más. El valor que viaja no cambia. Se borra el HTML de
+ *     #ios-picker y #conta-picker y su código. Además lee bien las
+ *     fechas que la hoja guarda como dd/mm/aaaa o 'aaaa-mm-dd 9:00:00'.
+ *   Archivos: index.html, app.js, js/rueda.js, js/contador.js,
+ *   js/ofertas.js, css/tema-oscuro.css, version.js, sw.js (caché v58).
+ * ------------------------------------------------------------
  * RUEDAS iOS EN VEZ DE FECHAS DEL NAVEGADOR (10/10/2026 · 2).
  *   · Pieza única js/rueda.js + css/rueda.css: fecha, hora o fecha y
  *     hora (12 h, a. m./p. m.), con "Quitar" donde el campo puede
@@ -784,4 +799,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.10.02";
+var APP_VERSION = "2026.10.10.03";
