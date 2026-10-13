@@ -2056,6 +2056,12 @@ function procesoChipHtml_(proceso, retirado){
    operativo de debajo (`estPrev`). No confundir con el estado del lead
    de Comercial. */
 const EST_PART = { porClave: {} };
+/* AJUSTE 13/10/2026 (Javier) — el Aprobado con condición sin curso
+   (fila con estCur) no ve "Pagar la oferta": ve la acción del curso
+   (accionCurso del catálogo). Sin catálogo nuevo, queda como antes. */
+function estAccionTxt_(r, e){
+  return (r && r.estCur && e && e.accionCurso) ? e.accionCurso : (e ? e.accion : '');
+}
 function estPartCargar_(lista){
   if (!Array.isArray(lista) || !lista.length) return;
   const m = {}; lista.forEach(e => { m[e.clave] = e; }); EST_PART.porClave = m;
@@ -2067,7 +2073,7 @@ function estPartHtml_(r){
   return `<div class="estp" style="--estp:${esc_(e.color)}">
       <span class="estp__chip" title="${esc_(e.activa)}">${e.ic} ${esc_(e.nombre)}</span>
       ${p ? `<span class="estp__prev" title="Punto operativo al que vuelve">${r.est === 'INACTIVO' ? 'vuelve a' : 'estaba en'} ${p.ic} ${esc_(p.nombre)}</span>` : ''}
-      <span class="estp__acc" title="Acción futura">➡️ ${esc_(e.accion)}</span>
+      <span class="estp__acc" title="Acción futura">➡️ ${esc_(estAccionTxt_(r, e))}</span>
     </div>`;
 }
 /* Parche en memoria tras marcar/reactivar Inactivo: el estado de

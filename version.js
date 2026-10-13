@@ -3,6 +3,15 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * ACCIÓN DEL APROBADO CON CONDICIÓN (13/10/2026 · 1).
+ *   · Ajuste de Javier: quien quedó Aprobado con condición (4.5–5.4) y
+ *     no tiene el curso de inglés ya no ve "Pagar la oferta de empleo"
+ *     como acción futura: ve "Aprobar el curso de inglés o repetir la
+ *     prueba" (accionCurso del catálogo + estCur en la fila, Estados.gs).
+ *     Tarjetas de estado (Contador, Participantes, Verificación, Visas)
+ *     y Seguimiento (tarjeta, pastilla y filtro).
+ *   Archivos: app.js, js/seguimiento.js, version.js, sw.js (caché v59).
+ * ------------------------------------------------------------
  * UNA SOLA RUEDA EN TODA LA APP (10/10/2026 · 3).
  *   · Las tres ruedas viejas (IOSP de la agenda en app.js, CPICK del
  *     Contador y la de Ofertas) pasan a la pieza única js/rueda.js, que
@@ -799,4 +808,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.10.03";
+var APP_VERSION = "2026.10.13.01";

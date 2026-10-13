@@ -154,6 +154,10 @@ function segAvance_(r) {
 /* ============================================================
    FILTROS (todos locales, combinados con Y)
    ============================================================ */
+/* AJUSTE 13/10: acción del condicional sin curso (estAccionTxt_ de app.js). */
+function segAccion_(r, e) {
+  return (typeof estAccionTxt_ === 'function') ? estAccionTxt_(r, e) : (r.estCur && e.accionCurso ? e.accionCurso : e.accion);
+}
 function segEst_(r) { return (typeof EST_PART !== 'undefined' && r.est) ? EST_PART.porClave[r.est] : null; }
 function segRifa_(r) {
   const i = segHitos_().findIndex(h => h.k === 'RIFA');
@@ -164,7 +168,7 @@ const SEG_PILLS = [
   { k: 'ase',  ic: '👤', color: '#2563eb', all: 'Asesor',  tit: 'Asesor comercial',        v: r => segTxt_(r.ase) || SEG_SIN },
   { k: 'aseP', ic: '🧭', color: '#7c3aed', all: 'Asesor procesos',  tit: 'Asesor de Procesos',      v: r => segTxt_(r.aseP) || SEG_SIN },
   { k: 'est',  ic: '📍', color: '#0f766e', all: 'Estado',   tit: 'Estado actual',           v: r => { const e = segEst_(r); return e ? e.nombre : 'Sin estado'; } },
-  { k: 'acc',  ic: '➡️', color: '#0369a1', all: 'Acción futura',       tit: 'Acción futura',           v: r => { const e = segEst_(r); return e ? e.accion : SEG_SIN; } },
+  { k: 'acc',  ic: '➡️', color: '#0369a1', all: 'Acción futura',       tit: 'Acción futura',           v: r => { const e = segEst_(r); return e ? segAccion_(r, e) : SEG_SIN; } },
   { k: 'spo',  ic: '🏢', color: '#0d9488', all: 'Sponsor',  tit: 'Sponsor',                 v: r => segTxt_(r.spo) || SEG_SIN },
   { k: 'emp',  ic: '💼', color: '#1d4ed8', all: 'Empleador',           tit: 'Empleador',               v: r => segTxt_(r.emp) || SEG_SIN },
   { k: 'plan', ic: '🎯', color: '#b45309', all: 'Plan',   tit: 'Plan del programa',       v: r => segTxt_(r.plan) || SEG_SIN },
@@ -281,7 +285,7 @@ function segEstadoHtml_(r) {
   const p = r.estPrev && EST_PART.porClave[r.estPrev];
   return `<span class="seg-est" style="--e:${esc_(e.color)}">${e.ic} ${esc_(e.nombre)}</span>` +
     (p ? `<span class="seg-prev">${r.est === 'INACTIVO' ? 'vuelve a' : 'estaba en'} ${esc_(p.nombre)}</span>` : '') +
-    `<span class="seg-acc">➡️ ${esc_(e.accion)}</span>`;
+    `<span class="seg-acc">➡️ ${esc_(segAccion_(r, e))}</span>`;
 }
 /* Ruta de hitos: 8 bloques con su avance y los hitos como chips. */
 function segRutaHtml_(r) {
