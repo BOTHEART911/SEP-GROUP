@@ -65,7 +65,9 @@ const AVION_TITULOS = {
   nivelInvitacion: 'Enviando la invitación…',
   /* FASE 6.2 — subagencias */
   agenciaGuardar: 'Guardando la agencia…', agenciaLogo: 'Subiendo el logo…', agenciaAcceso: 'Guardando el acceso…',
-  agenciaValores: 'Guardando los valores…', agenciasGlobal: 'Guardando la temporada…'
+  agenciaValores: 'Guardando los valores…', agenciasGlobal: 'Guardando la temporada…',
+  /* FASE 6.7 — cuenta de cobro y cierre */
+  agPago: 'Registrando el pago…', agPagoCorregir: 'Guardando la corrección…', agCierre: 'Procesando el cierre…'
 };
 function avionTitulo_(accion){
   if (AVION_TITULOS[accion]) return AVION_TITULOS[accion];
@@ -778,7 +780,7 @@ const TILES = [
     roles:['DESARROLLADOR','SUPERUSUARIO','PROCESOS'], listo:true, view:'procesos' },
   /* FASE 6.2 (16/10/2026) — cuadro de Subagencias: el Superusuario ve
      todo; el Contador solo lo financiero. PROCESOS no lo hereda. */
-  { key:'agencias', titulo:'Subagencias', desc:'Agencias, valores y accesos',
+  { key:'agencias', titulo:'Subagencias', desc:'Agencias, cuentas de cobro y cierre',
     icono:'img/agencias.svg',
     roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR'], listo:true, view:'agencias' },
   { key:'usuarios', titulo:'Usuarios', desc:'Gestionar el equipo',

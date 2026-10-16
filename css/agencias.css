@@ -167,3 +167,50 @@
 .agv-vuelo { margin-top: 12px; padding: 10px 12px; border: 1.5px solid var(--border); border-left: 4px solid var(--rol-agencia); border-radius: var(--r-md); background: var(--bg-card); }
 .agv-vuelo__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .agv-vuelo__top b { color: var(--text-main); }
+
+/* =============================================================
+ * FASE 6.7 — Cuenta de cobro SEP–Subagencia y cierre de temporada
+ * ============================================================= */
+.agv-par { display: grid; grid-template-columns: 86px 1fr; gap: 6px; }
+.agc-tot { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 0 0 12px; }
+.agc-tot > div { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-lg); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.agc-tot > div > span, .agc-mini > div > span:first-child, .agc-caja__mon { font-size: .7rem; font-weight: 800; letter-spacing: .4px; color: var(--text-muted); text-transform: uppercase; }
+.agc-tot b { font-family: var(--font-display); color: var(--primary); font-size: 1.05rem; overflow-wrap: anywhere; }
+.agc-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; background: var(--bg-soft); border-radius: var(--r-md); padding: 8px 10px; }
+.agc-mini > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.agc-saldo { font-weight: 800; font-size: .88rem; color: var(--text-main); overflow-wrap: anywhere; }
+.agc-saldo.deb { color: #b45309; }
+.agc-saldo.fav { color: #157347; }
+.agc-saldo.ok { color: var(--text-soft); }
+.agc-cajas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 2px 0 6px; }
+.agc-caja { border: 1.5px solid var(--border); border-radius: var(--r-lg); padding: 10px 12px; background: var(--bg-card); min-width: 0; }
+.agc-caja__fila { display: flex; justify-content: space-between; gap: 8px; font-size: .8rem; color: var(--text-soft); margin-top: 4px; }
+.agc-caja__fila b { color: var(--text-main); font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+.agc-caja__saldo { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+.agc-lista { display: flex; flex-direction: column; gap: 8px; }
+.agc-fila { display: flex; justify-content: space-between; gap: 10px; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: var(--r-md); background: var(--bg-card); }
+.agc-fila.is-off { opacity: .62; }
+.agc-fila.is-off .agc-fila__val > b { text-decoration: line-through; }
+.agc-fila__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.agc-fila__main b { font-size: .9rem; color: var(--text-main); }
+.agc-fila__main span { font-size: .78rem; color: var(--text-soft); overflow-wrap: anywhere; }
+.agc-fila__val { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; text-align: right; }
+.agc-fila__val > b { font-family: var(--font-display); color: var(--primary); font-size: .95rem; white-space: nowrap; }
+.agc-fila__val > span:not(.ag-pill) { font-size: .74rem; color: var(--text-soft); }
+.agc-fila__btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.agc-hist { font-size: .74rem; color: var(--text-soft); margin-top: 4px; }
+.agc-hist summary { cursor: pointer; font-weight: 700; color: var(--primary); }
+.agc-hist div { padding: 2px 0; overflow-wrap: anywhere; }
+.agc-rev { margin: 8px 0; }
+.agc-modal .agd-sec h3 svg, .agc-card .ag-pill svg { vertical-align: -3px; }
+/* Temporada cerrada: el detalle del participante queda sin acciones */
+.agd-modal.ag-ro [data-agd]:not([data-agd="docs"]), .agd-modal.ag-ro .agd-nota { display: none !important; }
+@media (max-width: 560px) {
+  .agc-cajas { grid-template-columns: 1fr; }
+  .agc-fila { flex-direction: column; }
+  .agc-fila__val { align-items: flex-start; text-align: left; }
+  .agc-fila__btns { justify-content: flex-start; }
+  .agv-par { grid-template-columns: 76px 1fr; }
+}
+/* Con un solo botón en la tarjeta (Cuentas) o dentro de la cuenta, el texto se ve también en el celular. */
+.agc-card .ag-acts .ag-btn span, .agc-modal .ag-btn span { display: inline !important; }

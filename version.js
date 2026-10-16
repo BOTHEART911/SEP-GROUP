@@ -3,6 +3,19 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.7 · CUENTA DE COBRO SEP–SUBAGENCIA Y CIERRE DE TEMPORADA (16/10/2026 · 6).
+ *   · Subagencias → pestaña Cuentas (Superusuario y Contador): saldos COP y
+ *     USD de cada agencia en la temporada, sin conversión. Cuenta de cada
+ *     agencia: cobros (inscripción, Aplicada al Sponsor, DS-2019, volumen),
+ *     pagos y abonos con comprobante, saldo pendiente o a favor;
+ *     registrar, corregir y anular pagos con motivo e historial.
+ *   · Cierre de la temporada (Superusuario): lo que impide cerrar, cargo
+ *     por volumen si queda por debajo del mínimo, reabrir con motivo.
+ *     Cerrada = solo lectura para la agencia; los pagos siguen.
+ *   · Valores con moneda por concepto (inscripción COP, el resto USD).
+ *   · La agencia ve su cuenta en Mi agencia (solo lectura).
+ *   Archivos: js/agencias.js, css/agencias.css, index.html, app.js, version.js, sw.js (caché v66).
+ * ------------------------------------------------------------
  * FASE 6.6 · VERIFICACIÓN, DS-2019, VISA, VUELO Y RETIRO DE LA SUBAGENCIA (16/10/2026 · 5).
  *   · Mis participantes → Detalle: verificación académica en dos niveles
  *     (la agencia la envía con sus notas; SEP la aprueba o la devuelve con
@@ -883,4 +896,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.16.05";
+var APP_VERSION = "2026.10.16.06";

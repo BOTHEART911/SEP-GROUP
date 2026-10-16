@@ -22,6 +22,12 @@
  *      detalle (cabecera al instante, datos de fondo en un viaje). La
  *      agencia invita y aprueba; el Superusuario registra la nota y
  *      reversa. Todo queda en el historial del participante.
+ *   5. (6.7) CUENTA DE COBRO Y CIERRE: pestaña Cuentas (Superusuario y
+ *      Contador) con saldos COP y USD por agencia, cuenta de cada agencia
+ *      (cargos, pagos, comprobantes, saldos), registrar / corregir /
+ *      anular pagos (Contador o Super) y cierre / reapertura de la
+ *      temporada (Super). La agencia ve su cuenta en Mi agencia (solo
+ *      lectura) y, con la temporada cerrada, todo queda en solo lectura.
  *
  * RENDIMIENTO
  *   · Una vista, un viaje: agenciasInit trae agencias + temporadas +
@@ -101,7 +107,7 @@
      ============================================================ */
   var TILES_AG = [
     { key: 'participantes', titulo: 'Mis participantes', desc: 'Registro y seguimiento', icono: 'img/usuarios.webp', listo: true },
-    { key: 'mia', titulo: 'Mi agencia', desc: 'Datos, temporada y valores', icono: LOGO_DEF, listo: true }
+    { key: 'mia', titulo: 'Mi agencia', desc: 'Datos, valores y cuenta de cobro', icono: LOGO_DEF, listo: true }
   ];
 
   window.agIrAInicio_ = function (u) {
@@ -188,12 +194,14 @@
         filas([['Nombre', ag.contactoNombre], ['Celular', ag.contactoCelular], ['Correo', ag.contactoCorreo]]) +
         '<p class="cfg-hint">Si algo cambió, pídele a SEP que lo actualice.</p></div>' +
       '<div class="cfg-card"><h3 class="cfg-card__title">Temporada ' + e_(t ? t.nombre : '—') + '</h3>' +
-        (v ? filas([['Inscripción', money_(v.inscripcion, v.moneda)], ['Aplicada al Sponsor', money_(v.sponsor, v.moneda)],
-                    ['DS-2019 confirmado', money_(v.ds2019, v.moneda)], ['Cargo por volumen', money_(v.volumen, v.moneda)]])
+        (v ? filas([['Inscripción', money_(v.inscripcion, monedasDe_(v).inscripcion)], ['Aplicada al Sponsor', money_(v.sponsor, monedasDe_(v).sponsor)],
+                    ['DS-2019 confirmado', money_(v.ds2019, monedasDe_(v).ds2019)], ['Cargo por volumen', money_(v.volumen, monedasDe_(v).volumen)]])
            : '<p class="muted">SEP aún no ha cargado tus valores para esta temporada.</p>') +
         '<div class="ag-sp-titulo">Sponsors de esta temporada</div>' +
         '<div class="ag-chips">' + (r.sponsors || []).map(function (s) { return '<span class="ag-chip on">' + e_(s) + '</span>'; }).join('') + '</div>' +
-      '</div>';
+      '</div>' + tarjetaCuentaAg_(r);
+    var bc = c.querySelector('[data-mi-cuenta]');
+    if (bc) bc.addEventListener('click', function () { abrirCuenta_({ propia: true, nombre: ag.nombre, temporadaId: t ? t.id : '' }); });
   }
 
   window.agSalir_ = function () {
@@ -219,6 +227,8 @@
     var esAdmin = tengoRol_('DESARROLLADOR', 'SUPERUSUARIO');
     document.getElementById('view-agencias').classList.toggle('ag-es-conta', !esAdmin);
     if (!esAdmin && (AGS.tab === 'auditoria' || AGS.tab === 'participantes')) AGS.tab = 'lista';
+    /* 6.7 — el Contador entra directo a Cuentas (lo suyo es lo financiero). */
+    if (!esAdmin && !AGS.tabElegida) AGS.tab = 'cuentas';
     marcarTab_();
     if (!AGS.data) $1('#ag-cards').innerHTML = (window.SEPEsqueleto && SEPEsqueleto.html('persona', 4)) || '';
     else render_();
@@ -240,7 +250,7 @@
     $1('#ag-add').addEventListener('click', function () { modalAgencia_(null); });
     $1('#ag-tmp').addEventListener('change', function (e) { AGS.tmp = e.target.value; render_(); });
     document.querySelectorAll('#ag-tabs .ag-tab').forEach(function (b) {
-      b.addEventListener('click', function () { AGS.tab = b.getAttribute('data-agtab'); marcarTab_(); render_(); });
+      b.addEventListener('click', function () { AGS.tab = b.getAttribute('data-agtab'); AGS.tabElegida = true; marcarTab_(); render_(); });
     });
     $1('#ag-cards').addEventListener('click', function (e) {
       var b = e.target.closest('[data-agacc]'); if (!b) return;
@@ -250,11 +260,12 @@
       else if (acc === 'acceso') modalAcceso_(a);
       else if (acc === 'valores') modalValores_(a);
       else if (acc === 'auditoria') { AGS.tab = 'auditoria'; AGS.audAg = a.id; marcarTab_(); render_(); }
+      else if (acc === 'cuenta') abrirCuenta_({ agenciaId: a.id, temporadaId: AGS.tmp, nombre: a.nombre });
     });
   }
   function marcarTab_() {
     document.querySelectorAll('#ag-tabs .ag-tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-agtab') === AGS.tab); });
-    ['lista', 'temporada', 'auditoria', 'participantes'].forEach(function (k) { var el = $1('#ag-panel-' + k); if (el) el.classList.toggle('hidden', k !== AGS.tab); });
+    ['lista', 'temporada', 'auditoria', 'participantes', 'cuentas'].forEach(function (k) { var el = $1('#ag-panel-' + k); if (el) el.classList.toggle('hidden', k !== AGS.tab); });
   }
   function agPorId_(id) { return (AGS.data && AGS.data.agencias || []).find(function (a) { return a.id === id; }) || null; }
   function tmpSel_() { return (AGS.data && AGS.data.temporadas || []).find(function (t) { return t.id === AGS.tmp; }) || null; }
@@ -270,6 +281,7 @@
     if (AGS.tab === 'lista') renderLista_();
     else if (AGS.tab === 'temporada') renderTemporada_();
     else if (AGS.tab === 'participantes') renderPartSup_();
+    else if (AGS.tab === 'cuentas') renderCuentas_();
     else renderAuditoria_();
   }
 
@@ -285,14 +297,17 @@
         : (a.cuenta.activa ? '<span class="ag-pill ok">Acceso: ' + e_(a.cuenta.usuario) + '</span>' : '<span class="ag-pill off">Cuenta inactiva</span>'));
       var contacto = (a.contactoNombre || a.contactoCelular || a.contactoCorreo)
         ? '<div class="ag-meta">' + e_([a.contactoNombre, a.contactoCelular, a.contactoCorreo].filter(Boolean).join(' · ')) + '</div>' : '';
-      var vals = v ? '<div class="ag-vals"><span>Inscripción <b>' + money_(v.inscripcion, v.moneda) + '</b></span><span>Sponsor <b>' + money_(v.sponsor, v.moneda) + '</b></span><span>DS-2019 <b>' + money_(v.ds2019, v.moneda) + '</b></span><span>Volumen <b>' + money_(v.volumen, v.moneda) + '</b></span></div>'
+      var mo = monedasDe_(v);
+      var vals = v ? '<div class="ag-vals"><span>Inscripción <b>' + money_(v.inscripcion, mo.inscripcion) + '</b></span><span>Sponsor <b>' + money_(v.sponsor, mo.sponsor) + '</b></span><span>DS-2019 <b>' + money_(v.ds2019, mo.ds2019) + '</b></span><span>Volumen <b>' + money_(v.volumen, mo.volumen) + '</b></span></div>'
         : '<div class="ag-vals vacio">Sin valores para ' + e_(t ? t.nombre : 'la temporada') + '</div>';
       var acc = soloAdmin_()
         ? '<button class="ag-btn" data-agacc="editar" data-id="' + a.id + '" title="Editar datos y logo">' + IC.editar + '<span>Datos</span></button>' +
           '<button class="ag-btn" data-agacc="acceso" data-id="' + a.id + '" title="Usuario y contraseña">' + IC.llave + '<span>Acceso</span></button>' +
           '<button class="ag-btn" data-agacc="valores" data-id="' + a.id + '" title="Valores de la temporada">' + IC.moneda + '<span>Valores</span></button>' +
+          '<button class="ag-btn" data-agacc="cuenta" data-id="' + a.id + '" title="Cuenta de cobro: cargos, pagos y cierre">' + IC.cuenta + '<span>Cuenta</span></button>' +
           '<button class="ag-btn" data-agacc="auditoria" data-id="' + a.id + '" title="Qué ha hecho esta agencia">' + IC.historial + '<span>Auditoría</span></button>'
-        : '<button class="ag-btn" data-agacc="valores" data-id="' + a.id + '" title="Valores y cuenta">' + IC.moneda + '<span>Cuenta</span></button>';
+        : '<button class="ag-btn" data-agacc="valores" data-id="' + a.id + '" title="Valores de la temporada">' + IC.moneda + '<span>Valores</span></button>' +
+          '<button class="ag-btn" data-agacc="cuenta" data-id="' + a.id + '" title="Cuenta de cobro: cargos, pagos y comprobantes">' + IC.cuenta + '<span>Cuenta</span></button>';
       return '<article class="ag-card' + (a.estado === 'INACTIVA' ? ' is-inactive' : '') + '">' +
         '<div class="ag-card__top"><img class="ag-logo" alt="Logo de ' + e_(a.nombre) + '" src="' + e_(logo_(a)) + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + LOGO_DEF + '\'" />' +
         '<div class="ag-card__info"><div class="ag-nom">' + e_(a.nombre) + '</div>' + contacto +
@@ -305,7 +320,13 @@
     editar: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
     llave: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
     moneda: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
-    historial: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>'
+    historial: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>',
+    /* 6.7 — cuenta de cobro (libro), pago, comprobante, candado */
+    cuenta: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>',
+    pago: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>',
+    recibo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 3 2 3-2 3 2 3-2V8z"/><path d="M14 2v6h6"/></svg>',
+    candado: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    abierto: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>'
   };
 
   /* ---------- Temporada: mínimo de viajeros y sponsors visibles ---------- */
@@ -379,7 +400,10 @@
     /* 6.6 */
     VERIF_ENVIAR: 'Envió la verificación a SEP', VERIF_APROBAR: 'SEP aprobó la verificación', VERIF_DEVOLVER: 'SEP devolvió la verificación',
     VERIF_REABRIR: 'SEP reabrió la verificación', DS2019_CONFIRMAR: 'SEP confirmó el DS-2019', DS2019_CORREGIR: 'SEP corrigió el DS-2019',
-    VISA_DATOS: 'Registró datos de la visa', VISA_RESULTADO: 'Registró el resultado consular', RETIRAR: 'Marcó Retirado', REINTEGRAR: 'Reintegró al participante' };
+    VISA_DATOS: 'Registró datos de la visa', VISA_RESULTADO: 'Registró el resultado consular', RETIRAR: 'Marcó Retirado', REINTEGRAR: 'Reintegró al participante',
+    /* 6.7 */
+    PAGO_REGISTRAR: 'Registró un pago', PAGO_CORREGIR: 'Corrigió un pago', PAGO_ANULAR: 'Anuló un pago',
+    CERRAR_TEMPORADA: 'Cerró la temporada', REABRIR_TEMPORADA: 'Reabrió la temporada' };
   function accionTxt_(a) { return ACC_TXT[a] || a; }
 
   /* ---------- Modal genérico (mismas clases del resto de la app) ---------- */
@@ -536,23 +560,31 @@
   function modalValores_(a) {
     var d = AGS.data, t = tmpSel_(), edit = soloAdmin_();
     if (!t) { Swal.fire({ icon: 'info', title: 'Sin temporada', text: 'No hay temporadas de Summer Work and Travel.' }); return; }
-    var v = valoresDe_(a.id, t.id) || { moneda: 'USD', inscripcion: '', sponsor: '', ds2019: '', volumen: '' };
-    var campo = function (id, lab, val) { return '<div class="fld"><label>' + lab + '</label><input id="' + id + '" type="number" min="0" step="any" inputmode="decimal" value="' + e_(val) + '"' + (edit ? '' : ' disabled') + ' /></div>'; };
-    var m = modal_((edit ? 'Valores · ' : 'Cuenta · ') + a.nombre,
-      '<p class="cfg-card__sub">' + e_(t.nombre) + '. Cada agencia puede tener valores distintos; se cambian sin tocar código.</p>' +
-      '<div class="form-grid"><div class="fld"><label>Moneda</label><select id="agv-mon"' + (edit ? '' : ' disabled') + '>' + (d.monedas || ['USD', 'COP']).map(function (x) { return '<option' + (x === v.moneda ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div><div class="fld"></div>' +
-      campo('agv-ins', 'Valor de inscripción', v.inscripcion) + campo('agv-spo', 'Valor de Aplicada al Sponsor', v.sponsor) +
-      campo('agv-ds', 'Valor de DS-2019 confirmado', v.ds2019) + campo('agv-vol', 'Valor del cargo por volumen', v.volumen) + '</div>' +
-      (v.actualizadoPor ? '<p class="cfg-hint">Última vez: ' + e_(v.actualizadoPor) + ' · ' + e_(v.fecha) + '</p>' : '') +
-      '<div class="cfg-card ag-cuenta"><h3 class="cfg-card__title">Cuenta de cobro</h3><p class="muted">Aún sin movimientos en esta temporada.</p></div>',
+    var v = valoresDe_(a.id, t.id) || { inscripcion: '', sponsor: '', ds2019: '', volumen: '' };
+    var mo = monedasDe_(v.agenciaId ? v : null);
+    var mons = d.monedas || ['USD', 'COP'];
+    /* 6.7 — cada concepto con su moneda (sección 17: inscripción en COP, el resto en USD). */
+    var campo = function (k, lab) {
+      return '<div class="fld agv-campo"><label>' + lab + '</label><div class="agv-par">' +
+        '<select data-mon="' + k + '" aria-label="Moneda de ' + e_(lab) + '"' + (edit ? '' : ' disabled') + '>' + mons.map(function (x) { return '<option' + (x === mo[k] ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>' +
+        '<input data-val="' + k + '" type="number" min="0" step="any" inputmode="decimal" value="' + e_(v[k]) + '"' + (edit ? '' : ' disabled') + ' /></div></div>';
+    };
+    var m = modal_('Valores · ' + a.nombre,
+      '<p class="cfg-card__sub">' + e_(t.nombre) + '. Cada agencia puede tener valores distintos; se cambian sin tocar código. COP y USD no se convierten entre sí.</p>' +
+      '<div class="form-grid">' + campo('inscripcion', 'Valor de inscripción') + campo('sponsor', 'Valor de Aplicada al Sponsor') +
+      campo('ds2019', 'Valor de DS-2019 confirmado') + campo('volumen', 'Valor del cargo por volumen (por viajero)') + '</div>' +
+      (v.actualizadoPor ? '<p class="cfg-hint">Última vez: ' + e_(v.actualizadoPor) + ' · ' + e_(v.fecha) + '</p>' : ''),
       '<button class="btn btn-ghost" data-x>Cerrar</button>' + (edit ? '<button class="btn btn-primary" id="agv-save">Guardar</button>' : ''));
     m.querySelector('[data-x]').addEventListener('click', m.cerrar);
     if (!edit) return;
     m.querySelector('#agv-save').addEventListener('click', function () {
       var btn = this;
-      var body = { usuarioId: currentUser.id, agenciaId: a.id, temporadaId: t.id, moneda: m.querySelector('#agv-mon').value,
-        inscripcion: m.querySelector('#agv-ins').value, sponsor: m.querySelector('#agv-spo').value,
-        ds2019: m.querySelector('#agv-ds').value, volumen: m.querySelector('#agv-vol').value };
+      var body = { usuarioId: currentUser.id, agenciaId: a.id, temporadaId: t.id, monedas: {} };
+      ['inscripcion', 'sponsor', 'ds2019', 'volumen'].forEach(function (k) {
+        body[k] = m.querySelector('[data-val="' + k + '"]').value;
+        body.monedas[k] = m.querySelector('[data-mon="' + k + '"]').value;
+      });
+      body.moneda = body.monedas.sponsor;   // la columna MONEDA de antes
       escudo_(btn, function () {
         return apiPost('agenciaValores', body).then(function (r) {
           var arr = AGS.data.valores; var i = arr.findIndex(function (x) { return x.agenciaId === a.id && x.temporadaId === t.id; });
@@ -635,9 +667,10 @@
     var d = AGP.data; if (!d) return;
     var t = d.temporada;
     $1('#agp-tmp-txt').innerHTML = t
-      ? 'Registras en <b>' + e_(t.nombre) + '</b>'
+      ? (t.cerrada ? '<b>' + e_(t.nombre) + ' está cerrada.</b> Queda en solo lectura: no se registran participantes ni se hacen cambios. Solo SEP puede reabrirla.'
+                   : 'Registras en <b>' + e_(t.nombre) + '</b>')
       : '<b>SEP aún no abre la temporada.</b> Por ahora no se pueden registrar participantes.';
-    $1('#agp-add').disabled = !t || d.listo === false;
+    $1('#agp-add').disabled = !t || d.listo === false || !!t.cerrada;   // 6.7 — temporada cerrada
     $1('#agp-pills').innerHTML = aniosDe_(d.registros, t ? t.anio : '').map(function (x) {
       return '<button type="button" class="ag-chip' + (x.anio === AGP.anio ? ' on' : '') + '" data-anio="' + e_(x.anio) + '">' + e_(x.anio) + ' · ' + x.n + '</button>';
     }).join('');
@@ -990,7 +1023,11 @@
       }).join('') + '</div>' : '<p class="cfg-hint">Sin movimientos todavía.</p>') +
       '</section>';
 
-    c.innerHTML = prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + secViaje_(d, ctx) + hist;
+    /* 6.7 — temporada cerrada: el detalle se ve, pero sin acciones. */
+    var ro = !!(d.viaje && d.viaje.temporadaCerrada);
+    m.classList.toggle('ag-ro', ro);
+    c.innerHTML = (ro ? '<div class="agr-aviso warn ag-ro-aviso"><b>Temporada cerrada · solo lectura</b><div>No se hacen cambios en el proceso. Solo un Superadmin puede reabrirla.</div></div>' : '') +
+      prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + secViaje_(d, ctx) + hist;
     c.onclick = function (ev) {
       var b = ev.target.closest('[data-agd]'); if (!b) return;
       accionDet_(m, b, d, ctx);
@@ -1454,6 +1491,328 @@
     if (que === 'retirar') { conMotivo66('Marcar como Retirado', 'No se borra nada ni se reversan cobros, y la oferta no se libera (eso lo hace SEP).', 'agRetiro', { accion: 'RETIRAR' }, 'Marcado como Retirado', 'Guardando…'); return true; }
     if (que === 'reintegrar') { confirmar66('Reintegrar participante', 'Continúa desde donde iba. Si SEP liberó su oferta, vuelve a escoger una.', 'agRetiro', { accion: 'REINTEGRAR' }, 'Participante reintegrado', 'Reintegrando…'); return true; }
     return false;
+  }
+
+  /* ============================================================
+     FASE 6.7 · CUENTA DE COBRO SEP – SUBAGENCIA Y CIERRE DE TEMPORADA
+     · Pestaña Cuentas: saldos COP y USD de cada agencia en la temporada
+       elegida; vienen en agenciasInit (sin otro viaje).
+     · Cuenta de una agencia: cabecera al instante (lo que ya se sabe) y
+       la cuenta completa en UN viaje (agCuenta). Tras registrar,
+       corregir, anular, cerrar o reabrir se pinta lo que devuelve la
+       escritura (los nombres de los participantes se conservan de la
+       lectura: la escritura no relee la hoja grande).
+     · Monedas siempre separadas: nunca se suman COP y USD.
+     ============================================================ */
+  var AGC = { nombres: {}, abierta: null };
+  var AGC_TIPOS = { INSCRIPCION: 'Inscripción', SPONSOR: 'Aplicada al Sponsor', DS2019: 'DS-2019', VOLUMEN: 'Volumen' };
+  var AGC_EST = { VIGENTE: ['Vigente', 'ok'], SIN_VALOR: ['Sin valor configurado', 'warn'], REVERSADO: ['Reversado', 'off'], ANULADO: ['Anulado', 'off'] };
+
+  function monedasDe_(v) {
+    var m = (v && v.monedas) || {};
+    var vieja = v && v.moneda;
+    return {
+      inscripcion: m.inscripcion || vieja || 'COP', sponsor: m.sponsor || vieja || 'USD',
+      ds2019: m.ds2019 || vieja || 'USD', volumen: m.volumen || vieja || 'USD'
+    };
+  }
+  function resumenDe_(agId, tmpId) {
+    return (AGS.data && AGS.data.cuentas || []).find(function (x) { return x.agenciaId === agId && x.temporadaId === tmpId; }) || null;
+  }
+  /* Tras una escritura: la pestaña Cuentas queda al día sin recargar. */
+  function parcharResumen_(d) {
+    if (!AGS.data || !d || !d.agencia) return;
+    var arr = AGS.data.cuentas = AGS.data.cuentas || [];
+    var i = arr.findIndex(function (x) { return x.agenciaId === d.agencia.id && x.temporadaId === d.temporada.id; });
+    var o = { agenciaId: d.agencia.id, temporadaId: d.temporada.id, COP: d.saldos.COP, USD: d.saldos.USD, sinValor: d.sinValor,
+              nCargos: d.cargos.length, nPagos: d.pagos.length, cerrada: !!d.cierre.cerrada };
+    if (i >= 0) arr[i] = o; else arr.push(o);
+    if (AGS.tab === 'cuentas' && document.getElementById('view-agencias').classList.contains('active')) renderCuentas_();
+  }
+  /* Un saldo legible: pendiente, a favor o al día. */
+  function saldoTxt_(s, mon) {
+    if (!s) return '<span class="agc-saldo">—</span>';
+    if (s.pendiente > 0) return '<span class="agc-saldo deb">Debe ' + money_(s.pendiente, mon) + '</span>';
+    if (s.aFavor > 0) return '<span class="agc-saldo fav">A favor ' + money_(s.aFavor, mon) + '</span>';
+    return '<span class="agc-saldo ok">' + (s.cargos > 0 ? 'Al día' : 'Sin cargos') + '</span>';
+  }
+
+  /* ---------- Pestaña Cuentas (SEP) ---------- */
+  function renderCuentas_() {
+    var p = $1('#ag-panel-cuentas'); var d = AGS.data; var t = tmpSel_();
+    if (!p || !d) return;
+    if (!t) { p.innerHTML = '<p class="muted">No hay temporadas de Summer Work and Travel.</p>'; return; }
+    if (d.cuentaLista === false) { p.innerHTML = '<div class="agr-aviso warn"><b>Falta preparar la cuenta de cobro</b><div>Hay que correr migrarF67 en el editor de Apps Script.</div></div>'; return; }
+    var tot = { COP: 0, USD: 0, favCOP: 0, favUSD: 0 };
+    var lista = d.agencias.map(function (a) { return { a: a, r: resumenDe_(a.id, t.id) }; });
+    lista.forEach(function (x) { if (!x.r) return; tot.COP += x.r.COP.pendiente; tot.USD += x.r.USD.pendiente; tot.favCOP += x.r.COP.aFavor; tot.favUSD += x.r.USD.aFavor; });
+    p.innerHTML = '<div class="agc-tot"><div><span>Por cobrar COP</span><b>' + money_(tot.COP, 'COP') + '</b></div><div><span>Por cobrar USD</span><b>' + money_(tot.USD, 'USD') + '</b></div>' +
+        '<div><span>Saldos a favor</span><b>' + money_(tot.favCOP, 'COP') + ' · ' + money_(tot.favUSD, 'USD') + '</b></div></div>' +
+      (lista.length ? '<div class="ag-cards">' + lista.map(function (x) {
+        var a = x.a, r = x.r;
+        return '<article class="ag-card agc-card' + (a.estado === 'INACTIVA' ? ' is-inactive' : '') + '">' +
+          '<div class="ag-card__top"><img class="ag-logo" alt="Logo de ' + e_(a.nombre) + '" src="' + e_(logo_(a)) + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + LOGO_DEF + '\'" />' +
+          '<div class="ag-card__info"><div class="ag-nom">' + e_(a.nombre) + '</div><div class="ag-pills">' +
+            (r && r.cerrada ? '<span class="ag-pill off">' + IC.candado + ' Temporada cerrada</span>' : '<span class="ag-pill ok">Temporada abierta</span>') +
+            (r && r.sinValor ? '<span class="ag-pill warn">' + r.sinValor + ' sin valor</span>' : '') + '</div></div></div>' +
+          '<div class="agc-mini"><div><span>COP</span>' + saldoTxt_(r && r.COP, 'COP') + '</div><div><span>USD</span>' + saldoTxt_(r && r.USD, 'USD') + '</div></div>' +
+          '<div class="ag-acts"><button class="ag-btn" data-agcta="' + e_(a.id) + '">' + IC.cuenta + '<span>' + (soloAdmin_() ? 'Cuenta y cierre' : 'Cuenta y pagos') + '</span></button></div></article>';
+      }).join('') + '</div>' : '<p class="muted">Aún no hay subagencias.</p>');
+    p.onclick = function (e) {
+      var b = e.target.closest('[data-agcta]'); if (!b) return;
+      var a = agPorId_(b.getAttribute('data-agcta'));
+      abrirCuenta_({ agenciaId: a.id, temporadaId: t.id, nombre: a.nombre });
+    };
+  }
+
+  /* ---------- Tarjeta "Cuenta de cobro" en Mi agencia ---------- */
+  function tarjetaCuentaAg_(r) {
+    var c = r && r.cuenta;
+    if (!c) return '';
+    return '<div class="cfg-card"><h3 class="cfg-card__title">Cuenta de cobro con SEP</h3>' +
+      (c.cerrada ? '<div class="agr-aviso warn"><b>Temporada cerrada · solo lectura</b><div>No se registran participantes ni se hacen cambios. Solo SEP puede reabrirla.</div></div>' : '') +
+      '<div class="agc-mini"><div><span>COP</span>' + saldoTxt_(c.COP, 'COP') + '</div><div><span>USD</span>' + saldoTxt_(c.USD, 'USD') + '</div></div>' +
+      '<p class="cfg-hint">Los pagos los registra el Contador de SEP. Un saldo pendiente no detiene el proceso de tus participantes.</p>' +
+      '<div class="ag-acts"><button class="btn btn-primary" data-mi-cuenta>' + IC.cuenta + ' Ver cobros, pagos y comprobantes</button></div></div>';
+  }
+
+  /* ---------- Modal de la cuenta ---------- */
+  function abrirCuenta_(o) {
+    var r = o.propia ? null : resumenDe_(o.agenciaId, o.temporadaId);
+    var m = modal_('Cuenta de cobro · ' + (o.nombre || ''),
+      '<div id="agc-cab">' + (r ? cabeceraSaldos_(r.COP, r.USD) : '') + '</div>' +
+      '<div id="agc-cuerpo">' + ((window.SEPEsqueleto && SEPEsqueleto.html('texto', 4)) || '') + '</div>');
+    m.classList.add('agc-modal');
+    AGC.abierta = { m: m, o: o, d: null };
+    cargarCuenta_(m, o, o.temporadaId);
+  }
+  function cargarCuenta_(m, o, tmpId) {
+    var tk = sesionTk_();
+    var params = o.propia ? {} : { usuarioId: currentUser.id, agenciaId: o.agenciaId };
+    if (tmpId) params.temporadaId = tmpId;
+    apiGet('agCuenta', params, { silent: true }).then(function (d) {
+      if (!m.parentNode || sesionTk_() !== tk) return;
+      (d.cargos || []).forEach(function (c) { if (c.participante) AGC.nombres[c.idReg] = c.participante; });
+      pintarCuenta_(m, o, d);
+    }).catch(function (e) {
+      if (!m.parentNode) return;
+      var c = m.querySelector('#agc-cuerpo');
+      if (c) c.innerHTML = '<div class="agr-aviso err"><b>' + e_((e && e.message) || 'No se pudo cargar la cuenta') + '</b></div>';
+    });
+  }
+  function cabeceraSaldos_(cop, usd) {
+    var caja = function (s, mon) {
+      return '<div class="agc-caja"><div class="agc-caja__mon">' + mon + '</div>' +
+        '<div class="agc-caja__fila"><span>Cobrado</span><b>' + money_(s ? s.cargos : 0, mon) + '</b></div>' +
+        '<div class="agc-caja__fila"><span>Pagado</span><b>' + money_(s ? s.pagos : 0, mon) + '</b></div>' +
+        '<div class="agc-caja__saldo">' + saldoTxt_(s, mon) + '</div></div>';
+    };
+    return '<div class="agc-cajas">' + caja(cop, 'COP') + caja(usd, 'USD') + '</div>';
+  }
+  function nombreDe_(c) { return c.participante || AGC.nombres[c.idReg] || c.idReg || ''; }
+
+  function pintarCuenta_(m, o, d) {
+    AGC.abierta = { m: m, o: o, d: d };
+    var cab = m.querySelector('#agc-cab'), c = m.querySelector('#agc-cuerpo');
+    if (!c) return;
+    var sep = !o.propia, pu = d.puede || {}, ci = d.cierre || {};
+    cab.innerHTML = cabeceraSaldos_(d.saldos.COP, d.saldos.USD);
+    var cargoTxt = {};
+    d.cargos.forEach(function (x) { cargoTxt[x.id] = (AGC_TIPOS[x.tipo] || x.tipo) + ' · ' + nombreDe_(x); });
+
+    var selTmp = (d.temporadas || []).length > 1
+      ? '<div class="ag-temporada-sel"><label for="agc-tmp">Temporada</label><select id="agc-tmp">' + d.temporadas.map(function (t) {
+          return '<option value="' + e_(t.id) + '"' + (t.id === d.temporada.id ? ' selected' : '') + '>' + e_(t.nombre) + '</option>'; }).join('') + '</select></div>'
+      : '<p class="cfg-card__sub">' + e_(d.temporada.nombre) + '</p>';
+
+    var cierre = '<section class="agd-sec"><h3>' + IC.candado + ' Cierre de la temporada</h3>' +
+      (ci.cerrada
+        ? '<div class="agr-aviso warn"><b>Cerrada el ' + e_(ci.fecha) + ' por ' + e_(ci.por) + '</b><div>' + e_(ci.viajeros) + ' viajeros con vuelo aprobado · mínimo ' + e_(ci.minimo) +
+          '. Solo lectura para la agencia; los pagos se siguen registrando.</div></div>'
+        : '<p class="cfg-hint">Abierta. Mínimo de viajeros de la temporada: <b>' + e_(d.minimo) + '</b>' +
+          (d.valores ? ' · cargo por volumen ' + money_(d.valores.volumen, monedasDe_(d.valores).volumen) + ' por viajero si queda por debajo.' : '.') + '</p>' +
+          (ci.reabiertaPor ? '<p class="cfg-hint">Reabierta por ' + e_(ci.reabiertaPor) + ' · ' + e_(ci.reabiertaFecha) + ' · ' + e_(ci.reabiertaMotivo) + '</p>' : '')) +
+      '<div id="agc-rev"></div>' +
+      '<div class="ag-acts">' +
+        (pu.cerrar ? '<button class="ag-btn" data-agc="revisar">' + IC.candado + '<span>Revisar y cerrar</span></button>' : '') +
+        (pu.reabrir ? '<button class="ag-btn" data-agc="reabrir">' + IC.abierto + '<span>Reabrir</span></button>' : '') +
+      '</div></section>';
+
+    var cargos = '<section class="agd-sec"><h3>Cobros (' + d.cargos.length + ')</h3>' +
+      (d.sinValor ? '<div class="agr-aviso warn"><b>' + d.sinValor + ' cobro(s) sin valor configurado</b><div>Toman el valor cuando SEP guarde los valores de la agencia para esta temporada.</div></div>' : '') +
+      (d.cargos.length ? '<div class="agc-lista">' + d.cargos.map(function (x) {
+        var e = AGC_EST[x.estado] || [x.estado, 'off'];
+        return '<div class="agc-fila' + (x.estado === 'REVERSADO' ? ' is-off' : '') + '"><div class="agc-fila__main"><b>' + e_(AGC_TIPOS[x.tipo] || x.tipo) + '</b>' +
+          '<span>' + e_(nombreDe_(x)) + ' · ' + e_(x.fecha) + '</span>' + (x.motivo ? '<span>Motivo: ' + e_(x.motivo) + '</span>' : '') + '</div>' +
+          '<div class="agc-fila__val"><b>' + money_(x.valor, x.moneda) + '</b>' +
+          (x.estado === 'VIGENTE' && x.aplicado > 0 ? '<span>Abonado ' + money_(x.aplicado, x.moneda) + '</span>' : '') +
+          '<span class="ag-pill ' + e[1] + '">' + e_(e[0]) + '</span></div></div>';
+      }).join('') + '</div>' : '<p class="cfg-hint">Sin cobros todavía. Se generan solos: inscripción, Aplicada al Sponsor, DS-2019 confirmado y, al cerrar, volumen.</p>') +
+      '</section>';
+
+    var pagos = '<section class="agd-sec"><h3>Pagos y abonos (' + d.pagos.length + ')</h3>' +
+      (d.pagos.length ? '<div class="agc-lista">' + d.pagos.map(function (p) {
+        var e = AGC_EST[p.estado] || [p.estado, 'off'];
+        return '<div class="agc-fila' + (p.estado === 'ANULADO' ? ' is-off' : '') + '"><div class="agc-fila__main"><b>' + e_(p.fechaPago) + '</b>' +
+          '<span>' + e_(p.aplicaA ? 'Aplicado a ' + (cargoTxt[p.aplicaA] || p.aplicaA) : 'Abono a la cuenta') + '</span>' +
+          (p.observacion ? '<span>' + e_(p.observacion) + '</span>' : '') +
+          (p.corregidoPor ? '<span>' + (p.estado === 'ANULADO' ? 'Anulado' : 'Corregido') + ' por ' + e_(p.corregidoPor) + ' · ' + e_(p.fechaCorreccion) + (p.motivo ? ' · ' + e_(p.motivo) : '') + '</span>' : '') +
+          (sep && (p.historial || []).length > 1 ? '<details class="agc-hist"><summary>Historial</summary>' + p.historial.map(function (h) { return '<div>' + e_(h.f) + ' · ' + e_(h.p) + ' · ' + e_(h.d) + (h.m ? ' · ' + e_(h.m) : '') + '</div>'; }).join('') + '</details>' : '') +
+          '</div><div class="agc-fila__val"><b>' + money_(p.valor, p.moneda) + '</b><span class="ag-pill ' + e[1] + '">' + e_(e[0]) + '</span>' +
+          '<div class="agc-fila__btns">' +
+            (p.comprobante ? '<a class="ag-btn" href="' + e_(p.comprobante.url) + '" target="_blank" rel="noopener" title="' + e_(p.comprobante.nombre) + '">' + IC.recibo + '<span>Comprobante</span></a>' : '') +
+            (pu.pagos && p.estado === 'VIGENTE' ? '<button class="ag-btn" data-agc="corregir" data-id="' + e_(p.id) + '">' + IC.editar + '<span>Corregir</span></button>' +
+              '<button class="ag-btn" data-agc="anular" data-id="' + e_(p.id) + '"><span>Anular</span></button>' : '') +
+          '</div></div></div>';
+      }).join('') + '</div>' : '<p class="cfg-hint">Sin pagos registrados.</p>') +
+      (pu.pagos ? '<div class="ag-acts"><button class="btn btn-primary" data-agc="pago">' + IC.pago + ' Registrar pago</button></div>' : '') +
+      (o.propia ? '<p class="cfg-hint">Los comprobantes se abren con la cuenta de Google del correo de contacto que tu agencia tiene registrado en SEP.</p>' : '') +
+      '</section>';
+
+    c.innerHTML = selTmp + (sep || ci.cerrada ? cierre : '') + cargos + pagos;
+    var st = c.querySelector('#agc-tmp');
+    if (st) st.addEventListener('change', function () {
+      c.innerHTML = (window.SEPEsqueleto && SEPEsqueleto.html('texto', 4)) || '';
+      cargarCuenta_(m, o, st.value);
+    });
+    c.onclick = function (ev) {
+      var b = ev.target.closest('[data-agc]'); if (!b) return;
+      var q = b.getAttribute('data-agc');
+      if (q === 'pago') modalPago_(d, null);
+      else if (q === 'corregir') modalPago_(d, d.pagos.find(function (x) { return x.id === b.getAttribute('data-id'); }));
+      else if (q === 'anular') anularPago_(b, d, b.getAttribute('data-id'));
+      else if (q === 'revisar') revisarCierre_(b, d);
+      else if (q === 'reabrir') reabrir_(b, d);
+      else if (q === 'cerrar') cerrar_(b, d);
+    };
+  }
+  /* Tras cualquier escritura: repinta la cuenta abierta y el resumen. */
+  function trasEscribir_(d, msg) {
+    var ab = AGC.abierta;
+    if (ab && ab.m.parentNode) pintarCuenta_(ab.m, ab.o, Object.assign({}, d, { temporadas: (ab.d && ab.d.temporadas) || d.temporadas }));
+    parcharResumen_(d);
+    if (msg) Swal.fire({ icon: 'success', title: msg, timer: 1300, showConfirmButton: false });
+  }
+  function baseCuenta_(d) { return { usuarioId: currentUser.id, agenciaId: d.agencia.id, temporadaId: d.temporada.id }; }
+
+  /* ---------- Registrar / corregir un pago ---------- */
+  function hoyIso67_() { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
+  function isoDe_(dmy) { var x = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(dmy || '')); return x ? x[3] + '-' + x[2] + '-' + x[1] : ''; }
+  function leerArchivo_(file) {
+    return new Promise(function (ok, ko) {
+      var ext = String(file.name.split('.').pop() || '').toLowerCase();
+      if (['pdf', 'jpg', 'jpeg', 'png'].indexOf(ext) < 0) { ko(new Error('El comprobante debe ser PDF, JPG o PNG')); return; }
+      if (file.size > 8 * 1024 * 1024) { ko(new Error('El comprobante pesa más de 8 MB')); return; }
+      var fr = new FileReader();
+      fr.onerror = function () { ko(new Error('No se pudo leer el archivo')); };
+      fr.onload = function () { ok({ filename: file.name, mime: file.type, base64: String(fr.result).split(',')[1] }); };
+      fr.readAsDataURL(file);
+    });
+  }
+  function modalPago_(d, p) {
+    var nuevo = !p;
+    var opciones = function (mon, sel) {
+      return '<option value="">Abono a la cuenta (saldo de ' + mon + ')</option>' + d.cargos.filter(function (x) {
+        return x.moneda === mon && ((x.estado === 'VIGENTE' && x.pendiente > 0) || x.id === sel);
+      }).map(function (x) {
+        return '<option value="' + e_(x.id) + '"' + (x.id === sel ? ' selected' : '') + '>' + e_((AGC_TIPOS[x.tipo] || x.tipo) + ' · ' + nombreDe_(x) + ' · pendiente ' + money_(x.pendiente, x.moneda)) + '</option>';
+      }).join('');
+    };
+    var mon0 = p ? p.moneda : 'COP';
+    var m = modal_(nuevo ? 'Registrar pago' : 'Corregir pago ' + p.id,
+      '<p class="cfg-card__sub">' + e_(d.agencia.nombre) + ' · ' + e_(d.temporada.nombre) + '. COP y USD van por separado, sin conversión.</p>' +
+      '<div class="form-grid">' +
+        '<div class="fld"><label for="agp-fecha">Fecha del pago</label><input id="agp-fecha" type="date" max="' + hoyIso67_() + '" value="' + e_(p ? isoDe_(p.fechaPago) : hoyIso67_()) + '" /></div>' +
+        '<div class="fld"><label for="agp-mon">Moneda</label><select id="agp-mon"><option' + (mon0 === 'COP' ? ' selected' : '') + '>COP</option><option' + (mon0 === 'USD' ? ' selected' : '') + '>USD</option></select></div>' +
+        '<div class="fld"><label for="agp-valor">Valor</label><input id="agp-valor" type="number" min="0" step="any" inputmode="decimal" value="' + e_(p ? p.valor : '') + '" /></div>' +
+        '<div class="fld"><label for="agp-aplica">Se aplica a</label><select id="agp-aplica">' + opciones(mon0, p ? p.aplicaA : '') + '</select></div>' +
+        '<div class="fld fld-full"><label for="agp-obs">Observación</label><textarea id="agp-obs" rows="2" maxlength="500">' + e_(p ? p.observacion : '') + '</textarea></div>' +
+        '<div class="fld fld-full"><label for="agp-file">Comprobante (PDF, JPG o PNG · máx. 8 MB)' + (nuevo ? '' : ' — solo si lo reemplazas') + '</label><input id="agp-file" type="file" accept="application/pdf,image/jpeg,image/png" /></div>' +
+        (nuevo ? '' : '<div class="fld fld-full"><label for="agp-motivo">Motivo de la corrección</label><input id="agp-motivo" type="text" maxlength="300" placeholder="Ej. valor mal digitado" /></div>') +
+      '</div><div id="agp-aviso" class="agr-aviso hidden" role="alert"></div>',
+      '<button class="btn btn-ghost" data-x>Cancelar</button><button class="btn btn-primary" id="agp-ok">' + (nuevo ? 'Registrar pago' : 'Guardar corrección') + '</button>');
+    m.querySelector('[data-x]').addEventListener('click', m.cerrar);
+    m.querySelector('#agp-mon').addEventListener('change', function () { m.querySelector('#agp-aplica').innerHTML = opciones(this.value, ''); });
+    var aviso = function (t) { var a = m.querySelector('#agp-aviso'); a.className = 'agr-aviso err'; a.innerHTML = '<b>' + e_(t) + '</b>'; };
+    m.querySelector('#agp-ok').addEventListener('click', function () {
+      var btn = this;
+      var f = m.querySelector('#agp-file').files[0];
+      var body = Object.assign({}, nuevo ? baseCuenta_(d) : { usuarioId: currentUser.id, id: p.id, accion: 'CORREGIR', motivo: m.querySelector('#agp-motivo').value.trim() }, {
+        fechaPago: m.querySelector('#agp-fecha').value, moneda: m.querySelector('#agp-mon').value,
+        valor: m.querySelector('#agp-valor').value, aplicaA: m.querySelector('#agp-aplica').value,
+        observacion: m.querySelector('#agp-obs').value.trim()
+      });
+      if (!body.fechaPago) { aviso('Escribe la fecha del pago'); return; }
+      if (!(Number(body.valor) > 0)) { aviso('Escribe un valor mayor que cero'); return; }
+      if (nuevo && !f) { aviso('Adjunta el comprobante del pago'); return; }
+      if (!nuevo && body.motivo.length < 5) { aviso('Escribe el motivo de la corrección (mínimo 5 caracteres)'); return; }
+      escudo_(btn, function () {
+        return (f ? leerArchivo_(f) : Promise.resolve(null)).then(function (comp) {
+          if (comp) body.comprobante = comp;
+          return apiPost(nuevo ? 'agPago' : 'agPagoCorregir', body, { avion: { titulo: nuevo ? 'Registrando el pago…' : 'Guardando la corrección…' } });
+        }).then(function (r) {
+          m.cerrar();
+          trasEscribir_(r, nuevo ? 'Pago registrado' : 'Pago corregido');
+        }).catch(function (e) { aviso((e && e.message) || 'No se pudo guardar'); });
+      });
+    });
+  }
+  function anularPago_(btn, d, id) {
+    Swal.fire({ icon: 'warning', title: 'Anular el pago ' + id, text: 'Queda en la cuenta como anulado, con su motivo y el historial.', input: 'text', inputLabel: 'Motivo',
+      showCancelButton: true, confirmButtonText: 'Anular', cancelButtonText: 'Cancelar',
+      inputValidator: function (x) { return String(x || '').trim().length < 5 && 'Escribe el motivo (mínimo 5 caracteres).'; } }).then(function (x) {
+      if (!x.isConfirmed) return;
+      escudo_(btn, function () {
+        return apiPost('agPagoCorregir', { usuarioId: currentUser.id, id: id, accion: 'ANULAR', motivo: x.value.trim() }, { avion: { titulo: 'Anulando el pago…' } })
+          .then(function (r) { trasEscribir_(r, 'Pago anulado'); });
+      });
+    });
+  }
+
+  /* ---------- Cierre y reapertura (Superusuario) ---------- */
+  function revisarCierre_(btn, d) {
+    var box = AGC.abierta.m.querySelector('#agc-rev');
+    box.innerHTML = (window.SEPEsqueleto && SEPEsqueleto.html('texto', 3)) || '';
+    escudo_(btn, function () {
+      return apiGet('agCierreRevisar', baseCuenta_(d), { silent: true }).then(function (rv) { pintarRevision_(box, rv, d); });
+    });
+  }
+  function pintarRevision_(box, rv, d) {
+    var vol = rv.volumen || {};
+    box.innerHTML = '<div class="agc-rev">' +
+      '<div class="ag-pares"><div class="ag-par"><span>Inscritos</span><b>' + rv.total + '</b></div><div class="ag-par"><span>Viajeros (vuelo aprobado)</span><b>' + rv.nViajeros + '</b></div>' +
+        '<div class="ag-par"><span>Mínimo</span><b>' + rv.minimo + '</b></div><div class="ag-par"><span>Retirados</span><b>' + rv.retirados + '</b></div></div>' +
+      (vol.aplica ? '<div class="agr-aviso warn"><b>Queda por debajo del mínimo</b><div>Al cerrar se cobra el volumen a cada viajero: ' + vol.cargos + ' × ' + money_(vol.valor, vol.moneda) + ' = ' + money_(vol.total, vol.moneda) + '.</div></div>'
+        : '<div class="agr-aviso ok"><b>Sin cargo por volumen</b><div>' + (rv.nViajeros >= rv.minimo ? 'Alcanza el mínimo de viajeros.' : 'No hay viajeros con vuelo aprobado.') + '</div></div>') +
+      (rv.bloquean.length ? '<div class="agr-aviso err"><b>' + rv.bloquean.length + ' participante(s) impiden cerrar</b></div><div class="agc-lista">' + rv.bloquean.map(function (b) {
+          return '<div class="agc-fila"><div class="agc-fila__main"><b>' + e_(b.nombre) + '</b><span>' + e_(b.motivo) + '</span></div><div class="agc-fila__val"><span class="ag-pill warn">' + e_(b.etapa) + '</span></div></div>';
+        }).join('') + '</div>'
+        : '<div class="ag-acts"><button class="btn btn-primary" data-agc="cerrar">' + IC.candado + ' Cerrar la temporada</button></div>') +
+      '</div>';
+  }
+  function cerrar_(btn, d) {
+    Swal.fire({ icon: 'question', title: 'Cerrar ' + d.temporada.nombre, text: 'La agencia queda en solo lectura (sin registros ni cambios). El Contador sigue registrando pagos. Solo un Superadmin puede reabrirla.',
+      showCancelButton: true, confirmButtonText: 'Cerrar temporada', cancelButtonText: 'Cancelar' }).then(function (x) {
+      if (!x.isConfirmed) return;
+      escudo_(btn, function () {
+        return apiPost('agCierre', Object.assign({ accion: 'CERRAR' }, baseCuenta_(d)), { avion: { titulo: 'Cerrando la temporada…' } }).then(function (r) {
+          if (r.bloqueada) { pintarRevision_(AGC.abierta.m.querySelector('#agc-rev'), r.revision, d); Swal.fire({ icon: 'warning', title: 'Todavía no se puede cerrar', text: 'Algo cambió mientras revisabas: mira la lista.' }); return; }
+          var v = r.volumenAplicado || {};
+          trasEscribir_(r, 'Temporada cerrada' + (v.creados ? ' · ' + v.creados + ' cargo(s) por volumen' : '') + (v.reversados ? ' · ' + v.reversados + ' reversado(s)' : ''));
+        });
+      });
+    });
+  }
+  function reabrir_(btn, d) {
+    Swal.fire({ icon: 'warning', title: 'Reabrir ' + d.temporada.nombre, text: 'La agencia vuelve a operar. Al cerrar de nuevo, el cargo por volumen se recalcula.', input: 'text', inputLabel: 'Motivo',
+      showCancelButton: true, confirmButtonText: 'Reabrir', cancelButtonText: 'Cancelar',
+      inputValidator: function (x) { return String(x || '').trim().length < 5 && 'Escribe el motivo (mínimo 5 caracteres).'; } }).then(function (x) {
+      if (!x.isConfirmed) return;
+      escudo_(btn, function () {
+        return apiPost('agCierre', Object.assign({ accion: 'REABRIR', motivo: x.value.trim() }, baseCuenta_(d)), { avion: { titulo: 'Reabriendo la temporada…' } })
+          .then(function (r) { trasEscribir_(r, 'Temporada reabierta'); });
+      });
+    });
   }
 
   document.addEventListener('DOMContentLoaded', bindLogin_);
