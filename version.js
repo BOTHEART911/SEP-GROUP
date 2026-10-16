@@ -3,6 +3,19 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.1 · AJUSTES DEL CONTADOR (15/10/2026 · 1).
+ *   · Reenviar contrato (bloque Procesos): solo Inscrito + acción
+ *     futura "Firmar contrato" y sin contrato firmado; reenvía el
+ *     mismo mensaje de la inscripción, sin cambiar estado ni contrato.
+ *   · Bloque 4 = SEVIS: sin recargo y la carga se llama "Comprobante
+ *     SEVIS". Recargo por incumplimientos (USD) propio en Pago de
+ *     oferta y en Pago total. Bloque 5 · Pagos adicionales (concepto,
+ *     COP o USD, comprobante), uno a uno, con desglose. Ni recargos ni
+ *     Bloque 5 suman al gran total ni a Estadísticas; los Insights ya
+ *     no suman el recargo (USD) con los pesos.
+ *   Archivos: js/contador.js, js/capa-11-insights.js, styles.css,
+ *   css/tema-oscuro.css, version.js, sw.js (caché v60).
+ * ------------------------------------------------------------
  * ACCIÓN DEL APROBADO CON CONDICIÓN (13/10/2026 · 1).
  *   · Ajuste de Javier: quien quedó Aprobado con condición (4.5–5.4) y
  *     no tiene el curso de inglés ya no ve "Pagar la oferta de empleo"
@@ -808,4 +821,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.13.01";
+var APP_VERSION = "2026.10.15.01";

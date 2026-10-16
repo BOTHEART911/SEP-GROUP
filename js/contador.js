@@ -414,7 +414,7 @@ function contaCardHtml_(r) {
   if (r.comprobanteOfertaUrl) archivos.push(btnArch('comprobanteOfertaUrl', -1, r.comprobanteOfertaUrl, 'Comprobante de pago de oferta', '💵 Comp. oferta'));
   if (r.comprobanteTotalUrl)  archivos.push(btnArch('comprobanteTotalUrl', -1, r.comprobanteTotalUrl, 'Comprobante de pago total', '🏦 Comp. pago total'));
   (r.comprobantesExtra || []).forEach((u, i) =>
-    archivos.push(btnArch('comprobantesExtra', i, u, 'Comprobante adicional ' + (i + 1), '📎 Adicional ' + (i + 1))));
+    archivos.push(btnArch('comprobantesExtra', i, u, 'Comprobante SEVIS ' + (i + 1), '🎓 SEVIS ' + (i + 1))));
 
   /* FASE 4 · ENTREGA 5 · 2.2 — identificación en rojo. */
   if (r.retirado) {
@@ -442,6 +442,7 @@ function contaCardHtml_(r) {
       ${procesoChipHtml_(r.proceso, r.retirado)}
       ${r.asesor ? `<span>👤 ${esc_(r.asesor)}</span>` : ''}
       ${r.asesorProcesos ? `<span>🧭 ${esc_(r.asesorProcesos)}</span>` : ''}
+      ${contaNPagosAd_(r) ? `<span title="Pagos adicionales (Bloque 5)">➕ ${contaNPagosAd_(r)} ${contaNPagosAd_(r) === 1 ? 'pago adicional' : 'pagos adicionales'}</span>` : ''}
     </div>
     ${estPartHtml_(r)}
     <div class="conta-steps">
@@ -683,7 +684,7 @@ function contaBloqueProcesos_(r) {
       <summary>🧭 Procesos</summary>
       <div class="form-grid">
         <div class="fld"><label>Asesor de Procesos</label>${asesorHtml}</div>
-        <div class="fld"><label>Estado del participante</label>${estPartHtml_(r)}${retiroHtml}${contaInactivoHtml_(r)}</div>
+        <div class="fld"><label>Estado del participante</label>${estPartHtml_(r)}${contaReenviarHtml_(r)}${retiroHtml}${contaInactivoHtml_(r)}</div>
       </div>
     </details>`;
 }
@@ -793,7 +794,7 @@ function contaParchar_(d) {
   if (i < 0) return false;
   /* FASE 5.1 · B — las marcas de banco solo viajan cuando están puestas:
      si se desmarcaron, hay que borrarlas antes de mezclar. */
-  ['bancoIns', 'bancoOferta', 'bancoTotal', 'bancoExtra'].forEach(k => { delete CONTA.todos[i][k]; });
+  ['bancoIns', 'bancoOferta', 'bancoTotal', 'bancoExtra', 'nPagosAd'].forEach(k => { delete CONTA.todos[i][k]; });
   Object.assign(CONTA.todos[i], d);
   if (!d.lig) delete CONTA.todos[i].lig;                           // 07/10 — ya es la ficha completa
   CONTA.registros = TEMP.filtrar(CONTA.todos);
@@ -928,6 +929,10 @@ function abrirModalContadorCompleto_(r) {
         <div class="fld"><label>Cuenta de banco oferta</label>${contaSelect_('c-cuentaOferta', op.cuenta, r.cuentaOferta)}</div>
         <div class="fld"><label>Valor oferta (USD)</label><input id="c-ofertaUsd" type="text" inputmode="decimal" value="${r.ofertaUsd}" /></div>
         <div class="fld"><label>Valor oferta (COP)</label><input id="c-ofertaCop" type="text" inputmode="numeric" value="${r.ofertaCop}" /></div>
+        <!-- FASE 6.1 — recargo propio del pago de oferta (antes vivía en el Bloque 4). -->
+        <div class="fld"><label>Recargo por incumplimientos (USD)</label>
+          <input id="c-recargoOferta" type="text" inputmode="decimal" value="${contaRecargoOferta_(r)}" />
+          <small class="conta-hint">No suma al gran total.</small></div>
         ${contaZonaHtml_('ofe', 'Comprobante pago de oferta', {
           tipo: 'oferta', titulo: 'Comprobante de pago de oferta', opcional: true,
           urls: [r.comprobanteOfertaUrl], banco: r.bancoOferta ? [r.comprobanteOfertaUrl] : [] })}
@@ -947,6 +952,9 @@ function abrirModalContadorCompleto_(r) {
         <div class="fld"><label>Cuenta de banco total</label>${contaSelect_('c-cuentaTotal', op.cuenta, r.cuentaTotal)}</div>
         <div class="fld"><label>Valor programa completo (USD)</label><input id="c-totalUsd" type="text" inputmode="decimal" value="${r.totalUsd}" /></div>
         <div class="fld"><label>Valor programa completo (COP)</label><input id="c-totalCop" type="text" inputmode="numeric" value="${r.totalCop}" /></div>
+        ${('recargoTotal' in r) ? `<div class="fld"><label>Recargo por incumplimientos (USD)</label>
+          <input id="c-recargoTotal" type="text" inputmode="decimal" value="${r.recargoTotal}" />
+          <small class="conta-hint">No suma al gran total.</small></div>` : ''}
         ${contaZonaHtml_('tot', 'Comprobante pago total', {
           tipo: 'total', titulo: 'Comprobante de pago total', opcional: true,
           urls: [r.comprobanteTotalUrl], banco: r.bancoTotal ? [r.comprobanteTotalUrl] : [] })}
@@ -959,18 +967,19 @@ function abrirModalContadorCompleto_(r) {
     <div class="conta-grantotal" id="c-grantotal" aria-live="polite">${contaGranTotalHtml_(r.ofertaUsd, r.totalUsd, r.ofertaCop, r.totalCop)}</div>
 
     <details class="conta-bloque">
-      <summary>🎓 Bloque 4 · SEVIS y recargos</summary>
+      <summary>🎓 Bloque 4 · SEVIS</summary>
       <div class="form-grid">
         <div class="fld"><label class="conta-chk"><input type="checkbox" id="c-pagoSevis"${r.pagoSevis ? ' checked' : ''}/><span>Pago del SEVIS</span></label>
           <small class="conta-hint">${r.fechaSevis ? 'Pagado el ' + contaFechaTexto_(r.fechaSevis) : 'La fecha se pone sola'}</small></div>
         <div class="fld"><label>Valor del SEVIS (COP)</label><input id="c-sevisCop" type="text" inputmode="numeric" value="${r.sevisCop}" /></div>
-        <div class="fld"><label>Recargo por incumplimientos (USD)</label><input id="c-recargo" type="text" inputmode="decimal" value="${r.recargo}" /></div>
-        ${contaZonaHtml_('ext', 'Comprobantes adicionales', {
-          tipo: 'extra', titulo: 'Comprobante adicional', opcional: true, multiple: true,
+        ${contaZonaHtml_('ext', 'Comprobante SEVIS', {
+          tipo: 'extra', titulo: 'Comprobante SEVIS', multiple: true,
           urls: r.comprobantesExtra || [], banco: r.bancoExtra || [],
-          nota: 'Puedes cargar varios: se guardan todos en esta misma tarjeta.' })}
+          nota: 'Si el SEVIS tiene más de un soporte, puedes cargarlos todos aquí.' })}
       </div>
     </details>
+
+    ${contaBloque5Html_(r)}
 
     <!-- AJUSTE 1 (19/08/2026) — GUARDAR EN SILENCIO.
          Nace SIEMPRE desmarcado (se pinta con el modal, no se guarda
@@ -1048,6 +1057,9 @@ function abrirModalContadorCompleto_(r) {
   /* FASE 5 — las cuatro zonas de archivo (arrastrar · pegar · adjuntar). */
   CONTA.zonaActiva = 'ins';
   ['ins', 'ofe', 'tot', 'ext'].forEach(contaZonaCablear_);
+  /* FASE 6.1 — Bloque 5 y reenvío del contrato. */
+  contaBloque5Cablear_(r);
+  document.querySelector('#c-reenviar')?.addEventListener('click', e => contaReenviarContrato_(r, e.currentTarget));
   /* FASE 3.3 · tanda A (20/08/2026) — al abrir un bloque, su zona pasa a
      ser la zona activa: abrir "Bloque 2 · Contrato, deudor y oferta" y
      pegar tiene que dejar el archivo en el comprobante de la OFERTA,
@@ -1065,6 +1077,183 @@ function abrirModalContadorCompleto_(r) {
 function cerrarModalContador_() {
   document.querySelector('#modal-contador')?.classList.add('hidden');
   CONTA.actual = null;
+  CONTA.pad = null;                                               // FASE 6.1
+}
+
+/* ============================================================
+   FASE 6.1 (15/10/2026) — AJUSTES DEL CONTADOR (pliego 22)
+   ============================================================
+   · Reenviar contrato: solo con estado Inscrito + acción futura
+     "Firmar contrato" y sin contrato firmado (lo decide el servidor:
+     r.reenviarContrato). Reenvía el mismo mensaje; no cambia nada.
+   · Recargo por incumplimientos (USD) en Pago de oferta y en Pago
+     total, cada uno el suyo. No suma al gran total.
+   · Bloque 5 · Pagos adicionales: arranca vacío y se agregan uno a
+     uno (concepto, COP o USD y comprobante). Se guardan con Guardar.
+     No suman al gran total ni a Estadísticas.
+   Front y backend se publican en cualquier orden: lo nuevo solo se
+   pinta si la ficha trae sus campos (backend ya desplegado). */
+function contaRecargoOferta_(r) {
+  const v = ('recargoOferta' in r) ? r.recargoOferta : r.recargo;
+  return v === undefined || v === null ? '' : v;
+}
+function contaNPagosAd_(r) {
+  if (Array.isArray(r.pagosAdicionales)) return r.pagosAdicionales.length;
+  return Number(r.nPagosAd) || 0;
+}
+function contaUsd_(v) {
+  return 'US$ ' + Number(v).toLocaleString('es-CO', { maximumFractionDigits: 2 });
+}
+
+/* ── Reenviar contrato ───────────────────────────────────── */
+function contaReenviarHtml_(r) {
+  if (r.reenviarContrato !== true) return '';
+  return `<div class="conta-reenviar">
+      <button type="button" class="act-btn" id="c-reenviar">📨 Reenviar contrato</button>
+      <small class="conta-hint">Vuelve a enviarle el mismo mensaje de la inscripción con el enlace para
+        firmar. No cambia el estado ni crea otro contrato.</small>
+    </div>`;
+}
+async function contaReenviarContrato_(r, btn) {
+  if (!btn || btn.disabled) return;
+  btn.disabled = true; btn.classList.add('is-busy');               // escudo desde el primer toque
+  try {
+    const conf = await Swal.fire({
+      icon: 'question', title: 'Reenviar contrato',
+      html: `Se le vuelve a enviar a <b>${esc_(r.nombres)} ${esc_(r.apellidos)}</b> el mensaje de inscripción
+             con el enlace para firmar su contrato.<br><small>No cambia su estado ni crea un contrato nuevo.</small>`,
+      showCancelButton: true, confirmButtonText: 'Reenviar', cancelButtonText: 'Cancelar'
+    });
+    if (!conf.isConfirmed) return;
+    const t0 = performance.now();
+    const out = await apiPost('reenviarContrato', { usuarioId: currentUser.id, n: r.n });
+    try { console.info('[medicion] reenviarContrato ' + Math.round(performance.now() - t0) + ' ms'); } catch (_) {}
+    if (out && out.enviado) {
+      const canal = out.canal === 'EMAIL' ? 'correo' : (out.canal === 'WHATSAPP' ? 'WhatsApp' : 'correo y WhatsApp');
+      Swal.fire({ icon: 'success', title: 'Contrato reenviado',
+        html: `Le llegó a <b>${esc_(r.nombres)} ${esc_(r.apellidos)}</b> por <b>${canal}</b>.` });
+    } else {
+      Swal.fire({ icon: 'warning', title: 'No se reenvió', text: (out && out.motivo) || 'El mensaje no salió.' });
+    }
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'No se pudo reenviar', text: String(e.message || e) });
+  } finally {
+    btn.disabled = false; btn.classList.remove('is-busy');
+  }
+}
+
+/* ── Bloque 5 · Pagos adicionales ────────────────────────── */
+const CONTA_PAD_SUGERIDOS = ['Entrevistas de inglés', 'Curso de inglés', 'Asesoría de vuelos'];
+
+function contaBloque5Html_(r) {
+  const soporta = Array.isArray(r.pagosAdicionales);
+  CONTA.pad = soporta ? r.pagosAdicionales.map(p => Object.assign({}, p)) : null;
+  if (!soporta) {
+    return `<details class="conta-bloque">
+      <summary>➕ Bloque 5 · Pagos adicionales</summary>
+      <div class="cpad"><small class="conta-hint">Se habilita cuando esté desplegada la versión nueva del servidor.</small></div>
+    </details>`;
+  }
+  return `<details class="conta-bloque" id="c-pad-bloque"${CONTA.pad.length ? ' open' : ''}>
+      <summary>➕ Bloque 5 · Pagos adicionales <span class="cpad-cuenta" id="c-pad-cuenta"></span></summary>
+      <div class="cpad">
+        <div class="cpad-lista" id="c-pad-lista" aria-live="polite"></div>
+        <div class="cpad-sub" id="c-pad-sub"></div>
+        <button type="button" class="act-btn cpad-add" id="c-pad-add">➕ Agregar pago</button>
+        <div class="cpad-form" id="c-pad-form" hidden>
+          <div class="form-grid">
+            <div class="fld fld-full"><label>Concepto</label>
+              <input id="c-pad-c" type="text" maxlength="120" list="c-pad-sug" placeholder="Ej.: Curso de inglés" autocomplete="off" />
+              <datalist id="c-pad-sug">${CONTA_PAD_SUGERIDOS.map(x => `<option value="${esc_(x)}"></option>`).join('')}</datalist></div>
+            <div class="fld"><label>Valor (COP)</label><input id="c-pad-cop" type="text" inputmode="numeric" placeholder="450000" /></div>
+            <div class="fld"><label>Valor (USD)</label><input id="c-pad-usd" type="text" inputmode="decimal" placeholder="80" /></div>
+            <small class="conta-hint fld-full">Llena solo la moneda que aplica: al escribir en una, la otra se bloquea.</small>
+            ${contaZonaHtml_('pad', 'Comprobante', { tipo: 'pagoad', titulo: 'Comprobante del pago adicional', urls: [], sinBanco: true })}
+          </div>
+          <div class="cpad-acc">
+            <button type="button" class="btn btn-primary" id="c-pad-ok">Añadir</button>
+            <button type="button" class="btn btn-ghost" id="c-pad-cancel">Cancelar</button>
+          </div>
+        </div>
+        <small class="conta-hint">No suman al gran total ni a Estadísticas. Quedan registrados al pulsar <b>Guardar</b>.</small>
+      </div>
+    </details>`;
+}
+
+function contaPadValorTxt_(p) {
+  return (p.cop !== '' && p.cop !== undefined && p.cop !== null)
+    ? contaMoneda_(p.cop) + ' COP' : contaUsd_(p.usd) + ' USD';
+}
+function contaPadPintar_() {
+  const cont = document.querySelector('#c-pad-lista'); if (!cont || !Array.isArray(CONTA.pad)) return;
+  const L = CONTA.pad;
+  document.querySelector('#c-pad-cuenta').textContent = L.length ? '(' + L.length + ')' : '';
+  cont.innerHTML = L.length ? L.map((p, i) => `
+    <div class="cpad-item">
+      <div class="cpad-item__c"><b>${esc_(p.c)}</b>
+        <small>${p.f ? esc_(String(p.f).split(' ')[0]) + (p.q ? ' · ' + esc_(p.q) : '') : 'Sin guardar todavía'}</small></div>
+      <span class="cpad-item__v">${contaPadValorTxt_(p)}</span>
+      <span class="cfz-item__b">
+        <button type="button" class="act-btn" data-pad="ver" data-i="${i}">👁 Ver</button>
+        <button type="button" class="act-btn act-btn--rojo" data-pad="quitar" data-i="${i}">✕ Quitar</button>
+      </span>
+    </div>`).join('') : '<span class="cfz-vacio">Sin pagos adicionales</span>';
+  const cop = L.reduce((s, p) => s + (Number(p.cop) || 0), 0);
+  const usd = L.reduce((s, p) => s + (Number(p.usd) || 0), 0);
+  document.querySelector('#c-pad-sub').innerHTML = L.length
+    ? `<span>Total pagos adicionales</span>${cop ? `<b>${contaMoneda_(cop)} COP</b>` : ''}${usd ? `<b>${contaUsd_(usd)} USD</b>` : ''}<small>aparte del gran total</small>`
+    : '';
+  cont.querySelectorAll('[data-pad]').forEach(b => b.addEventListener('click', () => {
+    const i = +b.dataset.i, p = CONTA.pad[i]; if (!p) return;
+    if (b.dataset.pad === 'ver') abrirVisorConta_(p.url, p.c);
+    else { CONTA.pad.splice(i, 1); contaPadPintar_(); }
+  }));
+}
+function contaPadFormLleno_() {
+  const v = id => String((document.querySelector('#' + id) || {}).value || '').trim();
+  return !!(v('c-pad-c') || v('c-pad-cop') || v('c-pad-usd') || contaZonaUrl_('pad'));
+}
+function contaPadMonedas_() {
+  const cop = document.querySelector('#c-pad-cop'), usd = document.querySelector('#c-pad-usd');
+  if (!cop || !usd) return;
+  usd.disabled = !!cop.value.trim();
+  cop.disabled = !!usd.value.trim();
+}
+function contaPadLimpiar_() {
+  ['c-pad-c', 'c-pad-cop', 'c-pad-usd'].forEach(id => { const el = document.querySelector('#' + id); if (el) el.value = ''; });
+  contaPadMonedas_();
+  if (CFZ.pad) { CFZ.pad.urls = []; CFZ.pad.banco = new Set(); contaZonaPintarLista_('pad'); }
+}
+function contaPadAbrirForm_(abrir) {
+  const f = document.querySelector('#c-pad-form'), add = document.querySelector('#c-pad-add');
+  if (!f) return;
+  f.hidden = !abrir;
+  if (add) add.hidden = !!abrir;
+  if (abrir) { contaZonaActivar_('pad'); document.querySelector('#c-pad-c')?.focus(); }
+  else { contaPadLimpiar_(); if (CONTA.zonaActiva === 'pad') CONTA.zonaActiva = ''; contaZonasPintarFoco_(); }
+}
+function contaPadAnadir_() {
+  const c = String(document.querySelector('#c-pad-c').value || '').replace(/\s+/g, ' ').trim();
+  const cop = contaNumTxt_(document.querySelector('#c-pad-cop').value, false);
+  const usd = contaNumTxt_(document.querySelector('#c-pad-usd').value, true);
+  const url = contaZonaUrl_('pad');
+  const falta = [];
+  if (!c) falta.push('el concepto');
+  if (!(cop > 0) === !(usd > 0)) falta.push('el valor en UNA sola moneda (COP o USD)');
+  if (!url) falta.push('el comprobante');
+  if (falta.length) { Swal.fire({ icon: 'warning', title: 'Falta información', text: 'Escribe ' + falta.join(', ') + '.' }); return; }
+  CONTA.pad.push({ id: '', c: c, cop: cop > 0 ? cop : '', usd: usd > 0 ? usd : '', url: url });
+  contaPadAbrirForm_(false);
+  contaPadPintar_();
+}
+function contaBloque5Cablear_(r) {
+  if (!Array.isArray(CONTA.pad)) return;
+  contaZonaCablear_('pad');
+  contaPadPintar_();
+  document.querySelector('#c-pad-add')?.addEventListener('click', () => contaPadAbrirForm_(true));
+  document.querySelector('#c-pad-cancel')?.addEventListener('click', () => contaPadAbrirForm_(false));
+  document.querySelector('#c-pad-ok')?.addEventListener('click', contaPadAnadir_);
+  ['c-pad-cop', 'c-pad-usd'].forEach(id => document.querySelector('#' + id)?.addEventListener('input', contaPadMonedas_));
 }
 
 /* ============================================================
@@ -1089,7 +1278,7 @@ const CFZ_MAX_MB = 5;
 /* Estructura de una zona. urls es SIEMPRE arreglo (aunque acepte uno). */
 function contaZonaInit_(id, cfg) {
   CFZ[id] = {
-    tipo: cfg.tipo, multiple: !!cfg.multiple, titulo: cfg.titulo,
+    tipo: cfg.tipo, multiple: !!cfg.multiple, titulo: cfg.titulo, sinBanco: !!cfg.sinBanco,
     urls: (cfg.urls || []).map(u => String(u || '').trim()).filter(Boolean),
     /* FASE 5.1 · B — URLs validadas en banco. Va por URL (no por
        posición): si se reemplaza un archivo, el nuevo nace sin validar. */
@@ -1137,8 +1326,8 @@ function contaZonaPintarLista_(id) {
         <button type="button" class="act-btn" data-cfz="reemplazar" data-i="${i}">♻️ Reemplazar</button>
         ${z.multiple ? `<button type="button" class="act-btn act-btn--rojo" data-cfz="quitar" data-i="${i}">✕ Quitar</button>` : ''}
       </span>
-      <label class="cfz-banco"><input type="checkbox" data-cfz-banco="${i}"${z.banco.has(u) ? ' checked' : ''}/>
-        <span>🏦 Pago validado en banco</span></label>
+      ${z.sinBanco ? '' : `<label class="cfz-banco"><input type="checkbox" data-cfz-banco="${i}"${z.banco.has(u) ? ' checked' : ''}/>
+        <span>🏦 Pago validado en banco</span></label>`}
     </div>`).join('');
   cont.querySelectorAll('[data-cfz-banco]').forEach(c => c.addEventListener('change', () => {
     const u = CFZ[id].urls[+c.dataset.cfzBanco]; if (!u) return;
@@ -1199,6 +1388,7 @@ function contaZonaElegir_(id, idx) {
 function contaZonaVisible_(id) {
   const drop = document.querySelector('#cfz-drop-' + id);
   if (!drop || !CFZ[id]) return false;
+  if (drop.closest('[hidden]')) return false;                    // FASE 6.1 — formulario del Bloque 5 cerrado
   const det = drop.closest('details');
   return !det || !!det.open;
 }
@@ -1630,7 +1820,11 @@ async function guardarContadorUnaVez_() {
     metodoTotal: val('c-metodoTotal'), cuentaTotal: val('c-cuentaTotal'),
     totalUsd: val('c-totalUsd'), totalCop: val('c-totalCop'),
 
-    pagoSevis: chk('c-pagoSevis'), sevisCop: val('c-sevisCop'), recargo: val('c-recargo'),
+    pagoSevis: chk('c-pagoSevis'), sevisCop: val('c-sevisCop'),
+    /* FASE 6.1 — recargo de cada pago principal. `recargo` viaja igual
+       al de oferta para que un backend sin desplegar lo siga guardando
+       en la misma columna. */
+    recargoOferta: val('c-recargoOferta'), recargo: val('c-recargoOferta'),
 
     /* AJUSTE 1 (19/08/2026) — apaga los mensajes de ESTE guardado. */
     silencio: chk('c-silencio'),
@@ -1641,6 +1835,16 @@ async function guardarContadorUnaVez_() {
        guardado que sube el comprobante de inscripción. */
     asesorProcesosId: val('c-asesorProcesos')
   };
+
+  if (document.querySelector('#c-recargoTotal')) body.recargoTotal = val('c-recargoTotal');
+  if (Array.isArray(CONTA.pad)) {
+    if (document.querySelector('#c-pad-form:not([hidden])') && contaPadFormLleno_()) {
+      Swal.fire({ icon: 'warning', title: 'Pago adicional sin agregar',
+        text: 'Tienes un pago adicional a medio llenar en el Bloque 5: pulsa "Añadir" o "Cancelar" antes de guardar.' });
+      return;
+    }
+    body.pagosAdicionales = CONTA.pad.map(p => ({ id: p.id || '', c: p.c, cop: p.cop, usd: p.usd, url: p.url }));
+  }
 
   if (procesoSel === 'Otro' && !body.proceso) {
     Swal.fire({ icon: 'warning', title: 'Falta el proceso', text: 'Escribe cuál es el proceso.' }); return;

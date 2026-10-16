@@ -1078,6 +1078,26 @@ html[data-tema="oscuro"] .com-card__nota--semana { color: #fcd34d; }
 .conta-grantotal__t small{ font-weight:600; color:#64748b; }
 .conta-grantotal__v{ display:inline-flex; align-items:baseline; gap:6px; font-size:16px; color:#0f172a; }
 .conta-grantotal__v small{ font-size:11px; font-weight:700; color:#64748b; }
+/* FASE 6.1 — Reenviar contrato (bloque Procesos) y Bloque 5 · Pagos adicionales. */
+.conta-reenviar{ display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin:8px 0 4px; }
+.cpad{ padding:12px 14px 16px; display:flex; flex-direction:column; gap:10px; }
+.cpad-cuenta{ font-weight:700; color:#64748b; }
+.cpad-lista{ display:flex; flex-direction:column; gap:6px; }
+.cpad-item{ display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; padding:8px 10px;
+  border:1px solid #e3e9f2; border-radius:10px; background:#fff; }
+.cpad-item__c{ flex:1 1 180px; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:13px; color:#26374f; overflow-wrap:anywhere; }
+.cpad-item__c small{ font-size:11.5px; color:#7c8aa0; }
+.cpad-item__v{ font-weight:800; font-size:14px; color:#0f172a; white-space:nowrap; }
+.cpad-sub{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px; font-size:13px; color:#475569; }
+.cpad-sub:empty{ display:none; }
+.cpad-sub b{ color:#0f172a; }
+.cpad-sub small{ color:#94a3b8; }
+.cpad-add{ align-self:flex-start; }
+.cpad-add[hidden], .cpad-form[hidden]{ display:none; }
+.cpad-form{ border:1px dashed #cbd5e1; border-radius:12px; background:rgba(148,163,184,.06); }
+.cpad-form .form-grid{ padding:12px; }
+.cpad-acc{ display:flex; gap:8px; flex-wrap:wrap; padding:0 12px 12px; }
+.cpad input:disabled{ opacity:.5; cursor:not-allowed; }
 .conta-monto{
   margin-left:auto; font-weight:800; font-size:13px; color:var(--text-soft);
 }

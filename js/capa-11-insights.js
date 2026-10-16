@@ -1273,7 +1273,11 @@
       var of = sumar(L, function (r) { return Number(r.ofertaCop) || 0; });
       var tot = sumar(L, function (r) { return Number(r.totalCop) || 0; });
       var sev = sumar(L, function (r) { return Number(r.sevisCop) || 0; });
-      var rec = sumar(L, function (r) { return Number(r.recargo) || 0; });
+      /* FASE 6.1 — los recargos son en USD (uno por pago de oferta y otro
+         por pago total) y van aparte: no se suman a los pesos. */
+      var rec = sumar(L, function (r) {
+        return (Number('recargoOferta' in r ? r.recargoOferta : r.recargo) || 0) + (Number(r.recargoTotal) || 0);
+      });
       var usdT = sumar(L, function (r) { return Number(r.precioUsd) || 0; });
       var conIns = L.filter(function (r) { return conValor(r) > 0; }).length;
       return {
@@ -1283,13 +1287,13 @@
           '- Pagos de oferta: **' + pesos(of) + '**\n' +
           '- Pagos totales: **' + pesos(tot) + '**\n' +
           '- SEVIS: **' + pesos(sev) + '**\n' +
-          (rec ? '- Recargos: **' + pesos(rec) + '**\n' : '') +
-          '\nSuma de todo lo registrado: **' + pesos(ins + of + tot + sev + rec) + '**.\n' +
+          '\nSuma de todo lo registrado: **' + pesos(ins + of + tot + sev) + '**.\n' +
+          (rec ? 'Recargos por incumplimientos (aparte): **' + usd(rec) + '**.\n' : '') +
           (usdT ? 'Valor de los programas: **' + usd(usdT) + '**.\n' : '') +
           '\nPromedio de inscripción: **' + pesos(conIns ? ins / conIns : 0) + '**.' +
           '\n\n_Son los valores digitados en cada ficha, no un estado de cuenta del banco._' + cola,
         voz: 'Inscripciones por ' + pesos(ins) + ', oferta por ' + pesos(of) + ' y pagos totales por ' + pesos(tot) +
-             '. Todo junto suma ' + pesos(ins + of + tot + sev + rec) + '.'
+             '. Todo junto suma ' + pesos(ins + of + tot + sev) + '.'
       };
     }
 

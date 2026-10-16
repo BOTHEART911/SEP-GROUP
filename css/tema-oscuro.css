@@ -235,6 +235,13 @@ html[data-tema="oscuro"] .cfz-banco { color: var(--text-soft); border-top-color:
 html[data-tema="oscuro"] .conta-step__banco { border-color: var(--bg-soft); }
 html[data-tema="oscuro"] .conta-grantotal { background: rgba(59,130,246,.10); border-color: rgba(96,165,250,.28); }
 html[data-tema="oscuro"] .conta-grantotal__t { color: #bfdbfe; }
+/* FASE 6.1 — Bloque 5 · Pagos adicionales. */
+html[data-tema="oscuro"] .cpad-item { background: var(--bg-card, #111827); border-color: rgba(148,163,184,.25); }
+html[data-tema="oscuro"] .cpad-item__c { color: #e2e8f0; }
+html[data-tema="oscuro"] .cpad-item__c small, html[data-tema="oscuro"] .cpad-cuenta { color: #94a3b8; }
+html[data-tema="oscuro"] .cpad-item__v, html[data-tema="oscuro"] .cpad-sub b { color: #f1f5f9; }
+html[data-tema="oscuro"] .cpad-sub { color: #cbd5e1; }
+html[data-tema="oscuro"] .cpad-form { border-color: rgba(148,163,184,.3); background: rgba(148,163,184,.08); }
 html[data-tema="oscuro"] .conta-grantotal__v { color: var(--text-main); }
 html[data-tema="oscuro"] .proc-chip { color: var(--text-main); }
 html[data-tema="oscuro"] .estp__acc { color: var(--text-main); }
