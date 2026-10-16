@@ -107,7 +107,7 @@ async function apiAbrirGz_(b64){
 }
 /* Listas grandes en columnas (fmt=2): { fmt:2, c:[campos], f:[[...]] }.
    Se rehidratan a objetos; un null es "campo que la fila no trae". */
-const API_FMT2 = { comercialInit: 1, listComercial: 1, contadorInit: 1, listContador: 1, visasInit: 1, seguimientoInit: 1 };
+const API_FMT2 = { comercialInit: 1, listComercial: 1, contadorInit: 1, listContador: 1, visasInit: 1, seguimientoInit: 1, agParticipantes: 1 };   // 6.3: agParticipantes
 function apiRehidratar_(x){
   /* 5.4-C — `r` (ralo=1): campos que casi ninguna fila trae viajan como
      { campo: [[fila, valor], …] } en vez de una columna llena de null. */
@@ -2200,6 +2200,12 @@ async function verificarWhatsapp_(wa){
   comBloquearCampos_(true);
   try{
     const res = await apiGet('buscarWhatsapp', { whatsapp: wa, usuarioId: currentUser.id }, { silent:true });
+    /* FASE 6.3 — el número es de una inscripción de subagencia: sin datos. */
+    if (res.existe && res.agencia){
+      setWaHint_('⛔ ' + (res.mensaje || 'Registrado por una subagencia.'), 'err');
+      Swal.fire({ icon:'warning', title:'Número de una subagencia', text: res.mensaje || 'Ese WhatsApp ya está registrado por una subagencia.' });
+      return;
+    }
     if (res.existe){
       setWaHint_(`⛔ Ya registrado: ${res.nombres} ${res.apellidos} (${res.id})`, 'err');
       Swal.fire({ icon:'warning', title:'Lead ya registrado',

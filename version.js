@@ -3,6 +3,20 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.3 · REGISTRO DEL PARTICIPANTE DE SUBAGENCIA (16/10/2026 · 2).
+ *   · Agencia: "Mis participantes" activo. Registro corto en 2 pasos
+ *     (celular + cédula; luego nombres, apellidos, correo, teléfono y
+ *     usuario de WhatsApp), con Summer Work and Travel de la temporada
+ *     activa ya puesto. Si el número existe solo sale "Este número ya
+ *     está registrado; comunícate con SEP"; si es un lead de SEP que
+ *     nunca se inscribió, la agencia puede pedir el traspaso. Lista de
+ *     carga única con la clave de acceso para copiar y las solicitudes.
+ *   · Subagencias (Superusuario): pestaña Participantes con los de todas
+ *     las agencias y aprobar/rechazar traspasos.
+ *   · Comercial: un WhatsApp de una subagencia avisa sin mostrar datos.
+ *   Archivos: app.js, index.html, js/agencias.js, css/agencias.css,
+ *   version.js, sw.js (caché v62).
+ * ------------------------------------------------------------
  * FASE 6.2 · BASE DE SUBAGENCIAS Y LOGIN SEGURO (16/10/2026 · 1).
  *   · Inicio: cuadro "Subagencias" (Superusuario: todo; Contador:
  *     agencias, valores y cuenta). PROCESOS y Comercial no lo ven.
@@ -836,4 +850,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.16.01";
+var APP_VERSION = "2026.10.16.02";

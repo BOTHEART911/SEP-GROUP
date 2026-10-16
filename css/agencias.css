@@ -80,7 +80,35 @@
 /* Botón ocupado (escudo) */
 .ag-btn.is-busy, .btn.is-busy { opacity: .6; pointer-events: none; }
 
+/* FASE 6.3 · Mis participantes */
+.agp-tmp { margin: 14px 2px 4px; color: var(--text-soft); font-size: .9rem; }
+.agp-tmp b { color: var(--primary); }
+.agp-pills { margin: 10px 0 4px; }
+.agp-card { gap: 8px; }
+.agp-card__top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.agp-nom { font-family: var(--font-display); font-weight: 700; color: var(--primary); font-size: 1rem; line-height: 1.25; overflow-wrap: anywhere; min-width: 0; }
+.agp-ag { font-size: .76rem; font-weight: 800; color: var(--rol-agencia); text-transform: uppercase; letter-spacing: .3px; }
+.agp-datos { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .8rem; color: var(--text-soft); }
+.agp-datos span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.agp-datos svg { flex-shrink: 0; color: var(--text-muted); }
+.agp-cor { max-width: 100%; }
+.agp-clave { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--bg-soft); border-radius: var(--r-md); padding: 7px 8px 7px 10px; font-size: .82rem; color: var(--text-soft); }
+.agp-clave span { display: inline-flex; align-items: center; gap: 6px; }
+.agp-clave b { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--text-main); font-size: .92rem; letter-spacing: .3px; }
+.agp-tras { margin: 12px 0 6px; display: flex; flex-direction: column; gap: 8px; }
+.agp-tras .ag-sp-titulo { margin-top: 4px; }
+.agp-tras__fila { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--bg-card); border: 1.5px solid var(--border); border-left: 4px solid var(--rol-agencia); border-radius: var(--r-md); padding: 10px 12px; }
+.agp-tras__fila b { color: var(--text-main); }
+.agr-aviso { margin: 12px 0 2px; padding: 10px 12px; border-radius: var(--r-md); font-size: .86rem; line-height: 1.4; }
+.agr-aviso div { margin-top: 4px; font-weight: 500; }
+.agr-aviso.err { background: rgba(220,38,38,.09); color: #b91c1c; border: 1.5px solid rgba(220,38,38,.35); }
+.agr-aviso.warn { background: rgba(194,121,42,.10); color: #9a5b00; border: 1.5px solid rgba(194,121,42,.45); }
+.agr-aviso.ok { background: rgba(21,115,71,.08); color: #157347; border: 1.5px solid rgba(21,115,71,.4); }
+#agr-p2 { margin-top: 12px; }
+#agps-ag { width: auto; min-width: 200px; max-width: 100%; }
+
 @media (max-width: 560px) {
+  #agps-ag { width: 100%; min-width: 0; }
   .ag-cards { grid-template-columns: 1fr; }
   .ag-temporada-sel select, .ag-aud-sel select { min-width: 0; width: 100%; }
   .ag-btn span { display: none; }

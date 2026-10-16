@@ -1,5 +1,5 @@
 /* =============================================================
- * SEP GROUP — SUBAGENCIAS (Fase 6 · Entrega 6.2 · 16/10/2026)
+ * SEP GROUP — SUBAGENCIAS (Fase 6 · Entregas 6.2 y 6.3 · 16/10/2026)
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
  * Software propietario. Modificarlo anula la garantía de funcionamiento.
  * -------------------------------------------------------------
@@ -11,8 +11,12 @@
  *      valores y cuenta), sin contacto, sin accesos y sin auditoría.
  *   2. La AGENCIA: entra por la pestaña "Agencia" del login (usuario y
  *      contraseña), con la marca SEP en el login y SU logo después.
- *      Ve un inicio reducido: Mis participantes (llega en la entrega
- *      siguiente) y Mi agencia.
+ *      Ve un inicio reducido: Mis participantes y Mi agencia.
+ *   3. (6.3) MIS PARTICIPANTES: la agencia registra con el formulario
+ *      corto (paso 1: celular y cédula; paso 2: datos), ve su lista con
+ *      la clave de acceso y sus solicitudes de traspaso. El
+ *      Superusuario ve los de todas las agencias en la pestaña
+ *      Participantes de Subagencias y aprueba o rechaza los traspasos.
  *
  * RENDIMIENTO
  *   · Una vista, un viaje: agenciasInit trae agencias + temporadas +
@@ -25,7 +29,7 @@
 (function () {
   'use strict';
 
-  var AGS = { data: null, filtro: '', tab: 'lista', tmp: '', wired: false, aud: {} };
+  var AGS = { data: null, filtro: '', tab: 'lista', tmp: '', wired: false, aud: {}, part: null, partCargando: null, partQ: '', partAg: '' };
   var AGM = { inicio: null, pendiente: null };
   var LOGO_DEF = 'img/agencias.svg';
 
@@ -91,7 +95,7 @@
      INICIO DE LA AGENCIA (vistas reducidas)
      ============================================================ */
   var TILES_AG = [
-    { key: 'participantes', titulo: 'Mis participantes', desc: 'Registro y seguimiento', icono: 'img/usuarios.webp', listo: false },
+    { key: 'participantes', titulo: 'Mis participantes', desc: 'Registro y seguimiento', icono: 'img/usuarios.webp', listo: true },
     { key: 'mia', titulo: 'Mi agencia', desc: 'Datos, temporada y valores', icono: LOGO_DEF, listo: true }
   ];
 
@@ -131,6 +135,7 @@
       b.addEventListener('click', function () {
         if (!t.listo) { Swal.fire({ icon: 'info', title: t.titulo, text: 'El registro de tus participantes se habilita en la siguiente entrega.' }); return; }
         if (t.key === 'mia') abrirMia_();
+        else if (t.key === 'participantes') abrirPart_();
       });
       grid.appendChild(b);
     });
@@ -188,6 +193,7 @@
 
   window.agSalir_ = function () {
     AGM.inicio = null; AGM.pendiente = null;
+    AGP.data = null; AGP.filtro = ''; AGP.anio = ''; AGS.part = null;
     document.documentElement.removeAttribute('data-agencia');
     var av = $1('#welcome-avatar'); if (av) av.classList.remove('ag-logo-av');
     var hello = document.querySelector('#view-inicio .welcome-bar__hello'); if (hello) hello.textContent = 'Bienvenido';
@@ -207,7 +213,7 @@
     showView('agencias');
     var esAdmin = tengoRol_('DESARROLLADOR', 'SUPERUSUARIO');
     document.getElementById('view-agencias').classList.toggle('ag-es-conta', !esAdmin);
-    if (!esAdmin && AGS.tab === 'auditoria') AGS.tab = 'lista';
+    if (!esAdmin && (AGS.tab === 'auditoria' || AGS.tab === 'participantes')) AGS.tab = 'lista';
     marcarTab_();
     if (!AGS.data) $1('#ag-cards').innerHTML = (window.SEPEsqueleto && SEPEsqueleto.html('persona', 4)) || '';
     else render_();
@@ -243,7 +249,7 @@
   }
   function marcarTab_() {
     document.querySelectorAll('#ag-tabs .ag-tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-agtab') === AGS.tab); });
-    ['lista', 'temporada', 'auditoria'].forEach(function (k) { $1('#ag-panel-' + k).classList.toggle('hidden', k !== AGS.tab); });
+    ['lista', 'temporada', 'auditoria', 'participantes'].forEach(function (k) { var el = $1('#ag-panel-' + k); if (el) el.classList.toggle('hidden', k !== AGS.tab); });
   }
   function agPorId_(id) { return (AGS.data && AGS.data.agencias || []).find(function (a) { return a.id === id; }) || null; }
   function tmpSel_() { return (AGS.data && AGS.data.temporadas || []).find(function (t) { return t.id === AGS.tmp; }) || null; }
@@ -258,6 +264,7 @@
       : '<option value="">Sin temporadas de Summer Work and Travel</option>';
     if (AGS.tab === 'lista') renderLista_();
     else if (AGS.tab === 'temporada') renderTemporada_();
+    else if (AGS.tab === 'participantes') renderPartSup_();
     else renderAuditoria_();
   }
 
@@ -354,7 +361,8 @@
   var ACC_TXT = { CREAR: 'Agencia creada', EDITAR: 'Datos editados', ACTIVAR: 'Agencia activada', DESACTIVAR: 'Agencia desactivada',
     LOGO: 'Logo actualizado', CREAR_CUENTA: 'Cuenta de acceso creada', CAMBIAR_CLAVE: 'Contraseña cambiada', CAMBIAR_USUARIO: 'Usuario cambiado',
     ACTIVAR_CUENTA: 'Cuenta activada', DESACTIVAR_CUENTA: 'Cuenta desactivada', CERRAR_SESIONES: 'Sesiones cerradas',
-    GUARDAR_VALORES: 'Valores de temporada', CONFIG_TEMPORADA: 'Configuración de temporada', LOGIN: 'Inició sesión', LOGIN_FALLIDO: 'Intento fallido de ingreso' };
+    GUARDAR_VALORES: 'Valores de temporada', CONFIG_TEMPORADA: 'Configuración de temporada', LOGIN: 'Inició sesión', LOGIN_FALLIDO: 'Intento fallido de ingreso',
+    REGISTRAR: 'Registró un participante', SOLICITAR_TRASPASO: 'Pidió un traspaso', APROBAR_TRASPASO: 'Traspaso aprobado', RECHAZAR_TRASPASO: 'Traspaso rechazado' };
   function accionTxt_(a) { return ACC_TXT[a] || a; }
 
   /* ---------- Modal genérico (mismas clases del resto de la app) ---------- */
@@ -535,6 +543,302 @@
           renderLista_();
           m.cerrar();
           Swal.fire({ icon: 'success', title: 'Valores guardados', timer: 1100, showConfirmButton: false });
+        });
+      });
+    });
+  }
+
+  /* ============================================================
+     FASE 6.3 · MIS PARTICIPANTES (la agencia)
+     Patrón de carga única: UN viaje (agParticipantes) por sesión; filtros,
+     búsqueda y temporadas son locales. Tras registrar se parcha la
+     lista en memoria (no se recarga).
+     ============================================================ */
+  var AGP = { data: null, filtro: '', anio: '', cargando: null };
+
+  function sinTildes_(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function blob_(r) { return sinTildes_([r.nom, r.ape, r.cel, r.ced, r.cor, r.clave, r.id, r.agn].join(' ')); }
+  function prepararReg_(r) { r.__b = blob_(r); return r; }
+  function copiar_(txt, ok) {
+    var hecho = function () { Swal.fire({ icon: 'success', title: ok || 'Copiado', timer: 900, showConfirmButton: false }); };
+    try { navigator.clipboard.writeText(txt).then(hecho, hecho); } catch (_) { hecho(); }
+  }
+  var IC_P = {
+    copiar: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    llave: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
+    tel: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>',
+    doc: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><line x1="13" y1="10" x2="18" y2="10"/><line x1="13" y1="14" x2="17" y2="14"/></svg>',
+    mail: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>',
+    reloj: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+  };
+
+  function abrirPart_() {
+    wirePart_();
+    showView('agencia-part');
+    if (AGP.data) { renderPart_(); return; }
+    $1('#agp-cards').innerHTML = (window.SEPEsqueleto && SEPEsqueleto.html('persona', 4)) || '';
+    cargarPart_();
+  }
+  function cargarPart_() {
+    var tk = (typeof sesionTk_ === 'function') ? sesionTk_() : '';
+    if (AGP.cargando) return AGP.cargando;
+    AGP.cargando = apiGet('agParticipantes', {}, { vista: 'agencia-part', silent: true }).then(function (d) {
+      AGP.cargando = null;
+      if (!currentUser || sesionTk_() !== tk) return;
+      (d.registros || []).forEach(prepararReg_);
+      AGP.data = d;
+      if (!AGP.anio) AGP.anio = d.temporada ? d.temporada.anio : '';
+      renderPart_();
+    }).catch(function (e) { AGP.cargando = null; err_(e); });
+    return AGP.cargando;
+  }
+  function wirePart_() {
+    var v = $1('#view-agencia-part'); if (!v || v.__w) return; v.__w = true;
+    $1('#agp-search').addEventListener('input', function (e) { AGP.filtro = e.target.value; renderPartLista_(); });
+    $1('#agp-add').addEventListener('click', function () { modalRegistro_(); });
+    $1('#agp-pills').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-anio]'); if (!b) return;
+      AGP.anio = b.getAttribute('data-anio'); renderPart_();
+    });
+    $1('#agp-cards').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-copiar]'); if (!b) return;
+      copiar_(b.getAttribute('data-copiar'), 'Clave copiada');
+    });
+  }
+  function aniosDe_(regs, extra) {
+    var a = {}; regs.forEach(function (r) { if (r.anio) a[r.anio] = (a[r.anio] || 0) + 1; });
+    if (extra && !a[extra]) a[extra] = 0;
+    return Object.keys(a).sort(function (x, y) { return Number(y) - Number(x); }).map(function (k) { return { anio: k, n: a[k] }; });
+  }
+  function renderPart_() {
+    var d = AGP.data; if (!d) return;
+    var t = d.temporada;
+    $1('#agp-tmp-txt').innerHTML = t
+      ? 'Registras en <b>' + e_(t.nombre) + '</b>'
+      : '<b>SEP aún no abre la temporada.</b> Por ahora no se pueden registrar participantes.';
+    $1('#agp-add').disabled = !t || d.listo === false;
+    $1('#agp-pills').innerHTML = aniosDe_(d.registros, t ? t.anio : '').map(function (x) {
+      return '<button type="button" class="ag-chip' + (x.anio === AGP.anio ? ' on' : '') + '" data-anio="' + e_(x.anio) + '">' + e_(x.anio) + ' · ' + x.n + '</button>';
+    }).join('');
+    renderTras_();
+    renderPartLista_();
+  }
+  function renderTras_() {
+    var c = $1('#agp-tras'); var d = AGP.data; if (!c || !d) return;
+    var l = d.traspasos || [];
+    if (!l.length) { c.innerHTML = ''; return; }
+    var txt = { PENDIENTE: 'En revisión por SEP', APROBADO: 'Aprobado', RECHAZADO: 'Rechazado' };
+    c.innerHTML = '<div class="agp-tras"><div class="ag-sp-titulo">Solicitudes de traspaso a SEP</div>' + l.map(function (x) {
+      var cls = x.estado === 'APROBADO' ? 'ok' : (x.estado === 'RECHAZADO' ? 'off' : 'warn');
+      return '<div class="agp-tras__fila"><div><b>' + e_(x.nom + ' ' + x.ape) + '</b><div class="ag-meta">' + e_(x.cel) + ' · ' + e_(x.ced) + ' · ' + e_(x.fecha) + '</div>' +
+        (x.estado === 'RECHAZADO' && x.motivo ? '<div class="ag-meta">Motivo: ' + e_(x.motivo) + '</div>' : '') + '</div>' +
+        '<span class="ag-pill ' + cls + '">' + e_(txt[x.estado] || x.estado) + '</span></div>';
+    }).join('') + '</div>';
+  }
+  function filtrarPart_(regs, anio, q) {
+    q = sinTildes_(String(q || '').trim());
+    return regs.filter(function (r) { return (!anio || r.anio === anio) && (!q || r.__b.indexOf(q) >= 0); });
+  }
+  function tarjetaPart_(r, conAgencia) {
+    return '<article class="ag-card agp-card">' +
+      '<div class="agp-card__top"><div class="agp-nom">' + e_(r.nom + ' ' + r.ape) + '</div><span class="ag-pill ok">SWT ' + e_(r.anio) + '</span></div>' +
+      (conAgencia && r.agn ? '<div class="agp-ag">' + e_(r.agn) + '</div>' : '') +
+      '<div class="agp-datos"><span>' + IC_P.tel + e_(r.cel) + '</span><span>' + IC_P.doc + e_(r.ced || '—') + '</span>' +
+      (r.cor ? '<span class="agp-cor">' + IC_P.mail + e_(r.cor) + '</span>' : '') + '<span>' + IC_P.reloj + e_(r.fecha) + '</span></div>' +
+      (r.clave ? '<div class="agp-clave"><span>' + IC_P.llave + 'Clave de acceso <b>' + e_(r.clave) + '</b></span>' +
+        '<button type="button" class="ag-btn" data-copiar="' + e_(r.clave) + '" title="Copiar la clave">' + IC_P.copiar + '<span>Copiar</span></button></div>' : '') +
+      '</article>';
+  }
+  function renderPartLista_() {
+    var d = AGP.data; if (!d) return;
+    var lista = filtrarPart_(d.registros, AGP.anio, AGP.filtro);
+    $1('#agp-empty').classList.toggle('hidden', lista.length > 0);
+    $1('#agp-empty-txt').textContent = d.registros.length ? 'Ningún participante coincide con el filtro.' : 'Aún no has registrado participantes.';
+    var cont = $1('#agp-cards');
+    if (typeof tandaPintar_ === 'function') tandaPintar_(cont, lista, function (r) { return tarjetaPart_(r, false); });
+    else cont.innerHTML = lista.map(function (r) { return tarjetaPart_(r, false); }).join('');
+  }
+
+  /* ---------- Registro: paso 1 (celular y cédula) y paso 2 (datos) ---------- */
+  function modalRegistro_() {
+    var d = AGP.data;
+    if (!d || !d.temporada) { Swal.fire({ icon: 'info', title: 'Sin temporada abierta', text: 'SEP aún no abre la temporada de Summer Work and Travel.' }); return; }
+    var t = d.temporada;
+    var m = modal_('Registrar participante',
+      '<p class="cfg-card__sub">' + e_(t.nombre) + '. Primero el celular y la cédula.</p>' +
+      '<div class="form-grid" id="agr-p1">' +
+        '<div class="fld"><label>Celular (WhatsApp) *</label><input id="agr-cel" type="tel" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10 dígitos" /></div>' +
+        '<div class="fld"><label>Cédula *</label><input id="agr-ced" type="text" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="Solo números" /></div>' +
+      '</div>' +
+      '<div id="agr-aviso" class="agr-aviso hidden" role="alert"></div>' +
+      '<div class="form-grid hidden" id="agr-p2">' +
+        '<div class="fld"><label>Nombres *</label><input id="agr-nom" type="text" maxlength="60" autocomplete="off" /></div>' +
+        '<div class="fld"><label>Apellidos *</label><input id="agr-ape" type="text" maxlength="60" autocomplete="off" /></div>' +
+        '<div class="fld"><label>Correo *</label><input id="agr-cor" type="email" autocomplete="off" /></div>' +
+        '<div class="fld"><label>Teléfono (opcional)</label><input id="agr-tel" type="tel" inputmode="numeric" maxlength="10" autocomplete="off" /></div>' +
+        '<div class="fld"><label>Usuario de WhatsApp (opcional)</label><input id="agr-uwa" type="text" maxlength="60" autocomplete="off" /></div>' +
+        '<div class="fld"><label>Programa</label><input type="text" value="' + e_(t.nombre) + '" disabled /></div>' +
+      '</div>',
+      '<button class="btn btn-ghost" data-x>Cancelar</button><button class="btn btn-primary" id="agr-ok">Verificar</button>');
+    m.querySelector('[data-x]').addEventListener('click', m.cerrar);
+    var paso = 1, modo = 'registro';
+    var cel = m.querySelector('#agr-cel'), ced = m.querySelector('#agr-ced'), ok = m.querySelector('#agr-ok');
+    var aviso = function (txt, tipo, extra) {
+      var a = m.querySelector('#agr-aviso');
+      a.className = 'agr-aviso ' + (tipo || 'err');
+      a.innerHTML = '<b>' + e_(txt) + '</b>' + (extra ? '<div>' + e_(extra) + '</div>' : '');
+    };
+    var limpiar = function () { m.querySelector('#agr-aviso').className = 'agr-aviso hidden'; };
+    [cel, ced].forEach(function (el) {
+      el.addEventListener('input', function () {
+        el.value = el.value.replace(/\D/g, '');
+        if (paso !== 1) { paso = 1; modo = 'registro'; m.querySelector('#agr-p2').classList.add('hidden'); ok.textContent = 'Verificar'; }
+        limpiar();
+      });
+    });
+    var irPaso2 = function (traspaso) {
+      paso = 2; modo = traspaso ? 'traspaso' : 'registro';
+      m.querySelector('#agr-p2').classList.remove('hidden');
+      ok.textContent = traspaso ? 'Enviar solicitud a SEP' : 'Registrar';
+      if (!traspaso) aviso('Número disponible. Completa los datos.', 'ok');
+      m.querySelector('#agr-nom').focus();
+    };
+    ok.addEventListener('click', function () {
+      var c = cel.value.trim(), k = ced.value.trim();
+      if (c.length !== 10) { aviso('El celular debe tener 10 dígitos.'); return; }
+      if (k.length < 5 || k.length > 12) { aviso('La cédula debe tener entre 5 y 12 dígitos.'); return; }
+      if (paso === 1) {
+        /* Ya está en mi lista (misma temporada): sin viaje. */
+        var mio = d.registros.some(function (r) { return r.anio === t.anio && (r.cel === c || r.ced === k); });
+        if (mio) { aviso('Este número ya está registrado; comunícate con SEP.'); return; }
+        escudo_(ok, function () {
+          return apiPost('agVerificar', { celular: c, cedula: k }, { silent: true }).then(function (r) {
+            if (r.libre) { irPaso2(false); return; }
+            if (r.traspaso) {
+              aviso(r.mensaje, 'warn', r.detalle);
+              ok.textContent = 'Pedir traspaso';
+              ok.onclick = null;
+              paso = 1.5;
+              return;
+            }
+            aviso(r.mensaje);
+          });
+        });
+        return;
+      }
+      if (paso === 1.5) { limpiar(); aviso('Completa los datos de la persona; SEP revisa la solicitud.', 'warn'); irPaso2(true); return; }
+      var body = { celular: c, cedula: k, nombres: m.querySelector('#agr-nom').value, apellidos: m.querySelector('#agr-ape').value,
+        correo: m.querySelector('#agr-cor').value, telefono: m.querySelector('#agr-tel').value, usuarioWhatsapp: m.querySelector('#agr-uwa').value };
+      if (!String(body.nombres).trim() || !String(body.apellidos).trim()) { aviso('Escribe nombres y apellidos.'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.correo).trim())) { aviso('Escribe un correo válido.'); return; }
+      if (body.telefono && String(body.telefono).replace(/\D/g, '').length !== 10) { aviso('El teléfono debe tener 10 dígitos.'); return; }
+      if (modo === 'traspaso') body.solicitarTraspaso = true;
+      escudo_(ok, function () {
+        return apiPost('agRegistrar', body, {
+          avion: { titulo: modo === 'traspaso' ? 'Enviando la solicitud…' : 'Registrando…', sub: 'Un momento.', pasos: ['Revisando el celular y la cédula…', 'Guardando…'] }
+        }).then(function (r) {
+          if (r.registro) {
+            prepararReg_(r.registro);
+            AGP.data.registros.unshift(r.registro);
+            AGP.anio = r.registro.anio;
+            m.cerrar(); renderPart_(); contarInicio_();
+            mostrarClavePart_(r.registro);
+            return;
+          }
+          if (r.solicitud) {
+            AGP.data.traspasos.unshift(r.solicitud);
+            m.cerrar(); renderTras_();
+            Swal.fire({ icon: 'success', title: 'Solicitud enviada', text: 'SEP revisa el traspaso. El resultado aparece en Mis participantes.' });
+            return;
+          }
+          aviso(r.mensaje || 'No se pudo registrar.', r.traspaso ? 'warn' : 'err', r.detalle);
+        });
+      });
+    });
+    cel.focus();
+  }
+  function mostrarClavePart_(r) {
+    Swal.fire({
+      icon: 'success', title: 'Participante registrado',
+      html: '<p>' + e_(r.nom + ' ' + r.ape) + ' quedó inscrito en Summer Work and Travel ' + e_(r.anio) + '.</p>' +
+        '<p>Entrégale su clave de acceso (no se envía por correo ni WhatsApp):</p><div class="ag-clave"><b>' + e_(r.clave) + '</b></div>',
+      confirmButtonText: 'Copiar la clave', showCancelButton: true, cancelButtonText: 'Cerrar'
+    }).then(function (x) { if (x.isConfirmed) copiar_(r.clave, 'Clave copiada'); });
+  }
+  function contarInicio_() {
+    var tp = document.querySelector('[data-agtile="participantes"] .menu-tile__desc');
+    var d = AGP.data; if (!tp || !d || !d.temporada) return;
+    var n = d.registros.filter(function (r) { return r.anio === d.temporada.anio; }).length;
+    tp.textContent = n + ' en ' + d.temporada.nombre;
+  }
+
+  /* ============================================================
+     FASE 6.3 · PARTICIPANTES DE TODAS LAS AGENCIAS (Superusuario)
+     ============================================================ */
+  function renderPartSup_() {
+    var p = $1('#ag-panel-participantes'); if (!p) return;
+    if (!soloAdmin_()) { p.innerHTML = ''; return; }
+    if (!AGS.part) {
+      p.innerHTML = (window.SEPEsqueleto && SEPEsqueleto.html('persona', 3)) || '';
+      if (!AGS.partCargando) {
+        AGS.partCargando = apiGet('agParticipantes', { usuarioId: currentUser.id }, { vista: 'agencias', silent: true }).then(function (d) {
+          AGS.partCargando = null;
+          (d.registros || []).forEach(prepararReg_);
+          AGS.part = d;
+          if (AGS.tab === 'participantes') renderPartSup_();
+        }).catch(function (e) { AGS.partCargando = null; err_(e); });
+      }
+      return;
+    }
+    var d = AGS.part, t = tmpSel_();
+    var anio = t ? String(t.anio) : '';
+    var pend = (d.traspasos || []).filter(function (x) { return x.estado === 'PENDIENTE'; });
+    var agSel = AGS.partAg || '';
+    var lista = filtrarPart_(d.registros, anio, AGS.partQ).filter(function (r) { return !agSel || r.ag === agSel; });
+    var ags = (AGS.data && AGS.data.agencias) || [];
+    p.innerHTML =
+      (pend.length ? '<div class="agp-tras"><div class="ag-sp-titulo">Solicitudes de traspaso pendientes · ' + pend.length + '</div>' + pend.map(function (x) {
+        return '<div class="agp-tras__fila"><div><b>' + e_(x.nom + ' ' + x.ape) + '</b> <span class="ag-meta">· ' + e_(x.agn) + '</span>' +
+          '<div class="ag-meta">' + e_(x.cel) + ' · ' + e_(x.ced) + ' · ' + e_(x.fecha) + ' · lead SEP ' + e_(x.idSep || '—') + '</div></div>' +
+          '<div class="ag-acts"><button class="ag-btn" data-tras="aprobar" data-id="' + e_(x.id) + '">Aprobar</button>' +
+          '<button class="ag-btn" data-tras="rechazar" data-id="' + e_(x.id) + '">Rechazar</button></div></div>';
+      }).join('') + '</div>' : '') +
+      '<div class="com-toolbar"><div class="search-bar"><svg class="search-bar__ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+      '<input id="agps-q" type="search" placeholder="Buscar participante…" autocomplete="off" value="' + e_(AGS.partQ || '') + '" /></div>' +
+      '<select id="agps-ag"><option value="">Todas las agencias</option>' + ags.map(function (a) { return '<option value="' + e_(a.id) + '"' + (a.id === agSel ? ' selected' : '') + '>' + e_(a.nombre) + '</option>'; }).join('') + '</select></div>' +
+      '<p class="cfg-hint">' + lista.length + ' participante' + (lista.length === 1 ? '' : 's') + ' de agencias en ' + e_(t ? t.nombre : 'la temporada') + '. No aparecen en Comercial, Participantes ni Estadísticas de SEP.</p>' +
+      '<div id="agps-cards" class="ag-cards"></div>';
+    var cont = $1('#agps-cards');
+    if (typeof tandaPintar_ === 'function') tandaPintar_(cont, lista, function (r) { return tarjetaPart_(r, true); });
+    else cont.innerHTML = lista.map(function (r) { return tarjetaPart_(r, true); }).join('');
+    $1('#agps-q').addEventListener('input', function (e) {
+      AGS.partQ = e.target.value;
+      var l = filtrarPart_(AGS.part.registros, anio, AGS.partQ).filter(function (r) { return !AGS.partAg || r.ag === AGS.partAg; });
+      if (typeof tandaPintar_ === 'function') tandaPintar_(cont, l, function (r) { return tarjetaPart_(r, true); });
+      else cont.innerHTML = l.map(function (r) { return tarjetaPart_(r, true); }).join('');
+    });
+    $1('#agps-ag').addEventListener('change', function (e) { AGS.partAg = e.target.value; renderPartSup_(); });
+    p.onclick = function (e) {
+      var c = e.target.closest('[data-copiar]'); if (c) { copiar_(c.getAttribute('data-copiar'), 'Clave copiada'); return; }
+      var b = e.target.closest('[data-tras]'); if (!b) return;
+      resolverTras_(b, b.getAttribute('data-id'), b.getAttribute('data-tras'));
+    };
+  }
+  function resolverTras_(btn, id, accion) {
+    var x = (AGS.part.traspasos || []).find(function (y) { return y.id === id; }); if (!x) return;
+    var pide = accion === 'aprobar'
+      ? Swal.fire({ icon: 'question', title: 'Aprobar el traspaso', html: '<b>' + e_(x.nom + ' ' + x.ape) + '</b> queda inscrito con <b>' + e_(x.agn) + '</b> y el lead de SEP se cierra (sin mensajes).', input: 'text', inputLabel: 'Nota (opcional)', showCancelButton: true, confirmButtonText: 'Aprobar', cancelButtonText: 'Cancelar' })
+      : Swal.fire({ icon: 'warning', title: 'Rechazar el traspaso', input: 'textarea', inputLabel: 'Motivo (lo ve la agencia)', showCancelButton: true, confirmButtonText: 'Rechazar', cancelButtonText: 'Cancelar',
+          inputValidator: function (v) { return String(v || '').trim().length < 5 && 'Escribe el motivo (mínimo 5 caracteres).'; } });
+    pide.then(function (r) {
+      if (!r.isConfirmed) return;
+      escudo_(btn, function () {
+        return apiPost('agTraspasoResolver', { usuarioId: currentUser.id, id: id, accion: accion, motivo: r.value || '' }).then(function (out) {
+          var arr = AGS.part.traspasos; var i = arr.findIndex(function (y) { return y.id === id; });
+          if (i >= 0) arr[i] = out.traspaso;
+          if (out.registro) AGS.part.registros.unshift(prepararReg_(out.registro));
+          renderPartSup_();
+          Swal.fire({ icon: 'success', title: accion === 'aprobar' ? 'Traspaso aprobado' : 'Traspaso rechazado', timer: 1200, showConfirmButton: false });
         });
       });
     });

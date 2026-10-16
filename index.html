@@ -272,6 +272,7 @@
       <div class="ag-tabs" id="ag-tabs" role="tablist">
         <button type="button" class="ag-tab active" data-agtab="lista" role="tab">Agencias</button>
         <button type="button" class="ag-tab" data-agtab="temporada" role="tab">Temporada</button>
+        <button type="button" class="ag-tab ag-solo-admin" data-agtab="participantes" role="tab">Participantes</button>   <!-- FASE 6.3 -->
         <button type="button" class="ag-tab ag-solo-admin" data-agtab="auditoria" role="tab">Auditoría</button>
       </div>
       <div class="ag-temporada-sel">
@@ -299,6 +300,7 @@
 
       <div id="ag-panel-temporada" class="hidden"></div>
       <div id="ag-panel-auditoria" class="hidden"></div>
+      <div id="ag-panel-participantes" class="hidden"></div>
     </div>
   </section>
 
@@ -310,6 +312,36 @@
       <h1 class="app-header__title">Mi agencia</h1>
     </header>
     <div class="container" id="ag-mia-cuerpo"></div>
+  </section>
+
+  <!-- FASE 6.3 (16/10/2026) — MIS PARTICIPANTES de la agencia (js/agencias.js) -->
+  <section id="view-agencia-part" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Mis participantes</h1>
+    </header>
+    <div class="container">
+      <p class="agp-tmp" id="agp-tmp-txt"></p>
+      <div class="com-toolbar">
+        <div class="search-bar">
+          <svg class="search-bar__ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="agp-search" type="search" placeholder="Buscar por nombre, celular o cédula…" autocomplete="off" />
+        </div>
+        <button id="agp-add" class="btn btn-accent">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Registrar
+        </button>
+      </div>
+      <div class="ag-chips agp-pills" id="agp-pills"></div>
+      <div id="agp-tras"></div>
+      <div id="agp-cards" class="ag-cards"></div>
+      <div id="agp-empty" class="usr-empty hidden">
+        <p style="font-weight:700;color:var(--text-soft);" id="agp-empty-txt">Aún no has registrado participantes.</p>
+        <p class="muted">Pulsa <b>Registrar</b> para inscribir al primero.</p>
+      </div>
+    </div>
   </section>
 
   <!-- ============================================================
