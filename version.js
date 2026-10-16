@@ -3,6 +3,18 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.4 · PRUEBA DE INGLÉS Y FORMULARIO DE LA SUBAGENCIA (16/10/2026 · 3).
+ *   · Mis participantes: cada tarjeta dice cómo va la prueba (sin
+ *     invitar / invitado / nota) y el formulario (en curso / por aprobar
+ *     / aprobado). "Prueba y formulario" abre el detalle: la cabecera al
+ *     instante y lo demás de fondo en un viaje.
+ *   · La agencia marca la invitación (la prueba le aparece al
+ *     participante en su portal) y aprueba el formulario terminado. El
+ *     Superusuario registra o actualiza la nota y es el único que
+ *     reversa una aprobación (con motivo). Todo queda en el historial.
+ *   Archivos: js/agencias.js, css/agencias.css, version.js, sw.js
+ *   (caché v63).
+ * ------------------------------------------------------------
  * FASE 6.3 · REGISTRO DEL PARTICIPANTE DE SUBAGENCIA (16/10/2026 · 2).
  *   · Agencia: "Mis participantes" activo. Registro corto en 2 pasos
  *     (celular + cédula; luego nombres, apellidos, correo, teléfono y
@@ -850,4 +862,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.16.02";
+var APP_VERSION = "2026.10.16.03";

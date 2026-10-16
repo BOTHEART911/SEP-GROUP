@@ -1,5 +1,5 @@
 /* =============================================================
- * SEP GROUP — SUBAGENCIAS (Fase 6 · Entregas 6.2 y 6.3 · 16/10/2026)
+ * SEP GROUP — SUBAGENCIAS (Fase 6 · Entregas 6.2, 6.3 y 6.4 · 16/10/2026)
  * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
  * Software propietario. Modificarlo anula la garantía de funcionamiento.
  * -------------------------------------------------------------
@@ -17,6 +17,11 @@
  *      la clave de acceso y sus solicitudes de traspaso. El
  *      Superusuario ve los de todas las agencias en la pestaña
  *      Participantes de Subagencias y aprueba o rechaza los traspasos.
+ *   4. (6.4) PRUEBA Y FORMULARIO: cada tarjeta muestra el estado de la
+ *      prueba de inglés y del formulario; "Prueba y formulario" abre el
+ *      detalle (cabecera al instante, datos de fondo en un viaje). La
+ *      agencia invita y aprueba; el Superusuario registra la nota y
+ *      reversa. Todo queda en el historial del participante.
  *
  * RENDIMIENTO
  *   · Una vista, un viaje: agenciasInit trae agencias + temporadas +
@@ -362,7 +367,10 @@
     LOGO: 'Logo actualizado', CREAR_CUENTA: 'Cuenta de acceso creada', CAMBIAR_CLAVE: 'Contraseña cambiada', CAMBIAR_USUARIO: 'Usuario cambiado',
     ACTIVAR_CUENTA: 'Cuenta activada', DESACTIVAR_CUENTA: 'Cuenta desactivada', CERRAR_SESIONES: 'Sesiones cerradas',
     GUARDAR_VALORES: 'Valores de temporada', CONFIG_TEMPORADA: 'Configuración de temporada', LOGIN: 'Inició sesión', LOGIN_FALLIDO: 'Intento fallido de ingreso',
-    REGISTRAR: 'Registró un participante', SOLICITAR_TRASPASO: 'Pidió un traspaso', APROBAR_TRASPASO: 'Traspaso aprobado', RECHAZAR_TRASPASO: 'Traspaso rechazado' };
+    REGISTRAR: 'Registró un participante', SOLICITAR_TRASPASO: 'Pidió un traspaso', APROBAR_TRASPASO: 'Traspaso aprobado', RECHAZAR_TRASPASO: 'Traspaso rechazado',
+    /* 6.4 */
+    INVITACION_MARCAR: 'Invitó a la prueba de inglés', INVITACION_QUITAR: 'Quitó la invitación a la prueba', NOTA_REGISTRAR: 'Registró la nota de inglés',
+    NOTA_ACTUALIZAR: 'Actualizó la nota de inglés', FORM_APROBAR: 'Aprobó el formulario', FORM_REVERSAR: 'Reversó la aprobación del formulario' };
   function accionTxt_(a) { return ACC_TXT[a] || a; }
 
   /* ---------- Modal genérico (mismas clases del resto de la app) ---------- */
@@ -569,7 +577,9 @@
     tel: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>',
     doc: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><line x1="13" y1="10" x2="18" y2="10"/><line x1="13" y1="14" x2="17" y2="14"/></svg>',
     mail: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>',
-    reloj: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+    reloj: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    /* 6.4 — portapapeles con check: prueba y formulario del participante */
+    det: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="m9 13 2 2 4-4"/></svg>'
   };
 
   function abrirPart_() {
@@ -601,6 +611,8 @@
       AGP.anio = b.getAttribute('data-anio'); renderPart_();
     });
     $1('#agp-cards').addEventListener('click', function (e) {
+      var d = e.target.closest('[data-det]');
+      if (d) { abrirDet_(d.getAttribute('data-det'), { lista: function () { return AGP.data && AGP.data.registros; }, repintar: renderPartLista_, esSuper: false }); return; }
       var b = e.target.closest('[data-copiar]'); if (!b) return;
       copiar_(b.getAttribute('data-copiar'), 'Clave copiada');
     });
@@ -647,7 +659,19 @@
       (r.cor ? '<span class="agp-cor">' + IC_P.mail + e_(r.cor) + '</span>' : '') + '<span>' + IC_P.reloj + e_(r.fecha) + '</span></div>' +
       (r.clave ? '<div class="agp-clave"><span>' + IC_P.llave + 'Clave de acceso <b>' + e_(r.clave) + '</b></span>' +
         '<button type="button" class="ag-btn" data-copiar="' + e_(r.clave) + '" title="Copiar la clave">' + IC_P.copiar + '<span>Copiar</span></button></div>' : '') +
+      estadoPart_(r) +
       '</article>';
+  }
+  /* FASE 6.4 — estado corto de la prueba y del formulario + el detalle. */
+  function estadoPart_(r) {
+    var x = r.est || {};
+    var prueba = !x.inv && !x.pts ? ['Prueba: sin invitar', 'off']
+      : (!x.pts ? ['Prueba: invitado', 'warn'] : ['Nota ' + x.pts, x.ok ? 'ok' : 'bad']);
+    var form = x.apr ? ['Formulario aprobado', 'ok'] : (x.ft ? ['Formulario por aprobar', 'warn'] : (x.ok ? ['Formulario en curso', 'off'] : null));
+    return '<div class="agp-est"><div class="ag-pills">' +
+      '<span class="ag-pill ' + prueba[1] + '">' + e_(prueba[0]) + '</span>' +
+      (form ? '<span class="ag-pill ' + form[1] + '">' + e_(form[0]) + '</span>' : '') +
+      '</div><button type="button" class="ag-btn" data-det="' + e_(r.id) + '" title="Prueba de inglés y formulario">' + IC_P.det + '<span>Prueba y formulario</span></button></div>';
   }
   function renderPartLista_() {
     var d = AGP.data; if (!d) return;
@@ -820,6 +844,8 @@
     $1('#agps-ag').addEventListener('change', function (e) { AGS.partAg = e.target.value; renderPartSup_(); });
     p.onclick = function (e) {
       var c = e.target.closest('[data-copiar]'); if (c) { copiar_(c.getAttribute('data-copiar'), 'Clave copiada'); return; }
+      var dt = e.target.closest('[data-det]');
+      if (dt) { abrirDet_(dt.getAttribute('data-det'), { lista: function () { return AGS.part && AGS.part.registros; }, repintar: renderPartSup_, esSuper: true }); return; }
       var b = e.target.closest('[data-tras]'); if (!b) return;
       resolverTras_(b, b.getAttribute('data-id'), b.getAttribute('data-tras'));
     };
@@ -842,6 +868,164 @@
         });
       });
     });
+  }
+
+  /* ============================================================
+     FASE 6.4 · PRUEBA DE INGLÉS Y FORMULARIO DEL PARTICIPANTE
+     Cabecera antes que datos: el modal se pinta con la fila de la lista
+     y el detalle llega de fondo en UN viaje (agParticipante). Cada
+     escritura (invitación, nota, aprobar, reversar) responde el detalle
+     nuevo: se repinta el modal y se parcha la tarjeta en memoria.
+     La agencia invita y aprueba; la nota y el reverso son del Superusuario.
+     ============================================================ */
+  var EST_BLOQUE = { PENDIENTE: ['Pendiente', 'off'], EN_PROGRESO: ['En progreso', 'warn'], COMPLETADO: ['Completado', 'ok'], REABIERTO: ['Reabierto', 'warn'] };
+
+  function abrirDet_(id, ctx) {
+    var lista = ctx.lista() || [];
+    var r = lista.find(function (x) { return x.id === id; });
+    if (!r) return;
+    var m = modal_(r.nom + ' ' + r.ape,
+      '<div class="agd-cab">' +
+        (ctx.esSuper && r.agn ? '<div class="agp-ag">' + e_(r.agn) + '</div>' : '') +
+        '<div class="agp-datos"><span>' + IC_P.tel + e_(r.cel) + '</span><span>' + IC_P.doc + e_(r.ced || '—') + '</span>' +
+        '<span>' + IC_P.llave + e_(r.clave || '—') + '</span><span class="ag-pill ok">SWT ' + e_(r.anio) + '</span></div>' +
+      '</div>' +
+      '<div id="agd-cuerpo">' + ((window.SEPEsqueleto && SEPEsqueleto.html('persona', 2)) || '') + '</div>');
+    m.classList.add('agd-modal');
+    var tk = sesionTk_();
+    var params = ctx.esSuper ? { usuarioId: currentUser.id, id: id } : { id: id };
+    apiGet('agParticipante', params, { silent: true }).then(function (d) {
+      if (!m.parentNode || sesionTk_() !== tk) return;
+      pintarDet_(m, d, ctx);
+    }).catch(function (e) {
+      if (!m.parentNode) return;
+      var c = m.querySelector('#agd-cuerpo');
+      if (c) c.innerHTML = '<div class="agr-aviso err"><b>' + e_((e && e.message) || 'No se pudo cargar el detalle') + '</b></div>';
+    });
+  }
+
+  function patchLista_(d, ctx) {
+    var lista = ctx.lista() || [];
+    var r = lista.find(function (x) { return x.id === d.id; });
+    if (!r) return;
+    var p = d.prueba || {}, f = d.formulario || {};
+    r.est = { inv: !!p.invitado, pts: p.puntaje || '', ok: !!p.alcanza, ft: !!f.terminado, apr: !!f.aprobado };
+    try { ctx.repintar(); } catch (_) {}
+  }
+
+  function pintarDet_(m, d, ctx) {
+    var c = m.querySelector('#agd-cuerpo'); if (!c) return;
+    var p = d.prueba || {}, f = d.formulario || {}, pu = d.puede || {};
+    var minimo = Number(p.minimo || 4.5).toFixed(1);
+
+    var estPrueba = p.puntaje
+      ? '<span class="ag-pill ' + (p.alcanza ? 'ok' : 'bad') + '">Nota ' + e_(p.puntaje) + (p.alcanza ? ' · continúa' : ' · menor a ' + minimo) + '</span>'
+      : (p.invitado ? '<span class="ag-pill warn">Invitado · sin nota</span>' : '<span class="ag-pill off">Sin invitar</span>');
+    var prueba = '<section class="agd-sec"><h3>Prueba de inglés</h3>' +
+      '<div class="ag-pills">' + estPrueba + '</div>' +
+      '<div class="ag-pares">' +
+        '<div class="ag-par"><span>Invitación</span><b>' + e_(p.invitado ? (p.invitadoPor || 'Sí') + (p.invitadoFecha ? ' · ' + p.invitadoFecha : '') : 'No') + '</b></div>' +
+        (p.puntaje ? '<div class="ag-par"><span>Nivel</span><b>' + e_(p.nivel || '—') + (p.nivelHv ? ' · HV ' + e_(p.nivelHv) : '') + '</b></div>' +
+                     '<div class="ag-par"><span>Registrada</span><b>' + e_(p.fecha || '—') + '</b></div>' : '') +
+      '</div>' +
+      '<p class="cfg-hint">La prueba le aparece al participante en sus Acciones pendientes, con el video de SEP. Con ' + minimo +
+        ' o más se abre su formulario (sin curso de inglés). La nota la registra SEP.</p>' +
+      '<div class="ag-acts">' +
+        (pu.invitar ? '<button type="button" class="ag-btn" data-agd="inv" data-v="' + (p.invitado ? '0' : '1') + '">' + (p.invitado ? 'Quitar invitación' : 'Marcar invitación') + '</button>' : '') +
+      '</div>' +
+      (pu.nota ? '<div class="form-grid agd-nota">' +
+        '<div class="fld"><label>Nota de inglés (0 a 9)</label><input id="agd-pts" type="text" inputmode="decimal" maxlength="5" placeholder="Ej. 4.5" value="' + e_(p.puntaje || '') + '" /></div>' +
+        '<div class="fld"><label>Nivel de Inglés HV</label><select id="agd-hv"><option value="">Elige…</option>' +
+          (d.listaHv || []).map(function (x) { return '<option' + (x === p.nivelHv ? ' selected' : '') + '>' + e_(x) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="fld agd-nota__btn"><button type="button" class="btn btn-primary" data-agd="nota">' + (p.puntaje ? 'Actualizar nota' : 'Registrar nota') + '</button></div>' +
+      '</div>' : '') +
+      '</section>';
+
+    var pct = f.total ? Math.round((f.completados / f.total) * 100) : 0;
+    var estForm = f.aprobado ? '<span class="ag-pill ok">Aprobado' + (f.fechaAprobado ? ' · ' + e_(f.fechaAprobado) : '') + '</span>'
+      : (f.terminado ? '<span class="ag-pill warn">Terminado · por aprobar</span>'
+        : (f.habilitado ? '<span class="ag-pill off">En curso · ' + f.completados + ' de ' + f.total + '</span>' : '<span class="ag-pill off">Se abre con la nota</span>'));
+    var form = '<section class="agd-sec"><h3>Formulario</h3>' +
+      '<div class="ag-pills">' + estForm + '</div>' +
+      (f.habilitado || f.terminado || f.aprobado ? '<div class="agd-prog"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="agd-bloques">' + (f.bloques || []).map(function (b) {
+          var e = EST_BLOQUE[b.e] || EST_BLOQUE.PENDIENTE;
+          return '<div class="agd-bloque"><span>' + b.n + '. ' + e_(b.t) + '</span><span class="ag-pill ' + e[1] + '">' + e[0] + '</span></div>';
+        }).join('') + '</div>' : '') +
+      (f.falta ? '<div class="agr-aviso warn"><b>Todavía no se puede aprobar</b><div>' + e_(f.falta) + '</div></div>' : '') +
+      ((f.docsPendientes || []).length ? '<p class="cfg-hint">Documentos pendientes: ' + e_(f.docsPendientes.join(', ')) + '.</p>' : '') +
+      '<div class="ag-acts">' +
+        (pu.aprobar ? '<button type="button" class="btn btn-primary" data-agd="aprobar">Aprobar formulario</button>' : '') +
+        (pu.reversar ? '<button type="button" class="ag-btn" data-agd="reversar">Reversar aprobación</button>' : '') +
+      '</div>' +
+      (f.aprobado && !pu.reversar ? '<p class="cfg-hint">Solo SEP puede reversar la aprobación.</p>' : '') +
+      '</section>';
+
+    var hist = '<section class="agd-sec"><h3>Historial</h3>' +
+      ((d.historial || []).length ? '<div class="ag-aud">' + d.historial.map(function (h) {
+        return '<div class="ag-aud__fila"><div class="ag-aud__top"><b>' + e_(accionTxt_(h.accion)) + '</b><span>' + e_(h.fecha) + '</span></div>' +
+          '<div class="ag-aud__quien">' + e_(h.actor) + (h.rol ? ' · ' + e_(h.rol) : '') + '</div>' +
+          ((h.nota || h.motivo) ? '<div class="ag-aud__det">' + (h.nota ? 'Nota ' + e_(h.antes ? h.antes + ' → ' : '') + e_(h.nota) : '') +
+            (h.motivo ? (h.nota ? ' · ' : '') + 'Motivo: ' + e_(h.motivo) : '') + '</div>' : '') +
+          '</div>';
+      }).join('') + '</div>' : '<p class="cfg-hint">Sin movimientos todavía.</p>') +
+      '</section>';
+
+    c.innerHTML = prueba + form + hist;
+    c.onclick = function (ev) {
+      var b = ev.target.closest('[data-agd]'); if (!b) return;
+      accionDet_(m, b, d, ctx);
+    };
+  }
+
+  function accionDet_(m, btn, d, ctx) {
+    var base = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id } : { id: d.id };
+    var hecho = function (nuevo, txt) {
+      patchLista_(nuevo, ctx);
+      if (m.parentNode) pintarDet_(m, nuevo, ctx);
+      Swal.fire({ icon: 'success', title: txt, timer: 1100, showConfirmButton: false });
+    };
+    var que = btn.getAttribute('data-agd');
+    if (que === 'inv') {
+      var marcar = btn.getAttribute('data-v') === '1';
+      escudo_(btn, function () {
+        return apiPost('agInvitacion', Object.assign({ marcar: marcar }, base), { avion: { titulo: 'Guardando la invitación…' } })
+          .then(function (n) { hecho(n, marcar ? 'Invitación marcada' : 'Invitación quitada'); });
+      });
+      return;
+    }
+    if (que === 'nota') {
+      var pts = String((m.querySelector('#agd-pts') || {}).value || '').trim().replace(',', '.');
+      var hv = (m.querySelector('#agd-hv') || {}).value || '';
+      var n = Number(pts);
+      if (!pts || isNaN(n) || n < 0 || n > 9) { Swal.fire({ icon: 'warning', title: 'Revisa la nota', text: 'Escribe una nota entre 0 y 9.' }); return; }
+      if (!hv) { Swal.fire({ icon: 'warning', title: 'Falta el nivel', text: 'Elige el Nivel de Inglés HV.' }); return; }
+      escudo_(btn, function () {
+        return apiPost('agNota', Object.assign({ puntaje: pts, nivelHv: hv }, base), { avion: { titulo: 'Guardando la nota…' } })
+          .then(function (x) { hecho(x, 'Nota guardada'); });
+      });
+      return;
+    }
+    if (que === 'aprobar') {
+      Swal.fire({ icon: 'question', title: 'Aprobar el formulario', text: 'Confirmas que el participante está listo para continuar con las ofertas. Solo SEP puede reversarlo.',
+        showCancelButton: true, confirmButtonText: 'Aprobar', cancelButtonText: 'Cancelar' }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost('agFormAprobar', base, { avion: { titulo: 'Aprobando el formulario…' } }).then(function (n) { hecho(n, 'Formulario aprobado'); });
+        });
+      });
+      return;
+    }
+    if (que === 'reversar') {
+      Swal.fire({ icon: 'warning', title: 'Reversar la aprobación', input: 'textarea', inputLabel: 'Motivo (queda en el historial)',
+        showCancelButton: true, confirmButtonText: 'Reversar', cancelButtonText: 'Cancelar',
+        inputValidator: function (v) { return String(v || '').trim().length < 5 && 'Escribe el motivo (mínimo 5 caracteres).'; } }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost('agFormReversar', Object.assign({ motivo: x.value }, base), { avion: { titulo: 'Reversando…' } }).then(function (n) { hecho(n, 'Aprobación reversada'); });
+        });
+      });
+    }
   }
 
   document.addEventListener('DOMContentLoaded', bindLogin_);

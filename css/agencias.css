@@ -107,6 +107,26 @@
 #agr-p2 { margin-top: 12px; }
 #agps-ag { width: auto; min-width: 200px; max-width: 100%; }
 
+/* FASE 6.4 · prueba de inglés y formulario del participante */
+.ag-pill.bad { color: #b91c1c; border-color: rgba(220,38,38,.4); background: rgba(220,38,38,.08); }
+.agp-est { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; border-top: 1px dashed var(--border); padding-top: 8px; }
+.agp-est .ag-pills { margin-top: 0; min-width: 0; }
+.agd-modal .modal-card { max-width: 720px; }
+.agd-cab { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.agd-sec { padding: 14px 0 4px; border-bottom: 1px solid var(--border); }
+.agd-sec:last-child { border-bottom: 0; }
+.agd-sec h3 { margin: 0 0 8px; font-family: var(--font-display); font-size: 1rem; color: var(--primary); }
+.agd-sec .ag-acts { margin-top: 8px; }
+.agd-nota { margin-top: 10px; align-items: end; }
+.agd-nota__btn { display: flex; align-items: flex-end; }
+.agd-nota__btn .btn { width: 100%; }
+.agd-prog { height: 8px; border-radius: var(--r-pill); background: var(--bg-soft); overflow: hidden; margin: 10px 0 8px; }
+.agd-prog i { display: block; height: 100%; background: var(--primary); border-radius: inherit; }
+.agd-bloques { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 12px; margin-bottom: 8px; }
+.agd-bloque { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .82rem; color: var(--text-soft); padding: 4px 0; border-bottom: 1px dotted var(--border); min-width: 0; }
+.agd-bloque > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.agd-bloque .ag-pill { flex-shrink: 0; }
+
 @media (max-width: 560px) {
   #agps-ag { width: 100%; min-width: 0; }
   .ag-cards { grid-template-columns: 1fr; }
