@@ -134,3 +134,14 @@
   .ag-btn span { display: none; }
   .ag-btn { padding: 8px 11px; }
 }
+
+/* FASE 6.5 — los documentos del participante (js/nivel-docs.js, el mismo
+   modal de Procesos) se abren desde el detalle de la agencia, que también
+   es un modal de nivel 9000 y está después en el DOM: van encima. El
+   visor (#nive-visor, 9200) sigue por encima de los dos. */
+#modal-ndocs { z-index: 9100; }
+.agd-ent { margin-top: 12px; }
+.agd-ofe-hist { margin: 10px 0 4px; font-size: .82rem; color: var(--text-soft); }
+.agd-ofe-hist summary { cursor: pointer; font-weight: 700; color: var(--primary); }
+.agd-ofe-hist ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.agd-ofe-hist li div { color: var(--text-muted); overflow-wrap: anywhere; }

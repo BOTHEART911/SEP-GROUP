@@ -370,7 +370,12 @@
     REGISTRAR: 'Registró un participante', SOLICITAR_TRASPASO: 'Pidió un traspaso', APROBAR_TRASPASO: 'Traspaso aprobado', RECHAZAR_TRASPASO: 'Traspaso rechazado',
     /* 6.4 */
     INVITACION_MARCAR: 'Invitó a la prueba de inglés', INVITACION_QUITAR: 'Quitó la invitación a la prueba', NOTA_REGISTRAR: 'Registró la nota de inglés',
-    NOTA_ACTUALIZAR: 'Actualizó la nota de inglés', FORM_APROBAR: 'Aprobó el formulario', FORM_REVERSAR: 'Reversó la aprobación del formulario' };
+    NOTA_ACTUALIZAR: 'Actualizó la nota de inglés', FORM_APROBAR: 'Aprobó el formulario', FORM_REVERSAR: 'Reversó la aprobación del formulario',
+    /* 6.5 */
+    HV_REGENERAR: 'Volvió a generar la hoja de vida', HV_GENERAR: 'Generó la hoja de vida', DOC_CARGA: 'Cargó un documento', DOC_APROBAR: 'Aprobó un documento',
+    DOC_RECHAZAR: 'Rechazó un documento', OFERTA_SELECCION: 'El participante escogió oferta', APLICADA_SPONSOR: 'Marcó Aplicada al Sponsor',
+    SPONSOR_CORREGIR: 'Corrigió Aplicada al Sponsor', ENTREVISTA_AGENDAR: 'Agendó la entrevista', ENTREVISTA_REAGENDAR: 'Reprogramó la entrevista',
+    RESULTADO_CONTRATADO: 'Registró Contratado', RESULTADO_RECHAZADO: 'Registró Rechazado', OFERTA_LIBERAR: 'Liberó la oferta' };
   function accionTxt_(a) { return ACC_TXT[a] || a; }
 
   /* ---------- Modal genérico (mismas clases del resto de la app) ---------- */
@@ -668,10 +673,13 @@
     var prueba = !x.inv && !x.pts ? ['Prueba: sin invitar', 'off']
       : (!x.pts ? ['Prueba: invitado', 'warn'] : ['Nota ' + x.pts, x.ok ? 'ok' : 'bad']);
     var form = x.apr ? ['Formulario aprobado', 'ok'] : (x.ft ? ['Formulario por aprobar', 'warn'] : (x.ok ? ['Formulario en curso', 'off'] : null));
+    /* 6.5 — cómo va su oferta (la manda la lista si el backend ya la conoce). */
+    var of = x.of ? [x.of, x.ofc || 'off'] : null;
     return '<div class="agp-est"><div class="ag-pills">' +
       '<span class="ag-pill ' + prueba[1] + '">' + e_(prueba[0]) + '</span>' +
       (form ? '<span class="ag-pill ' + form[1] + '">' + e_(form[0]) + '</span>' : '') +
-      '</div><button type="button" class="ag-btn" data-det="' + e_(r.id) + '" title="Prueba de inglés y formulario">' + IC_P.det + '<span>Prueba y formulario</span></button></div>';
+      (of ? '<span class="ag-pill ' + of[1] + '">' + e_(of[0]) + '</span>' : '') +
+      '</div><button type="button" class="ag-btn" data-det="' + e_(r.id) + '" title="Prueba, formulario, documentos y oferta">' + IC_P.det + '<span>Detalle</span></button></div>';
   }
   function renderPartLista_() {
     var d = AGP.data; if (!d) return;
@@ -908,8 +916,10 @@
     var lista = ctx.lista() || [];
     var r = lista.find(function (x) { return x.id === d.id; });
     if (!r) return;
-    var p = d.prueba || {}, f = d.formulario || {};
-    r.est = { inv: !!p.invitado, pts: p.puntaje || '', ok: !!p.alcanza, ft: !!f.terminado, apr: !!f.aprobado };
+    var p = d.prueba || {}, f = d.formulario || {}, o = (d.oferta && d.oferta.sel) || null;
+    var ofc = !o ? '' : (o.estado === 'APROBADA' ? 'ok' : (o.estado === 'NO_APROBADA' || o.estado === 'CANCELADA' ? 'bad' : 'warn'));
+    r.est = { inv: !!p.invitado, pts: p.puntaje || '', ok: !!p.alcanza, ft: !!f.terminado, apr: !!f.aprobado,
+              of: o && (d.oferta.activa || o.estado === 'APROBADA') ? o.estadoLabel : '', ofc: ofc };
     try { ctx.repintar(); } catch (_) {}
   }
 
@@ -971,7 +981,7 @@
       }).join('') + '</div>' : '<p class="cfg-hint">Sin movimientos todavía.</p>') +
       '</section>';
 
-    c.innerHTML = prueba + form + hist;
+    c.innerHTML = prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + hist;
     c.onclick = function (ev) {
       var b = ev.target.closest('[data-agd]'); if (!b) return;
       accionDet_(m, b, d, ctx);
@@ -981,6 +991,8 @@
   function accionDet_(m, btn, d, ctx) {
     var base = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id } : { id: d.id };
     var hecho = function (nuevo, txt) {
+      /* 6.5 — las escrituras nuevas devuelven SOLO el bloque que cambió. */
+      if (nuevo && nuevo.parcial) nuevo = Object.assign({}, d, nuevo, { parcial: false });
       patchLista_(nuevo, ctx);
       if (m.parentNode) pintarDet_(m, nuevo, ctx);
       Swal.fire({ icon: 'success', title: txt, timer: 1100, showConfirmButton: false });
@@ -1011,11 +1023,17 @@
         showCancelButton: true, confirmButtonText: 'Aprobar', cancelButtonText: 'Cancelar' }).then(function (x) {
         if (!x.isConfirmed) return;
         escudo_(btn, function () {
-          return apiPost('agFormAprobar', base, { avion: { titulo: 'Aprobando el formulario…' } }).then(function (n) { hecho(n, 'Formulario aprobado'); });
+          return apiPost('agFormAprobar', base, { avion: { titulo: 'Aprobando el formulario…' } }).then(function (n) {
+            hecho(n, 'Formulario aprobado');
+            /* 6.5 — la hoja de vida se arma DE FONDO (tarda ~12 s): no se
+               espera aquí; se pinta "Generando…" y se parcha al llegar. */
+            if (n && n.generarHv) hvFondo_(m, n, ctx, base);
+          });
         });
       });
       return;
     }
+    if (accionDet65_(m, btn, d, ctx, que, base, hecho)) return;
     if (que === 'reversar') {
       Swal.fire({ icon: 'warning', title: 'Reversar la aprobación', input: 'textarea', inputLabel: 'Motivo (queda en el historial)',
         showCancelButton: true, confirmButtonText: 'Reversar', cancelButtonText: 'Cancelar',
@@ -1026,6 +1044,197 @@
         });
       });
     }
+  }
+
+  /* ============================================================
+     FASE 6.5 · HOJA DE VIDA, DOCUMENTOS Y OFERTA DEL PARTICIPANTE
+     Todo llega en el mismo detalle (un viaje). Cada escritura responde
+     solo el bloque que cambió y se parcha sobre el detalle.
+     Agencia: aprueba/rechaza documentos, marca Aplicada al Sponsor,
+     agenda la entrevista y registra Contratado/Rechazado.
+     Superusuario: además regenera la HV, reabre documentos aprobados,
+     corrige "Aplicada al Sponsor" y libera la oferta (todo con motivo).
+     ============================================================ */
+  function secHv_(d) {
+    var hv = d.hv || {};
+    if (hv.generando) {
+      return '<section class="agd-sec"><h3>Hoja de vida</h3><div class="ag-pills"><span class="ag-pill warn">Generando la hoja de vida…</span></div>' +
+        '<p class="cfg-hint">Tarda unos segundos. Puedes seguir trabajando; aparecerá aquí cuando esté lista.</p></section>';
+    }
+    return '<section class="agd-sec"><h3>Hoja de vida</h3>' +
+      (hv.error ? '<div class="agr-aviso err"><b>No se pudo generar la hoja de vida</b><div>' + e_(hv.error) + '</div></div>' : '') +
+      (!hv.url && hv.puedeGenerar ? '<div class="ag-acts"><button type="button" class="btn btn-primary" data-agd="hvgen">Generar hoja de vida</button></div>' : '') +
+      (hv.url
+        ? '<div class="ag-pills"><span class="ag-pill ok">Generada' + (hv.fecha ? ' · ' + e_(hv.fecha) : '') + '</span></div>' +
+          '<div class="ag-acts"><a class="btn btn-ghost" href="' + e_(hv.url) + '" target="_blank" rel="noopener">' + IC_P.doc + ' Ver hoja de vida</a>' +
+          (hv.puedeRegenerar ? '<button type="button" class="ag-btn" data-agd="hv">Volver a generar</button>' : '') + '</div>'
+        : '<p class="cfg-hint">Se genera al aprobar el formulario, con el nombre de la agencia y «Generated by SEP Group».</p>') +
+      '</section>';
+  }
+
+  function secDocs_(d) {
+    var dd = d.documentos || {}, l = dd.documentos || [];
+    if (dd.error) return '<section class="agd-sec"><h3>Documentos</h3><div class="agr-aviso err"><b>' + e_(dd.error) + '</b></div></section>';
+    var n = { APROBADO: 0, EN_REVISION: 0, RECHAZADO: 0, PENDIENTE: 0 };
+    l.forEach(function (x) { if (!x.auto && n[x.estado] !== undefined) n[x.estado]++; });
+    return '<section class="agd-sec"><h3>Documentos</h3>' +
+      '<div class="ag-pills">' +
+        '<span class="ag-pill ok">' + n.APROBADO + ' aprobado(s)</span>' +
+        (n.EN_REVISION ? '<span class="ag-pill warn">' + n.EN_REVISION + ' por revisar</span>' : '') +
+        (n.RECHAZADO ? '<span class="ag-pill bad">' + n.RECHAZADO + ' rechazado(s)</span>' : '') +
+        '<span class="ag-pill off">' + n.PENDIENTE + ' pendiente(s)</span>' +
+      '</div>' +
+      '<p class="cfg-hint">Siempre abiertos: un documento pendiente no detiene las demás etapas. Los carga el participante o la agencia.</p>' +
+      '<div class="ag-acts"><button type="button" class="btn btn-primary" data-agd="docs">' + IC_P.doc + ' Abrir documentos</button></div>' +
+      '</section>';
+  }
+
+  function hoyIso_() { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
+  function dmyAIso_(s) { var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '')); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
+
+  function secOferta_(d, ctx) {
+    var o = d.oferta || {}, s = o.sel, pu = o.puede || {};
+    if (o.error) return '<section class="agd-sec"><h3>Oferta de empleo</h3><div class="agr-aviso err"><b>' + e_(o.error) + '</b></div></section>';
+    if (!s) {
+      return '<section class="agd-sec"><h3>Oferta de empleo</h3>' +
+        '<p class="cfg-hint">Todavía no ha escogido oferta. La escoge el participante en su portal cuando su formulario está aprobado ' +
+        '(solo ve los sponsors habilitados para subagencias y el cupo es el mismo de SEP).</p></section>';
+    }
+    var c = o.cobro;
+    var cobro = !c ? '<span class="ag-pill off">Sin cobro de Aplicada al Sponsor</span>'
+      : (c.estado === 'REVERSADO' ? '<span class="ag-pill off">Cobro reversado' + (c.motivo ? ' · ' + e_(c.motivo) : '') + '</span>'
+        : (c.estado === 'SIN_VALOR' ? '<span class="ag-pill warn">Cobro Aplicada al Sponsor · sin valor configurado</span>'
+          : '<span class="ag-pill ok">Cobro Aplicada al Sponsor · ' + e_(c.moneda + ' ' + c.valor) + '</span>'));
+    var ent = s.entrevista;
+    var h = '<section class="agd-sec agd-ofe"><h3>Oferta de empleo</h3>' +
+      '<div class="ag-pills"><span class="ag-pill ' + (s.estado === 'APROBADA' ? 'ok' : (s.estado === 'NO_APROBADA' || s.estado === 'CANCELADA' ? 'bad' : 'warn')) + '">' + e_(s.estadoLabel) + '</span>' + cobro + '</div>' +
+      '<div class="ag-pares">' +
+        '<div class="ag-par"><span>Posición</span><b>' + e_(s.posicion || '—') + '</b></div>' +
+        '<div class="ag-par"><span>Empleador</span><b>' + e_(s.empleador || '—') + '</b></div>' +
+        '<div class="ag-par"><span>Lugar</span><b>' + e_(s.lugar || '—') + '</b></div>' +
+        '<div class="ag-par"><span>Sponsor</span><b>' + e_(s.sponsor || '—') + '</b></div>' +
+        '<div class="ag-par"><span>Escogida</span><b>' + e_(s.fecha || '—') + '</b></div>' +
+        (s.aplicada ? '<div class="ag-par"><span>Aplicada al Sponsor</span><b>' + e_(s.aplicadaFecha || '') + (s.aplicadaPor ? ' · ' + e_(s.aplicadaPor) : '') + '</b></div>' : '') +
+        (ent ? '<div class="ag-par"><span>Entrevista</span><b>' + e_(ent.fecha) + (ent.hora ? ' · ' + e_(ent.hora) : '') + '</b></div>' : '') +
+        (s.resultado ? '<div class="ag-par"><span>Resultado</span><b>' + e_(s.estadoLabel) + (s.resultadoPor ? ' · ' + e_(s.resultadoPor) : '') + '</b></div>' : '') +
+      '</div>' +
+      (ent && ent.link ? '<p class="cfg-hint">Enlace: <a href="' + e_(ent.link) + '" target="_blank" rel="noopener">' + e_(ent.link) + '</a></p>' : '') +
+      (s.resultadoNota ? '<p class="cfg-hint">Nota del resultado: ' + e_(s.resultadoNota) + '</p>' : '') +
+      (s.esperaLiberacion ? '<div class="agr-aviso warn"><b>Rechazado: espera la liberación de SEP</b><div>El cupo sigue tomado y el participante no puede escoger otra oferta hasta que SEP la libere. El cobro de Aplicada al Sponsor no se reversa.</div></div>' : '') +
+      (!o.activa && s.liberada ? '<p class="cfg-hint">SEP liberó esta oferta' + (s.liberadaFecha ? ' el ' + e_(s.liberadaFecha) : '') + (s.motivoLiberacion && ctx.esSuper ? ' · ' + e_(s.motivoLiberacion) : '') + '. El participante ya puede escoger otra.</p>' : '');
+
+    var acts = '';
+    if (pu.aplicada) acts += '<button type="button" class="btn btn-primary" data-agd="aplicada">Marcar Aplicada al Sponsor</button>';
+    if (pu.resultado) acts += '<button type="button" class="ag-btn" data-agd="contratado">Contratado</button><button type="button" class="ag-btn" data-agd="rechazado">Rechazado</button>';
+    if (pu.corregirSponsor) acts += '<button type="button" class="ag-btn" data-agd="corregir">Corregir Aplicada al Sponsor</button>';
+    if (pu.liberar) acts += '<button type="button" class="ag-btn" data-agd="liberar">Liberar oferta</button>';
+    if (acts) h += '<div class="ag-acts">' + acts + '</div>';
+    if (s.aplicada === false && o.activa && s.estado === 'SELECCIONADA') h += '<p class="cfg-hint">«Aplicada al Sponsor» genera una sola vez el cobro de esta temporada. La agencia no la puede deshacer.</p>';
+
+    if (pu.entrevista) {
+      h += '<div class="form-grid agd-nota agd-ent">' +
+        '<div class="fld"><label>Fecha de la entrevista</label><input id="agd-ent-f" type="date" value="' + e_(dmyAIso_(s.entrevistaFechaTxt) || '') + '" min="' + hoyIso_() + '" /></div>' +
+        '<div class="fld"><label>Hora (24 h)</label><input id="agd-ent-h" type="time" value="' + e_(s.entrevistaHoraTxt || '') + '" /></div>' +
+        '<div class="fld"><label>Enlace (opcional)</label><input id="agd-ent-l" type="url" maxlength="300" placeholder="https://…" value="' + e_((ent && ent.link) || '') + '" /></div>' +
+        '<div class="fld"><label>Instrucciones (opcional)</label><input id="agd-ent-i" type="text" maxlength="600" value="' + e_((ent && ent.instrucciones) || '') + '" /></div>' +
+        '<div class="fld agd-nota__btn"><button type="button" class="btn btn-primary" data-agd="entrevista">' + (ent ? 'Reprogramar entrevista' : 'Guardar entrevista') + '</button></div>' +
+      '</div><p class="cfg-hint">El participante la ve en su portal. No se le envían mensajes.</p>';
+    }
+    if ((s.historial || []).length) {
+      h += '<details class="agd-ofe-hist"><summary>Historial de la oferta (' + s.historial.length + ')</summary><ol>' +
+        s.historial.map(function (x) { return '<li><b>' + e_(x.a) + '</b> · ' + e_(x.q || '—') + ' · ' + e_(x.f) + (x.d ? '<div>' + e_(x.d) + '</div>' : '') + '</li>'; }).join('') +
+        '</ol></details>';
+    }
+    return h + '</section>';
+  }
+
+  /* La HV de fondo: escritura con su rid (apiPost), sin bloquear la vista.
+     Si el modal ya se cerró, el resultado igual queda guardado. */
+  function hvFondo_(m, d, ctx, base) {
+    d.hv = Object.assign({}, d.hv || {}, { generando: true, error: '' });
+    if (m.parentNode) pintarDet_(m, d, ctx);
+    apiPost('agHvGenerar', base, { silent: true }).then(function (n) {
+      Object.assign(d, { hv: n.hv || d.hv, historial: n.historial || d.historial });
+    }).catch(function (e) {
+      d.hv = Object.assign({}, d.hv, { generando: false, error: String((e && e.message) || e), puedeGenerar: true });
+    }).then(function () { if (m.parentNode) pintarDet_(m, d, ctx); });
+  }
+
+  function accionDet65_(m, btn, d, ctx, que, base, hecho) {
+    var conMotivo = function (titulo, texto, ruta, ok, aviso) {
+      Swal.fire({ icon: 'warning', title: titulo, text: texto, input: 'textarea', inputLabel: 'Motivo (queda en el historial)',
+        showCancelButton: true, confirmButtonText: 'Confirmar', cancelButtonText: 'Cancelar',
+        inputValidator: function (v) { return String(v || '').trim().length < 5 && 'Escribe el motivo (mínimo 5 caracteres).'; } }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost(ruta, Object.assign({ motivo: x.value }, base), { avion: { titulo: aviso } }).then(function (n) { hecho(n, ok); });
+        });
+      });
+    };
+    if (que === 'docs') {
+      if (typeof NDOCS === 'undefined') return true;
+      var cab = d.cab || {};
+      NDOCS.abrir({ id: d.id, nombres: cab.nom || '', apellidos: cab.ape || '', documento: cab.ced || '' }, {
+        ag: { base: base, datos: d.documentos, alCambiar: function (res) {
+          if (!res) return;
+          Object.assign(d, { documentos: res.documentos || d.documentos, historial: res.historial || d.historial });
+          if (m.parentNode) pintarDet_(m, d, ctx);
+        } }
+      });
+      return true;
+    }
+    if (que === 'hvgen') { hvFondo_(m, d, ctx, base); return true; }
+    if (que === 'hv') {
+      escudo_(btn, function () {
+        return apiPost('agHvRegenerar', base, { avion: { titulo: 'Generando la hoja de vida…' } }).then(function (n) { hecho(n, 'Hoja de vida generada'); });
+      });
+      return true;
+    }
+    if (que === 'aplicada') {
+      Swal.fire({ icon: 'question', title: 'Aplicada al Sponsor', text: 'Se genera una sola vez el cobro de esta temporada. La agencia no lo puede deshacer.',
+        showCancelButton: true, confirmButtonText: 'Marcar', cancelButtonText: 'Cancelar' }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost('agAplicadaSponsor', base, { avion: { titulo: 'Marcando Aplicada al Sponsor…' } }).then(function (n) { hecho(n, 'Aplicada al Sponsor'); });
+        });
+      });
+      return true;
+    }
+    if (que === 'entrevista') {
+      var f = String((m.querySelector('#agd-ent-f') || {}).value || ''), h = String((m.querySelector('#agd-ent-h') || {}).value || '');
+      var l = String((m.querySelector('#agd-ent-l') || {}).value || '').trim(), ins = String((m.querySelector('#agd-ent-i') || {}).value || '').trim();
+      var mm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(f);
+      if (!mm) { Swal.fire({ icon: 'warning', title: 'Falta la fecha', text: 'Elige la fecha de la entrevista.' }); return true; }
+      if (!/^\d{1,2}:\d{2}$/.test(h)) { Swal.fire({ icon: 'warning', title: 'Falta la hora', text: 'Escribe la hora de la entrevista.' }); return true; }
+      if (l && !/^https?:\/\//i.test(l)) { Swal.fire({ icon: 'warning', title: 'Revisa el enlace', text: 'Debe empezar por https://' }); return true; }
+      escudo_(btn, function () {
+        return apiPost('agEntrevista', Object.assign({ fecha: mm[3] + '/' + mm[2] + '/' + mm[1], hora: h.slice(0, 5), link: l, instrucciones: ins }, base),
+          { avion: { titulo: 'Guardando la entrevista…' } }).then(function (n) { hecho(n, 'Entrevista guardada'); });
+      });
+      return true;
+    }
+    if (que === 'contratado' || que === 'rechazado') {
+      var contr = que === 'contratado';
+      Swal.fire({ icon: 'question', title: contr ? 'Registrar Contratado' : 'Registrar Rechazado',
+        text: contr ? 'El participante queda contratado en esta oferta.' : 'El cupo sigue tomado y el participante espera a que SEP libere la oferta para escoger otra.',
+        input: 'text', inputLabel: 'Nota (opcional)', showCancelButton: true, confirmButtonText: 'Registrar', cancelButtonText: 'Cancelar' }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost('agResultado', Object.assign({ resultado: contr ? 'CONTRATADO' : 'RECHAZADO', nota: x.value || '' }, base),
+            { avion: { titulo: 'Guardando el resultado…' } }).then(function (n) { hecho(n, contr ? 'Contratado' : 'Rechazado'); });
+        });
+      });
+      return true;
+    }
+    if (que === 'corregir') {
+      conMotivo('Corregir Aplicada al Sponsor', 'La oferta vuelve a Seleccionada y el cobro queda reversado (con este motivo).', 'agSponsorCorregir', 'Corregido', 'Corrigiendo…');
+      return true;
+    }
+    if (que === 'liberar') {
+      conMotivo('Liberar la oferta', 'El cupo vuelve de inmediato a la oferta y el participante puede escoger otra. El cobro de Aplicada al Sponsor no se reversa.', 'agLiberarOferta', 'Oferta liberada', 'Liberando…');
+      return true;
+    }
+    return false;
   }
 
   document.addEventListener('DOMContentLoaded', bindLogin_);

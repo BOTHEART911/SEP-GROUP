@@ -42,9 +42,25 @@ var NDOCS = (function () {
   function txt_(v) { return String(v === null || v === undefined ? '' : v).trim(); }
   function esc(v) { return (typeof esc_ === 'function') ? esc_(v) : txt_(v); }
   function cuerpoApi_(extra) {
+    /* FASE 6.5 — abierto desde Mis participantes (subagencia): el cuerpo
+       lo da la vista de agencias (token de la agencia o usuarioId del
+       Superusuario). */
+    if (D.opts.ag) return Object.assign({}, D.opts.ag.base, extra || {});
     /* FASE 5.3-B — abierto desde el Panel de Visas: la respuesta trae
        también la fila del panel (un solo viaje). */
     return Object.assign({ usuarioId: currentUser.id }, D.opts.conVisa ? { conVisa: true } : {}, extra || {});
+  }
+  /* FASE 6.5 — rutas: las de Procesos o las de la subagencia. */
+  function ruta_(k) {
+    if (!D.opts.ag) return { revisar: 'docRevisar', subir: 'docSubirSep' }[k];
+    return { revisar: 'agDocRevisar', subir: 'agDocSubir' }[k];
+  }
+  /* La respuesta de la subagencia es parcial ({ documentos: {...} }):
+     se pasa al detalle y aquí se queda solo el bloque de documentos. */
+  function tomar_(res) {
+    if (!D.opts.ag) return res;
+    try { if (typeof D.opts.ag.alCambiar === 'function') D.opts.ag.alCambiar(res); } catch (_) {}
+    return (res && res.documentos) || D.data;
   }
   /* FASE 5.3-B — avisa al que abrió el modal (Panel de Visas). */
   function avisarCambio_(res) {
@@ -73,6 +89,9 @@ var NDOCS = (function () {
     q('#ndocs-body').innerHTML = '';
     q('#ndocs-foot').innerHTML = '';
     q('#modal-ndocs').classList.remove('hidden');
+    /* FASE 6.5 — el detalle de la subagencia ya trae los documentos (una
+       vista, un viaje): no se vuelven a pedir. */
+    if (D.opts.ag && D.opts.ag.datos) { D.data = D.opts.ag.datos; pintar(); return; }
     cargar();
   }
 
@@ -101,13 +120,18 @@ var NDOCS = (function () {
      ============================================================ */
   function pintar() {
     var lista = (D.data && D.data.documentos) || [];
-    q('#ndocs-body').innerHTML =
+    q('#ndocs-body').innerHTML = (D.opts.ag
+      ? '<p class="conta-sub ndoc-intro">Solo PDF. Los documentos de la subagencia están siempre abiertos y no ' +
+        'bloquean ninguna etapa. Mientras no esté aprobado, el participante o la agencia pueden reemplazarlo; ' +
+        'al aprobarlo queda bloqueado (solo SEP lo reabre). El contrato Agencia–Participante lo carga la agencia. ' +
+        'No se envían mensajes al participante.</p>'
+      :
       '<p class="conta-sub ndoc-intro">Solo PDF (el itinerario de vuelo también en imagen). Mientras un documento no esté aprobado, el participante ' +
       'o SEP pueden reemplazarlo. Al aprobarlo queda bloqueado. Si lo rechazas, vuelve a pendiente con tu motivo ' +
-      'y al participante le llega un correo.</p>' +
+      'y al participante le llega un correo.</p>') +
       visa() +
       lista.map(fila).join('');
-    q('#ndocs-foot').innerHTML = pie();
+    q('#ndocs-foot').innerHTML = D.opts.ag ? '' : pie();   // 6.5: sin habilitación (siempre abiertos)
     cablear();
   }
 
@@ -138,7 +162,7 @@ var NDOCS = (function () {
   }
 
   function fila(d) {
-    var seleccionable = !d.soloVer;
+    var seleccionable = !d.soloVer && !D.opts.ag;
     var acciones = [];
     var reabrir = !!(D.data && D.data.puedeReabrir);
 
@@ -151,7 +175,7 @@ var NDOCS = (function () {
       /* FASE 5.1-C — aprobado = bloqueado también para SEP. */
       if (!d.bloqueado) {
         acciones.push('<button class="act-btn" data-cargar="' + esc(d.clave) + '">' +
-                      (d.tieneArchivo ? '♻️ Reemplazar' : '⬆️ Cargar por SEP') + '</button>');
+                      (d.tieneArchivo ? '♻️ Reemplazar' : (D.opts.ag ? '⬆️ Cargar' : '⬆️ Cargar por SEP')) + '</button>');
       }
       if (d.tieneArchivo && d.estado === 'EN_REVISION') {
         acciones.push('<button class="act-btn act-btn--ok" data-aprobar="' + esc(d.clave) + '">✅ Aprobar</button>');
@@ -176,12 +200,13 @@ var NDOCS = (function () {
       /* FASE 4.1 · punto 2 — la condición de apertura de ESTE documento:
          cómo se abre y, si es por fecha, desde cuándo. La habilitación
          manual sigue siendo el atajo para adelantar un caso. */
+      (D.opts.ag ? (d.soloAgencia ? '  <div class="ndoc-cond">🏢 Lo carga la agencia · el participante solo lo consulta</div>' : '') :
       '  <div class="ndoc-cond">🔓 ' + esc(d.condicionLabel || '') +
              (d.abreEl ? ' · abre el ' + esc(d.abreEl) : '') +
-             (d.manual ? ' · habilitado a mano' : '') + '</div>' +
+             (d.manual ? ' · habilitado a mano' : '') + '</div>') +
       '  <div class="ndoc-meta">' +
              (d.fechaCarga ? 'Cargado el ' + esc(d.fechaCarga) +
-               (d.origen ? ' (' + esc(d.origen === 'SEP' ? 'por SEP' : 'por el participante') + ')' : '') : 'Sin archivo') +
+               (d.origen ? ' (' + esc(d.origen === 'SEP' ? 'por SEP' : (d.origen === 'AGENCIA' ? 'por la agencia' : 'por el participante')) + ')' : '') : 'Sin archivo') +
              (d.revisadoPor ? ' · Revisó ' + esc(d.revisadoPor) + (d.fechaRevision ? ' el ' + esc(d.fechaRevision) : '') : '') +
       '  </div>' +
       ((d.estado === 'RECHAZADO' || d.estado === 'CORRECCION') && d.nota
@@ -189,7 +214,7 @@ var NDOCS = (function () {
         : '') +
       (d.bloqueado && !d.soloVer
         ? '  <div class="ndoc-lock">🔒 Aprobado: queda bloqueado' +
-          (reabrir ? '. Solo un Superadmin puede reabrirlo.' : '.') + '</div>'
+          (reabrir ? '. Solo un Superadmin puede reabrirlo.' : (D.opts.ag ? '. Solo SEP puede reabrirlo.' : '.')) + '</div>'
         : '') +
       '  <div class="ndoc-acc">' + acciones.join('') + '</div>' +
       traza(d) +
@@ -301,7 +326,7 @@ var NDOCS = (function () {
     if (!d || D.ocupado) return;
     D.ocupado = true;
     try {
-      var silencioHtml = '<label class="ndoc-sil"><input type="checkbox" id="ndoc-sil"> ' +
+      var silencioHtml = D.opts.ag ? '' : '<label class="ndoc-sil"><input type="checkbox" id="ndoc-sil"> ' +
         'No avisar al participante (en silencio)</label>';
       /* El rechazo viaja como CORREGIR (+ nota): el backend nuevo lo
          lee como RECHAZAR y el anterior lo entiende igual, así front y
@@ -333,13 +358,13 @@ var NDOCS = (function () {
       }
 
       var t0 = Date.now();
-      D.data = await apiPost('docRevisar', cuerpoApi_(cuerpo), { avion: { titulo: accion === 'APROBAR' ? 'Aprobando el documento…' : 'Rechazando el documento…' } });
-      medir_('docRevisar', t0);
+      D.data = tomar_(await apiPost(ruta_('revisar'), cuerpoApi_(cuerpo), { avion: { titulo: accion === 'APROBAR' ? 'Aprobando el documento…' : 'Rechazando el documento…' } }));
+      medir_(ruta_('revisar'), t0);
       pintar();
       avisarCambio_(D.data);
       Swal.fire({ icon: 'success',
         title: accion === 'APROBAR' ? 'Documento aprobado' : 'Documento rechazado',
-        text: cuerpo.silencio ? 'Sin aviso al participante.' : 'Le llegará un correo al participante.',
+        text: D.opts.ag ? 'Queda en la traza del documento.' : (cuerpo.silencio ? 'Sin aviso al participante.' : 'Le llegará un correo al participante.'),
         timer: 1600, showConfirmButton: false });
     } catch (e) {
       Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: String(e.message || e) });
@@ -384,12 +409,12 @@ var NDOCS = (function () {
       D.ocupado = true;
       var t0 = Date.now();
 
-      apiPost('docSubirSep', cuerpoApi_({
+      apiPost(ruta_('subir'), cuerpoApi_({
         id: D.r.id, doc: clave, filename: String(file.name || ''),
         mime: mimeDe_(String(file.name || ''), file), base64: base64
       }), { avion: { titulo: 'Subiendo el documento…' } }).then(function (r) {
-        medir_('docSubirSep', t0);
-        D.data = r;
+        medir_(ruta_('subir'), t0);
+        D.data = tomar_(r);
         Swal.close();
         pintar();
         avisarCambio_(r);
