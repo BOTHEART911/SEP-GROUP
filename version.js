@@ -3,6 +3,13 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.8 · CIERRE DE LA FASE 6 DE SUBAGENCIAS (16/10/2026 · 7).
+ *   · Documentos del participante de agencia: privados. El detalle dice con
+ *     qué correo se abren (contacto de la agencia) y marca "Permiso de
+ *     lectura en camino" mientras la cola lo entrega (máx. 30 min).
+ *   · Hoja de vida de agencia: ~4 s (antes 13–15 s), mismo diseño.
+ *   Archivos: js/nivel-docs.js, js/agencias.js, version.js, sw.js (caché v67).
+ * ------------------------------------------------------------
  * FASE 6.7 · CUENTA DE COBRO SEP–SUBAGENCIA Y CIERRE DE TEMPORADA (16/10/2026 · 6).
  *   · Subagencias → pestaña Cuentas (Superusuario y Contador): saldos COP y
  *     USD de cada agencia en la temporada, sin conversión. Cuenta de cada
@@ -896,4 +903,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.16.06";
+var APP_VERSION = "2026.10.16.07";
