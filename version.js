@@ -3,6 +3,21 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.2 · BASE DE SUBAGENCIAS Y LOGIN SEGURO (16/10/2026 · 1).
+ *   · Inicio: cuadro "Subagencias" (Superusuario: todo; Contador:
+ *     agencias, valores y cuenta). PROCESOS y Comercial no lo ven.
+ *   · Vista Subagencias: crear/editar agencia (nombre, logo, contacto,
+ *     estado), cuenta de acceso (usuario, contraseña, cerrar sesiones,
+ *     activar/desactivar), valores por agencia + temporada, mínimo de
+ *     viajeros y sponsors visibles por temporada, y auditoría.
+ *   · Login: pestaña "Agencia" (usuario + contraseña, marca SEP). La
+ *     agencia entra con SU logo y un inicio reducido (Mis participantes
+ *     llega en la 6.3; Mi agencia). Login e inicio en un solo viaje.
+ *   · Toda petición lleva el token de la sesión (tk); si el servidor
+ *     dice que venció, la app vuelve al login una sola vez.
+ *   Archivos: app.js, index.html, js/agencias.js, css/agencias.css,
+ *   img/agencias.svg, version.js, sw.js (caché v61).
+ * ------------------------------------------------------------
  * FASE 6.1 · AJUSTES DEL CONTADOR (15/10/2026 · 1).
  *   · Reenviar contrato (bloque Procesos): solo Inscrito + acción
  *     futura "Firmar contrato" y sin contrato firmado; reenvía el
@@ -821,4 +836,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.15.01";
+var APP_VERSION = "2026.10.16.01";

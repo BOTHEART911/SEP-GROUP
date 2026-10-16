@@ -1,0 +1,88 @@
+/* =============================================================
+ * SEP GROUP — SUBAGENCIAS (Fase 6 · Entrega 6.2 · 16/10/2026)
+ * © Oscar Polanía — Experto en Soluciones Digitales · +57 310 323 0712
+ * Solo variables del sistema: el modo oscuro sale solo.
+ * ============================================================= */
+:root { --rol-agencia: #be185d; }
+
+/* Login: nota bajo el botón */
+.ag-login-nota { font-size: .78rem; color: var(--text-muted); text-align: center; margin: 10px 0 0; }
+#tab-agencia label { display: block; margin: 0 2px 6px; }
+#tab-agencia .mt-md { margin-top: 12px; }
+
+/* Pestañas de la vista */
+.ag-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 6px; background: var(--bg-soft); border-radius: var(--r-pill); margin: 14px 0 12px; scrollbar-width: none; }
+.ag-tabs::-webkit-scrollbar { display: none; }
+.ag-tab { flex-shrink: 0; padding: 9px 16px; border-radius: var(--r-pill); font-weight: 700; font-size: .85rem; color: var(--text-soft); background: transparent; transition: background .16s, color .16s; }
+.ag-tab.active { background: var(--primary); color: #fff; box-shadow: var(--sh-sm); }
+.ag-es-conta .ag-solo-admin { display: none !important; }
+
+.ag-temporada-sel, .ag-aud-sel { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; flex-wrap: wrap; }
+.ag-temporada-sel label, .ag-aud-sel label { margin: 0; font-weight: 800; font-size: .78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+.ag-temporada-sel select, .ag-aud-sel select { width: auto; min-width: 220px; max-width: 100%; }
+
+/* Tarjetas */
+.ag-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 6px; }
+.ag-card { position: relative; display: flex; flex-direction: column; gap: 10px; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); padding: 14px 14px 12px 16px; transition: box-shadow .15s, transform .15s; }
+.ag-card::before { content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 4px; border-radius: 0 4px 4px 0; background: var(--rol-agencia); }
+.ag-card:hover { box-shadow: var(--sh-md); transform: translateY(-2px); }
+.ag-card.is-inactive { opacity: .66; }
+.ag-card.is-inactive::before { background: var(--border-strong); }
+.ag-card__top { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.ag-logo { width: 56px; height: 56px; border-radius: 14px; object-fit: contain; background: #fff; border: 1.5px solid var(--border); padding: 4px; flex-shrink: 0; }
+.ag-card__info { min-width: 0; flex: 1; }
+.ag-nom { font-family: var(--font-display); font-weight: 700; color: var(--primary); font-size: 1.02rem; line-height: 1.2; overflow-wrap: anywhere; }
+.ag-meta { font-size: .8rem; color: var(--text-soft); margin-top: 2px; overflow-wrap: anywhere; }
+.ag-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.ag-pill { font-size: .68rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; padding: 3px 9px; border-radius: var(--r-pill); border: 1.5px solid var(--border-strong); color: var(--text-soft); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-pill.ok { color: #157347; border-color: rgba(21,115,71,.4); background: rgba(21,115,71,.08); }
+.ag-pill.warn { color: #9a5b00; border-color: rgba(194,121,42,.45); background: rgba(194,121,42,.10); }
+.ag-pill.off { color: var(--text-muted); }
+.ag-vals { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: .78rem; color: var(--text-soft); background: var(--bg-soft); border-radius: var(--r-md); padding: 8px 10px; }
+.ag-vals b { color: var(--text-main); font-weight: 700; }
+.ag-vals.vacio { display: block; font-style: italic; }
+.ag-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.ag-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: var(--r-md); border: 1.5px solid var(--border-strong); background: var(--bg-card); color: var(--text-soft); font-weight: 700; font-size: .78rem; transition: color .14s, border-color .14s, background .14s; }
+.ag-btn:hover { color: var(--primary); border-color: var(--primary); background: var(--bg-soft); }
+
+/* Chips de sponsors */
+.ag-sp-titulo { font-weight: 800; font-size: .78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin: 14px 2px 8px; }
+.ag-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.ag-chip { padding: 7px 14px; border-radius: var(--r-pill); border: 1.5px solid var(--border-strong); background: var(--bg-card); color: var(--text-soft); font-weight: 700; font-size: .82rem; }
+.ag-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.ag-chip:disabled { cursor: default; }
+
+/* Pares rótulo / valor */
+.ag-pares { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 14px; margin: 10px 0; }
+.ag-par { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ag-par span { font-size: .7rem; font-weight: 800; letter-spacing: .4px; color: var(--text-muted); text-transform: uppercase; }
+.ag-par b { font-size: .95rem; color: var(--text-main); font-weight: 600; overflow-wrap: anywhere; }
+.ag-acceso-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.ag-clave { margin-top: 10px; padding: 12px; border-radius: var(--r-md); background: var(--bg-soft); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.05rem; line-height: 1.6; word-break: break-all; }
+.ag-logo-prev { width: 76px; height: 76px; border-radius: 16px; object-fit: contain; background: #fff; border: 2px solid var(--border); padding: 4px; flex-shrink: 0; }
+.ag-cuenta { margin: 14px 0 0; }
+
+/* Auditoría */
+.ag-aud { display: flex; flex-direction: column; gap: 8px; }
+.ag-aud__fila { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-md); padding: 10px 12px; }
+.ag-aud__top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: .88rem; color: var(--primary); }
+.ag-aud__top span { color: var(--text-muted); font-size: .76rem; }
+.ag-aud__quien { font-size: .78rem; color: var(--text-soft); margin-top: 2px; }
+.ag-aud__det { font-size: .76rem; color: var(--text-muted); margin-top: 4px; overflow-wrap: anywhere; }
+
+/* Inicio de la agencia y Mi agencia */
+.ag-logo-av { object-fit: contain !important; background: #fff; padding: 3px; }
+.ag-mia-cab { display: flex; align-items: center; gap: 16px; margin: 16px 0; }
+.ag-mia-logo { width: 88px; height: 88px; border-radius: 20px; object-fit: contain; background: #fff; border: 2px solid var(--border); padding: 6px; box-shadow: var(--sh-sm); flex-shrink: 0; }
+.ag-mia-nom { font-family: var(--font-display); font-weight: 800; color: var(--primary); font-size: 1.25rem; line-height: 1.2; overflow-wrap: anywhere; }
+.ag-mia-sub { color: var(--text-muted); font-size: .85rem; margin-top: 2px; }
+
+/* Botón ocupado (escudo) */
+.ag-btn.is-busy, .btn.is-busy { opacity: .6; pointer-events: none; }
+
+@media (max-width: 560px) {
+  .ag-cards { grid-template-columns: 1fr; }
+  .ag-temporada-sel select, .ag-aud-sel select { min-width: 0; width: 100%; }
+  .ag-btn span { display: none; }
+  .ag-btn { padding: 8px 11px; }
+}

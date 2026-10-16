@@ -70,6 +70,7 @@
   <link rel="stylesheet" href="css/avion.css" />
   <link rel="stylesheet" href="css/ancho.css" />
   <link rel="stylesheet" href="css/rueda.css" />
+  <link rel="stylesheet" href="css/agencias.css" />   <!-- FASE 6.2 · subagencias -->
   <!-- MODO OSCURO · ANTIPARPADEO (11/08)
        Deja puesto data-tema ANTES del primer pintado; si no, la app
        nace clara y parpadea a oscuro al cargar el JS. Sin elección
@@ -148,6 +149,8 @@
         <div class="login-tabs">
           <button class="login-tab active" data-tab="pin">PIN rápido</button>
           <button class="login-tab" data-tab="doc">Documento</button>
+          <!-- FASE 6.2 (16/10/2026) — cuenta de subagencia: usuario + contraseña -->
+          <button class="login-tab" data-tab="agencia">Agencia</button>
         </div>
 
         <!-- TAB PIN -->
@@ -185,6 +188,22 @@
           </div>
           <button id="btn-login-doc" class="btn btn-primary btn-lg btn-block mt-md">Iniciar sesión</button>
         </div>
+
+        <!-- TAB AGENCIA (FASE 6.2) — la marca del login sigue siendo SEP;
+             el logo de la agencia aparece después de iniciar sesión. -->
+        <form id="tab-agencia" class="hidden" autocomplete="on" onsubmit="return false;">
+          <label for="login-ag-usuario">Usuario de la agencia</label>
+          <input type="text" id="login-ag-usuario" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="El usuario que te dio SEP" />
+          <label for="login-ag-clave" class="mt-md">Contraseña</label>
+          <div class="input-wrap">
+            <input type="password" id="login-ag-clave" autocomplete="current-password" placeholder="Tu contraseña" />
+            <button type="button" id="toggle-ag-clave" class="eye-btn" aria-label="Mostrar contraseña">
+              <img id="toggle-ag-clave-img" alt="Mostrar" src="img/mostrar.png" width="22" height="22" decoding="async" />
+            </button>
+          </div>
+          <button type="submit" id="btn-login-ag" class="btn btn-primary btn-lg btn-block mt-md">Iniciar sesión</button>
+          <p class="ag-login-nota">¿Olvidaste la contraseña? Pídele a SEP que la cambie.</p>
+        </form>
 
         <img class="brand-banner" alt="Copyright" src="img/copyright.webp"
            width="565" height="125" loading="lazy" decoding="async" />
@@ -236,6 +255,62 @@
     </div>
   </section>
 
+
+  <!-- ============================================================
+       FASE 6.2 (16/10/2026) — SUBAGENCIAS (js/agencias.js)
+       view-agencias: la ve el Superusuario (todo) y el Contador (solo
+       lo financiero). view-agencia-mia: la ve la propia agencia.
+       ============================================================ -->
+  <section id="view-agencias" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Subagencias</h1>
+    </header>
+    <div class="container">
+      <div class="ag-tabs" id="ag-tabs" role="tablist">
+        <button type="button" class="ag-tab active" data-agtab="lista" role="tab">Agencias</button>
+        <button type="button" class="ag-tab" data-agtab="temporada" role="tab">Temporada</button>
+        <button type="button" class="ag-tab ag-solo-admin" data-agtab="auditoria" role="tab">Auditoría</button>
+      </div>
+      <div class="ag-temporada-sel">
+        <label for="ag-tmp">Temporada</label>
+        <select id="ag-tmp"></select>
+      </div>
+
+      <div id="ag-panel-lista">
+        <div class="com-toolbar">
+          <div class="search-bar">
+            <svg class="search-bar__ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="ag-search" type="search" placeholder="Buscar agencia…" autocomplete="off" />
+          </div>
+          <button id="ag-add" class="btn btn-accent ag-solo-admin">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nueva
+          </button>
+        </div>
+        <div id="ag-cards" class="ag-cards"></div>
+        <div id="ag-empty" class="usr-empty hidden">
+          <p style="font-weight:700;color:var(--text-soft);">Aún no hay subagencias</p>
+          <p class="muted ag-solo-admin">Pulsa <b>Nueva</b> para crear la primera.</p>
+        </div>
+      </div>
+
+      <div id="ag-panel-temporada" class="hidden"></div>
+      <div id="ag-panel-auditoria" class="hidden"></div>
+    </div>
+  </section>
+
+  <section id="view-agencia-mia" class="view">
+    <header class="app-header">
+      <button class="app-header__back" data-go="inicio" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h1 class="app-header__title">Mi agencia</h1>
+    </header>
+    <div class="container" id="ag-mia-cuerpo"></div>
+  </section>
 
   <!-- ============================================================
        VISTA COMERCIAL — LISTA (Parte 2)
@@ -1466,6 +1541,7 @@
   <script src="js/temporadas-cfg.js"></script>
   <script src="app.js"></script>
   <script src="js/contador.js"></script>
+  <script src="js/agencias.js"></script>   <!-- FASE 6.2 · subagencias -->
   <!-- NIVEL DE INGLÉS (16/08 · Fase 3 SEP · Entrega 2) -->
   <script src="js/nivel.js"></script>
   <!-- APROBACIÓN, HOJA DE VIDA Y FORMULARIO (17/08 · Fase 3 SEP · Entrega 5)

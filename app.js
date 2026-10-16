@@ -62,7 +62,10 @@ const AVION_TITULOS = {
   retirarParticipante: 'Retirando al participante…', reactivarParticipante: 'Reactivando al participante…',
   botReiniciar: 'Reiniciando el bot…', botEliminarSesion: 'Cerrando la sesión del bot…', botMute: 'Enviando al bot…',
   crearComercial: 'Creando el registro…', crearTemporada: 'Creando la temporada…', enviarMensajeChat: 'Enviando…',
-  nivelInvitacion: 'Enviando la invitación…'
+  nivelInvitacion: 'Enviando la invitación…',
+  /* FASE 6.2 — subagencias */
+  agenciaGuardar: 'Guardando la agencia…', agenciaLogo: 'Subiendo el logo…', agenciaAcceso: 'Guardando el acceso…',
+  agenciaValores: 'Guardando los valores…', agenciasGlobal: 'Guardando la temporada…'
 };
 function avionTitulo_(accion){
   if (AVION_TITULOS[accion]) return AVION_TITULOS[accion];
@@ -129,6 +132,10 @@ async function apiGet(action, params = {}, opts = {}){
     if (API_GZ) extra.z = '1';
     if (API_FMT2[action]) { extra.fmt = '2'; extra.ralo = '1'; }   // ralo: 5.4-C
     if (MED_PEND.length) extra._mf = JSON.stringify(MED_PEND.splice(0, MED_PEND.length));
+    /* FASE 6.2 — el token de la sesión viaja en cada lectura. Se toma al
+       despachar: una respuesta de una sesión vieja no pisa la nueva. */
+    const tkDespacho = sesionTk_();
+    if (tkDespacho && !params.tk) extra.tk = tkDespacho;
     url.search = new URLSearchParams({ action, ...params, ...extra }).toString();
     /* FASE 5.2-A — opts.signal: la vista que pidió la lectura la puede
        cortar al salir (AbortController). Las escrituras no lo usan. */
@@ -140,7 +147,8 @@ async function apiGet(action, params = {}, opts = {}){
     let j = JSON.parse(txt);
     if (j && j.gz) j = await apiAbrirGz_(j.gz);
     medAnotarFront_(action, performance.now() - t0, txt.length / 1024, j && j.ok === false ? 'error' : '');
-    if(!j.ok) throw new Error(j.error || 'Error');
+    if(!j.ok) { sesionRevisarError_(j.error, tkDespacho); throw new Error(sesionTextoError_(j.error)); }
+    if (tkDespacho && tkDespacho !== sesionTk_()) { const e = new Error('Sesión cambiada'); e.name = 'AbortError'; throw e; }
     bien = true;
     return apiRehidratar_(j.data);
   } finally { avionSoltar_(avion, bien); }
@@ -160,8 +168,11 @@ async function apiPost(action, body = {}, opts = {}){
   const avion = (!opts.silent && !AVION_LECTURAS[action]) ? avionTomar_(action, opts) : null;
   let bien = false;
   try{
-    const url = API_BASE + '?action=' + encodeURIComponent(action);
-    const conRid = Object.assign({}, body, { rid: body.rid || opts.rid || ridNuevo_() });
+    /* FASE 6.2 — token en la URL y en el cuerpo (cada ruta lee el que
+       le toca). Se toma al despachar. */
+    const tkDespacho = sesionTk_();
+    const url = API_BASE + '?action=' + encodeURIComponent(action) + (tkDespacho ? '&tk=' + encodeURIComponent(tkDespacho) : '');
+    const conRid = Object.assign({}, body, { rid: body.rid || opts.rid || ridNuevo_() }, (tkDespacho && !body.tk) ? { tk: tkDespacho } : {});
     const enviar = async () => {
       const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(conRid) });
       if (r.status === 404) { const e = new Error('echo404'); e.reintentar = true; throw e; }
@@ -179,7 +190,7 @@ async function apiPost(action, body = {}, opts = {}){
       try { j = await enviar(); }
       catch (_) { throw new Error('No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.'); }
     }
-    if(!j.ok) throw new Error(j.error || 'Error');
+    if(!j.ok) { sesionRevisarError_(j.error, tkDespacho); throw new Error(sesionTextoError_(j.error)); }
     /* AJUSTES FASE 5 (09/10/2026) — la revisión ya respondió; el aviso
        al participante sale ahora en un llamado de fondo (no a los 30
        min del reloj). Ver avisosDespachar_. */
@@ -220,6 +231,31 @@ function cerrarSesion_(){
   currentUser = null;
   try{ localStorage.removeItem(SESSION_KEY); }catch(_){}
   try{ uchipQuitar_(); }catch(_){}   // 05/09/2026 — que no quede la foto del anterior
+  try{ if (typeof agSalir_ === 'function') agSalir_(); }catch(_){}   // FASE 6.2 — sin rastro de la agencia
+}
+/* FASE 6.2 (16/10/2026) — SESIÓN CON TOKEN. */
+function sesionTk_(){ return (currentUser && currentUser.tk) ? String(currentUser.tk) : ''; }
+function esAgencia_(u){ const x = u || currentUser; return !!(x && x.tipo === 'AGENCIA'); }
+function sesionTextoError_(msg){
+  return String(msg || 'Error').replace(/^(SESION_VENCIDA|AGENCIA_INACTIVA):\s*/, '');
+}
+/* Si el servidor dice que la sesión venció (o la agencia quedó
+   inactiva), se sale UNA vez al login. Solo si el error es de la sesión
+   con la que se despachó: una respuesta vieja no cierra la nueva. */
+let _sesionCerrando = false;
+function sesionRevisarError_(msg, tkDespacho){
+  const m = String(msg || '');
+  if (!/^(SESION_VENCIDA|AGENCIA_INACTIVA)/.test(m)) return;
+  if (!currentUser || sesionTk_() !== String(tkDespacho || '')) return;
+  if (_sesionCerrando) return;
+  _sesionCerrando = true;
+  cerrarSesion_();
+  try { pinBuffer = ''; pintarPinDots_(); } catch(_){}
+  showView('login');
+  setTimeout(() => {
+    _sesionCerrando = false;
+    if (typeof Swal !== 'undefined') Swal.fire({ icon:'info', title: /^AGENCIA_INACTIVA/.test(m) ? 'Agencia inactiva' : 'Tu sesión terminó', text: sesionTextoError_(m) });
+  }, 50);
 }
 
 /* ================== VISTAS ================== */
@@ -508,6 +544,7 @@ $$('.login-tab').forEach(tab=>{
     const which = tab.dataset.tab;
     $('#tab-doc').classList.toggle('hidden', which !== 'doc');
     $('#tab-pin').classList.toggle('hidden', which !== 'pin');
+    $('#tab-agencia')?.classList.toggle('hidden', which !== 'agencia');   // FASE 6.2
   });
 });
 
@@ -560,7 +597,7 @@ function manejarErrorLogin_(e){
 
 function entrar_(u){
   guardarSesion_(u);
-  irAInicio_(u);
+  irAInicio_(u);   // FASE 6.2 — irAInicio_ deriva a la agencia si toca
   Swal.fire({ icon:'success', title:'Bienvenido', text: u.nombre, timer:1100, showConfirmButton:false });
 }
 
@@ -739,6 +776,11 @@ const TILES = [
   { key:'procesos', titulo:'Procesos', desc:'Gestión del perfil',
     icono:'img/procesos.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO','PROCESOS'], listo:true, view:'procesos' },
+  /* FASE 6.2 (16/10/2026) — cuadro de Subagencias: el Superusuario ve
+     todo; el Contador solo lo financiero. PROCESOS no lo hereda. */
+  { key:'agencias', titulo:'Subagencias', desc:'Agencias, valores y accesos',
+    icono:'img/agencias.svg',
+    roles:['DESARROLLADOR','SUPERUSUARIO','CONTADOR'], listo:true, view:'agencias' },
   { key:'usuarios', titulo:'Usuarios', desc:'Gestionar el equipo',
     icono:'img/usuarios.webp',
     roles:['DESARROLLADOR','SUPERUSUARIO'], listo:true, view:'usuarios' },
@@ -753,6 +795,8 @@ const TILES = [
 ];
 
 function irAInicio_(u){
+  /* FASE 6.2 — la agencia tiene su propio inicio (js/agencias.js). */
+  if (esAgencia_(u) && typeof agIrAInicio_ === 'function'){ agIrAInicio_(u); return; }
   $('#welcome-name').textContent = (u.nombre || '').split(' ').slice(0,2).join(' ');
   $('#welcome-rol').textContent  = misRoles_(u).join(' · ') || (u.rol || '');
   $('#welcome-avatar').src = driveImg_(u.fotoUrl);   // driveImg_ cae al genérico si está vacío
@@ -800,6 +844,7 @@ function pintarTiles_(u){
       else if (t.key === 'procesos'){ showView('procesos'); }   // Fase 3 SEP — js/nivel.js
       else if (t.key === 'config'){ abrirConfig_(); }
       else if (t.key === 'usuarios'){ abrirUsuarios_(); }
+      else if (t.key === 'agencias'){ abrirAgencias_(); }   // FASE 6.2 — js/agencias.js
       else if (t.key === 'bot'){ abrirBots_(); }
     });
     grid.appendChild(tile);
@@ -811,6 +856,7 @@ function pintarTiles_(u){
    caso de una sesión vieja guardada antes de subir/cambiar la foto. */
 async function refrescarUsuarioActual_(){
   if (!currentUser || !currentUser.id) return;
+  if (esAgencia_()) return;   // FASE 6.2 — la agencia se refresca con agInicio
   try{
     const fresco = await apiGet('me', { usuarioId: currentUser.id });
     if (!fresco || fresco.encontrado === false) return;
@@ -3853,9 +3899,10 @@ const USR_ROL_COLOR = {
   SUPERUSUARIO:  'var(--rol-super)',
   CONTADOR:      'var(--rol-contador)',
   COMERCIAL:     'var(--rol-comercial)',
-  PROCESOS:      'var(--rol-procesos)'                 /* ← FASE 3.1 */
+  PROCESOS:      'var(--rol-procesos)',                /* ← FASE 3.1 */
+  SUBAGENCIA:    'var(--rol-agencia)'                  /* ← FASE 6.2 */
 };
-const USR_ROL_CORTO = { DESARROLLADOR:'DEV', SUPERUSUARIO:'SUPER', CONTADOR:'CONTADOR', COMERCIAL:'COMERCIAL', PROCESOS:'PROCESOS' };
+const USR_ROL_CORTO = { DESARROLLADOR:'DEV', SUPERUSUARIO:'SUPER', CONTADOR:'CONTADOR', COMERCIAL:'COMERCIAL', PROCESOS:'PROCESOS', SUBAGENCIA:'AGENCIA' };
 /* Roles que SÍ se combinan (Ajuste 6). DEV y SUPER no: ya alcanzan
    todo lo suyo, así que el bloque de adicionales se oculta. */
 const USR_ROLES_COMBINABLES = ['CONTADOR','COMERCIAL','PROCESOS'];
