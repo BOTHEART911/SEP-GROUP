@@ -145,3 +145,25 @@
 .agd-ofe-hist summary { cursor: pointer; font-weight: 700; color: var(--primary); }
 .agd-ofe-hist ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; }
 .agd-ofe-hist li div { color: var(--text-muted); overflow-wrap: anywhere; }
+
+/* FASE 6.6 — verificación, DS-2019, visa, vuelo y retiro (detalle) */
+.agv-certs { display: grid; gap: 6px; margin: 10px 0 2px; }
+.agv-cert { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .84rem; color: var(--text-main); }
+.agv-cert > span:first-child { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.agv-bloques { display: grid; gap: 6px; margin: 10px 0 4px; }
+.agv-bloque { border: 1.5px solid var(--border); border-radius: var(--r-md); background: var(--bg-card); }
+.agv-bloque summary { cursor: pointer; padding: 8px 12px; font-weight: 700; font-size: .86rem; color: var(--primary); }
+.agv-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 14px; padding: 4px 12px 12px; }
+.agv-campo { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: .82rem; }
+.agv-campo span { color: var(--text-soft); }
+.agv-campo b { color: var(--text-main); font-weight: 600; overflow-wrap: anywhere; }
+.agv-campo--ancho { grid-column: 1 / -1; }
+.agv-tabla { width: 100%; border-collapse: collapse; font-size: .8rem; display: block; overflow-x: auto; }
+.agv-tabla th, .agv-tabla td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; color: var(--text-main); }
+.agv-tabla th { color: var(--text-soft); font-weight: 700; }
+.agv-notas { margin-top: 10px; }
+.agv-notas textarea { width: 100%; resize: vertical; }
+.agv-visa input, .agv-visa select { width: 100%; min-width: 0; }
+.agv-vuelo { margin-top: 12px; padding: 10px 12px; border: 1.5px solid var(--border); border-left: 4px solid var(--rol-agencia); border-radius: var(--r-md); background: var(--bg-card); }
+.agv-vuelo__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.agv-vuelo__top b { color: var(--text-main); }

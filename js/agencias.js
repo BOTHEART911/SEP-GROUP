@@ -375,7 +375,11 @@
     HV_REGENERAR: 'Volvió a generar la hoja de vida', HV_GENERAR: 'Generó la hoja de vida', DOC_CARGA: 'Cargó un documento', DOC_APROBAR: 'Aprobó un documento',
     DOC_RECHAZAR: 'Rechazó un documento', OFERTA_SELECCION: 'El participante escogió oferta', APLICADA_SPONSOR: 'Marcó Aplicada al Sponsor',
     SPONSOR_CORREGIR: 'Corrigió Aplicada al Sponsor', ENTREVISTA_AGENDAR: 'Agendó la entrevista', ENTREVISTA_REAGENDAR: 'Reprogramó la entrevista',
-    RESULTADO_CONTRATADO: 'Registró Contratado', RESULTADO_RECHAZADO: 'Registró Rechazado', OFERTA_LIBERAR: 'Liberó la oferta' };
+    RESULTADO_CONTRATADO: 'Registró Contratado', RESULTADO_RECHAZADO: 'Registró Rechazado', OFERTA_LIBERAR: 'Liberó la oferta',
+    /* 6.6 */
+    VERIF_ENVIAR: 'Envió la verificación a SEP', VERIF_APROBAR: 'SEP aprobó la verificación', VERIF_DEVOLVER: 'SEP devolvió la verificación',
+    VERIF_REABRIR: 'SEP reabrió la verificación', DS2019_CONFIRMAR: 'SEP confirmó el DS-2019', DS2019_CORREGIR: 'SEP corrigió el DS-2019',
+    VISA_DATOS: 'Registró datos de la visa', VISA_RESULTADO: 'Registró el resultado consular', RETIRAR: 'Marcó Retirado', REINTEGRAR: 'Reintegró al participante' };
   function accionTxt_(a) { return ACC_TXT[a] || a; }
 
   /* ---------- Modal genérico (mismas clases del resto de la app) ---------- */
@@ -675,11 +679,14 @@
     var form = x.apr ? ['Formulario aprobado', 'ok'] : (x.ft ? ['Formulario por aprobar', 'warn'] : (x.ok ? ['Formulario en curso', 'off'] : null));
     /* 6.5 — cómo va su oferta (la manda la lista si el backend ya la conoce). */
     var of = x.of ? [x.of, x.ofc || 'off'] : null;
+    /* 6.6 — etapa (verificación, DS-2019, visa, vuelo o Retirado). */
+    var et = x.et ? [x.et, x.etc || 'off'] : null;
     return '<div class="agp-est"><div class="ag-pills">' +
       '<span class="ag-pill ' + prueba[1] + '">' + e_(prueba[0]) + '</span>' +
       (form ? '<span class="ag-pill ' + form[1] + '">' + e_(form[0]) + '</span>' : '') +
-      (of ? '<span class="ag-pill ' + of[1] + '">' + e_(of[0]) + '</span>' : '') +
-      '</div><button type="button" class="ag-btn" data-det="' + e_(r.id) + '" title="Prueba, formulario, documentos y oferta">' + IC_P.det + '<span>Detalle</span></button></div>';
+      (of && !et ? '<span class="ag-pill ' + of[1] + '">' + e_(of[0]) + '</span>' : '') +
+      (et ? '<span class="ag-pill ' + et[1] + '">' + e_(et[0]) + '</span>' : '') +
+      '</div><button type="button" class="ag-btn" data-det="' + e_(r.id) + '" title="Prueba, formulario, documentos, oferta, verificación, visa y vuelo">' + IC_P.det + '<span>Detalle</span></button></div>';
   }
   function renderPartLista_() {
     var d = AGP.data; if (!d) return;
@@ -920,6 +927,8 @@
     var ofc = !o ? '' : (o.estado === 'APROBADA' ? 'ok' : (o.estado === 'NO_APROBADA' || o.estado === 'CANCELADA' ? 'bad' : 'warn'));
     r.est = { inv: !!p.invitado, pts: p.puntaje || '', ok: !!p.alcanza, ft: !!f.terminado, apr: !!f.aprobado,
               of: o && (d.oferta.activa || o.estado === 'APROBADA') ? o.estadoLabel : '', ofc: ofc };
+    var et = d.viaje && d.viaje.etapa;
+    if (et) { r.est.et = et.l; r.est.etc = et.c; }
     try { ctx.repintar(); } catch (_) {}
   }
 
@@ -981,7 +990,7 @@
       }).join('') + '</div>' : '<p class="cfg-hint">Sin movimientos todavía.</p>') +
       '</section>';
 
-    c.innerHTML = prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + hist;
+    c.innerHTML = prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + secViaje_(d, ctx) + hist;
     c.onclick = function (ev) {
       var b = ev.target.closest('[data-agd]'); if (!b) return;
       accionDet_(m, b, d, ctx);
@@ -989,8 +998,11 @@
   }
 
   function accionDet_(m, btn, d, ctx) {
-    var base = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id } : { id: d.id };
+    /* 6.6 — hn: las escrituras devuelven solo el historial nuevo (no se
+       relee la auditoría completa); aquí se pone encima del que ya hay. */
+    var base = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id, hn: 1 } : { id: d.id, hn: 1 };
     var hecho = function (nuevo, txt) {
+      if (nuevo && nuevo.histNuevo) nuevo.historial = histJunto_(nuevo, d);
       /* 6.5 — las escrituras nuevas devuelven SOLO el bloque que cambió. */
       if (nuevo && nuevo.parcial) nuevo = Object.assign({}, d, nuevo, { parcial: false });
       patchLista_(nuevo, ctx);
@@ -1034,6 +1046,7 @@
       return;
     }
     if (accionDet65_(m, btn, d, ctx, que, base, hecho)) return;
+    if (accionDet66_(m, btn, d, ctx, que, base, hecho)) return;
     if (que === 'reversar') {
       Swal.fire({ icon: 'warning', title: 'Reversar la aprobación', input: 'textarea', inputLabel: 'Motivo (queda en el historial)',
         showCancelButton: true, confirmButtonText: 'Reversar', cancelButtonText: 'Cancelar',
@@ -1088,6 +1101,9 @@
       '<div class="ag-acts"><button type="button" class="btn btn-primary" data-agd="docs">' + IC_P.doc + ' Abrir documentos</button></div>' +
       '</section>';
   }
+
+  /* 6.6 — historial nuevo (de la escritura) encima del que ya se tenía. */
+  function histJunto_(n, d) { return (n.historial || []).concat(d.historial || []).slice(0, 40); }
 
   function hoyIso_() { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
   function dmyAIso_(s) { var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '')); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
@@ -1154,7 +1170,7 @@
     d.hv = Object.assign({}, d.hv || {}, { generando: true, error: '' });
     if (m.parentNode) pintarDet_(m, d, ctx);
     apiPost('agHvGenerar', base, { silent: true }).then(function (n) {
-      Object.assign(d, { hv: n.hv || d.hv, historial: n.historial || d.historial });
+      Object.assign(d, { hv: n.hv || d.hv, historial: n.histNuevo ? histJunto_(n, d) : (n.historial || d.historial) });
     }).catch(function (e) {
       d.hv = Object.assign({}, d.hv, { generando: false, error: String((e && e.message) || e), puedeGenerar: true });
     }).then(function () { if (m.parentNode) pintarDet_(m, d, ctx); });
@@ -1177,7 +1193,8 @@
       NDOCS.abrir({ id: d.id, nombres: cab.nom || '', apellidos: cab.ape || '', documento: cab.ced || '' }, {
         ag: { base: base, datos: d.documentos, alCambiar: function (res) {
           if (!res) return;
-          Object.assign(d, { documentos: res.documentos || d.documentos, historial: res.historial || d.historial });
+          Object.assign(d, { documentos: res.documentos || d.documentos, viaje: res.viaje || d.viaje,
+            historial: res.histNuevo ? histJunto_(res, d) : (res.historial || d.historial) });
           if (m.parentNode) pintarDet_(m, d, ctx);
         } }
       });
@@ -1234,6 +1251,208 @@
       conMotivo('Liberar la oferta', 'El cupo vuelve de inmediato a la oferta y el participante puede escoger otra. El cobro de Aplicada al Sponsor no se reversa.', 'agLiberarOferta', 'Oferta liberada', 'Liberando…');
       return true;
     }
+    return false;
+  }
+
+
+  /* ============================================================
+     FASE 6.6 · VERIFICACIÓN, DS-2019, VISA, VUELO Y RETIRO
+     Llega en el mismo detalle (d.viaje, un viaje). Cada escritura
+     responde solo el bloque viaje (+ documentos si fue el vuelo) y se
+     parcha. Agencia: primera revisión, visa, vuelo y retiro. SEP:
+     segunda revisión, DS-2019 (cobro único) y sus correcciones.
+     ============================================================ */
+  var VERIF_CLS = { ENVIADA: 'warn', DEVUELTA: 'bad', APROBADA: 'ok' };
+  function fechaHoraTxt_(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(s || ''));
+    return m ? m[3] + '/' + m[2] + '/' + m[1] + (m[4] ? ' ' + m[4] + ':' + m[5] : '') : '';
+  }
+  function bloqueForm_(b) {
+    var filas = (b.campos || []).map(function (c) {
+      var v;
+      if (c.t === 'lista') {
+        v = (c.filas || []).length ? '<table class="agv-tabla"><tr>' + (c.cols || []).map(function (k) { return '<th>' + e_(k.l) + '</th>'; }).join('') + '</tr>' +
+          c.filas.map(function (f) { return '<tr>' + (c.cols || []).map(function (k) { return '<td>' + e_(f[k.k] || '—') + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>' : '—';
+        return '<div class="agv-campo agv-campo--ancho"><span>' + e_(c.l) + '</span>' + v + '</div>';
+      }
+      if (c.t === 'chips') v = (c.v || []).length ? c.v.map(e_).join(', ') : '—';
+      else if (c.t === 'secreto') v = c.hay ? '•••••• (oculta)' : '—';
+      else v = e_(c.v || '—');
+      return '<div class="agv-campo"><span>' + e_(c.l) + '</span><b>' + v + '</b></div>';
+    }).join('');
+    return '<details class="agv-bloque"><summary>' + e_((b.icono ? b.icono + ' ' : '') + b.n + '. ' + b.titulo) + '</summary><div class="agv-campos">' + filas + '</div></details>';
+  }
+  function secViaje_(d, ctx) {
+    var v = d.viaje;
+    if (!v) return '';
+    if (v.error) return '<section class="agd-sec"><h3>Verificación, visa y vuelo</h3><div class="agr-aviso err"><b>' + e_(v.error) + '</b></div></section>';
+    var pu = v.puede || {}, vf = v.verif || {}, ds = v.ds2019 || {}, vi = v.visa || {}, ret = v.retiro || {};
+    var h = '';
+    var et = v.etapa ? '<span class="ag-pill ' + e_(v.etapa.c) + '">' + e_(v.etapa.l) + '</span>' : '';
+
+    /* 1. Verificación académica (se abre con Contratado). */
+    if (v.contratado || vf.estado) {
+      var certs = ((d.documentos && d.documentos.documentos) || []).filter(function (x) { return x.clave === 'CERT_ENE_JUL' || x.clave === 'CERT_AGO_DIC'; });
+      h += '<section class="agd-sec agv"><h3>Verificación académica</h3>' +
+        '<div class="ag-pills"><span class="ag-pill ' + (VERIF_CLS[vf.estado] || 'off') + '">' + e_(vf.label || 'Pendiente') + '</span>' +
+          (vf.resultado ? '<span class="ag-pill ok">Resultado SEP: ' + e_(vf.resultado === 'APROBADO' ? 'Aprobado' : vf.resultado) + '</span>' : '') + '</div>' +
+        '<div class="ag-pares">' +
+          (vf.enviadaPor ? '<div class="ag-par"><span>Primera revisión</span><b>' + e_(vf.enviadaPor) + ' · ' + e_(vf.enviadaFecha) + '</b></div>' : '') +
+          (vf.revisoPor ? '<div class="ag-par"><span>Revisión de SEP</span><b>' + e_(vf.revisoPor) + ' · ' + e_(vf.revisoFecha) + '</b></div>' : '') +
+        '</div>' +
+        (vf.estado === 'DEVUELTA' && vf.motivo ? '<div class="agr-aviso warn"><b>SEP la devolvió para corregir</b><div>' + e_(vf.motivo) + '</div></div>' : '') +
+        (certs.length ? '<div class="agv-certs">' + certs.map(function (x) {
+          return '<div class="agv-cert"><span>' + e_(x.nombre) + '</span><span class="ag-pill ' + (x.estado === 'APROBADO' ? 'ok' : (x.estado === 'RECHAZADO' ? 'bad' : (x.estado === 'EN_REVISION' ? 'warn' : 'off'))) + '">' + e_(x.estadoLabel || x.estado) + '</span>' +
+            (x.url ? '<a class="ag-btn" href="' + e_(x.url) + '" target="_blank" rel="noopener">' + IC_P.doc + '<span>Ver</span></a>' : '') + '</div>';
+        }).join('') + '</div><p class="cfg-hint">Los certificados se aprueban o rechazan en «Abrir documentos».</p>' : '') +
+        ((vf.bloques || []).length ? '<div class="agv-bloques">' + vf.bloques.map(bloqueForm_).join('') + '</div>' : '') +
+        (pu.verifEnviar ? '<div class="fld agv-notas"><label>Notas de la revisión (las ve SEP)</label><textarea id="agd-vnotas" rows="3" maxlength="3000" placeholder="Qué revisaste y qué encontraste…">' + e_(vf.notas || '') + '</textarea></div>'
+          : (vf.notas ? '<p class="cfg-hint">Notas: ' + e_(vf.notas) + (vf.notasPor ? ' · ' + e_(vf.notasPor) : '') + '</p>' : '')) +
+        '<div class="ag-acts">' +
+          (pu.verifEnviar ? '<button type="button" class="btn btn-primary" data-agd="vEnviar">' + (vf.estado === 'DEVUELTA' ? 'Reenviar corregida a SEP' : 'Enviar a revisión de SEP') + '</button>' : '') +
+          (pu.verifAprobar ? '<button type="button" class="btn btn-primary" data-agd="vAprobar">Aprobar verificación (SEP)</button>' : '') +
+          (pu.verifDevolver ? '<button type="button" class="ag-btn" data-agd="vDevolver">Devolver a la agencia</button>' : '') +
+          (pu.verifReabrir ? '<button type="button" class="ag-btn" data-agd="vReabrir">Reabrir verificación</button>' : '') +
+        '</div>' +
+        '<p class="cfg-hint">Primera revisión: la agencia. Segunda: SEP. Si SEP encuentra un problema, la devuelve para corregir.</p>' +
+        '</section>';
+    }
+
+    /* 2. DS-2019 confirmado (solo SEP). */
+    if (vf.estado === 'APROBADA' || ds.confirmado) {
+      var c = ds.cobro;
+      var cobro = !c ? '' : (c.estado === 'REVERSADO' ? '<span class="ag-pill off">Cobro reversado' + (c.motivo ? ' · ' + e_(c.motivo) : '') + '</span>'
+        : (c.estado === 'SIN_VALOR' ? '<span class="ag-pill warn">Cobro DS-2019 · sin valor configurado</span>'
+          : '<span class="ag-pill ok">Cobro DS-2019 · ' + e_(c.moneda + ' ' + c.valor) + '</span>'));
+      h += '<section class="agd-sec agv"><h3>DS-2019</h3>' +
+        '<div class="ag-pills">' + (ds.confirmado ? '<span class="ag-pill ok">DS-2019 confirmado · llegó a visa</span>' : '<span class="ag-pill off">Pendiente de confirmar por SEP</span>') + cobro + '</div>' +
+        (ds.confirmado ? '<div class="ag-pares"><div class="ag-par"><span>Confirmado</span><b>' + e_(ds.por) + ' · ' + e_(ds.fecha) + '</b></div></div>' : '') +
+        '<div class="ag-acts">' +
+          (pu.ds2019 ? '<button type="button" class="btn btn-primary" data-agd="dsOk">Confirmar DS-2019</button>' : '') +
+          (pu.ds2019Corregir ? '<button type="button" class="ag-btn" data-agd="dsCorregir">Corregir DS-2019</button>' : '') +
+        '</div>' +
+        '<p class="cfg-hint">Lo confirma solo SEP y genera una sola vez el cobro de esta temporada, aunque el documento se reemita.</p>' +
+        '</section>';
+    }
+
+    /* 3. Visa y viaje (con el DS-2019 confirmado). */
+    if (ds.confirmado) {
+      var res = (v.resultados || []).find(function (r) { return r.k === (vi.resultado || 'PENDIENTE'); }) || { l: 'Pendiente' };
+      var resCls = vi.resultado === 'APROBADA' ? 'ok' : (vi.resultado === 'NEGADA' ? 'bad' : (vi.resultado ? 'warn' : 'off'));
+      h += '<section class="agd-sec agv"><h3>Visa y viaje</h3>' +
+        '<div class="ag-pills"><span class="ag-pill ' + resCls + '">Resultado: ' + e_(res.l) + '</span></div>' +
+        (pu.visa
+          ? '<div class="form-grid agd-nota agv-visa">' +
+              '<div class="fld"><label>Inicio del DS-2019</label><input id="agd-v-start" type="date" value="' + e_(vi.start || '') + '" /></div>' +
+              '<div class="fld"><label>Huellas (CAS)</label><input id="agd-v-cas" type="datetime-local" value="' + e_(String(vi.cas || '').replace(' ', 'T')) + '" /></div>' +
+              '<div class="fld"><label>Cita consular</label><input id="agd-v-consul" type="datetime-local" value="' + e_(String(vi.consul || '').replace(' ', 'T')) + '" /></div>' +
+              '<div class="fld"><label>Resultado consular</label><select id="agd-v-res">' + (v.resultados || []).map(function (r) {
+                return '<option value="' + e_(r.k) + '"' + (r.k === (vi.resultado || 'PENDIENTE') ? ' selected' : '') + '>' + e_(r.l) + '</option>'; }).join('') + '</select></div>' +
+              '<div class="fld agd-nota__btn"><button type="button" class="btn btn-primary" data-agd="visa">Guardar visa</button></div>' +
+            '</div>'
+          : '<div class="ag-pares">' +
+              '<div class="ag-par"><span>Inicio del DS-2019</span><b>' + e_(fechaHoraTxt_(vi.start) || '—') + '</b></div>' +
+              '<div class="ag-par"><span>Huellas (CAS)</span><b>' + e_(fechaHoraTxt_(vi.cas) || '—') + '</b></div>' +
+              '<div class="ag-par"><span>Cita consular</span><b>' + e_(fechaHoraTxt_(vi.consul) || '—') + '</b></div>' +
+            '</div>') +
+        (vi.resultadoPor ? '<p class="cfg-hint">Resultado registrado por ' + e_(vi.resultadoPor) + (vi.resultadoFecha ? ' · ' + e_(vi.resultadoFecha) : '') + '. No se le envían mensajes al participante.</p>' : '');
+      var vu = v.vuelo;
+      if (vu) {
+        var vuCls = vu.estado === 'APROBADO' ? 'ok' : (vu.estado === 'RECHAZADO' ? 'bad' : (vu.estado === 'EN_REVISION' ? 'warn' : 'off'));
+        h += '<div class="agv-vuelo"><div class="agv-vuelo__top"><b>Vuelo</b><span class="ag-pill ' + vuCls + '">' + e_(vu.estado === 'PENDIENTE' ? 'Sin cargar' : vu.label) + '</span></div>' +
+          (vu.fechaCarga ? '<div class="ag-meta">Cargado ' + e_(vu.fechaCarga) + (vu.revisadoPor ? ' · revisado por ' + e_(vu.revisadoPor) : '') + '</div>' : '<div class="ag-meta">El participante lo carga en su portal (tarjeta «Tu vuelo»).</div>') +
+          (vu.nota ? '<div class="agr-aviso warn"><b>Rechazado</b><div>' + e_(vu.nota) + '</div></div>' : '') +
+          '<div class="ag-acts">' +
+            (vu.url ? '<a class="ag-btn" href="' + e_(vu.url) + '" target="_blank" rel="noopener">' + IC_P.doc + '<span>Ver vuelo</span></a>' : '') +
+            (pu.vueloRevisar ? '<button type="button" class="btn btn-primary" data-agd="vueloOk">Aprobar vuelo</button><button type="button" class="ag-btn" data-agd="vueloNo">Rechazar vuelo</button>' : '') +
+          '</div></div>';
+      }
+      h += '<p class="cfg-hint">Solo un vuelo aprobado cuenta como viajero. Si tiene la visa aprobada pero no viajará, márcalo como Retirado.</p></section>';
+    }
+
+    /* 4. Estado: retiro y reintegro. */
+    h += '<section class="agd-sec agv"><h3>Estado del participante</h3>' +
+      '<div class="ag-pills">' + (et || '<span class="ag-pill off">En proceso</span>') + '</div>' +
+      (ret.retirado ? '<div class="agr-aviso warn"><b>Retirado</b><div>' + e_(ret.motivo || '') + (ret.por ? ' · ' + e_(ret.por) + ' · ' + e_(ret.fecha) : '') + '</div></div>'
+        : (ret.reintegroFecha ? '<p class="cfg-hint">Reintegrado por ' + e_(ret.reintegroPor) + ' · ' + e_(ret.reintegroFecha) + '.</p>' : '')) +
+      (v.temporadaCerrada ? '<div class="agr-aviso warn"><b>Temporada cerrada</b><div>Solo un Superadmin puede reabrirla.</div></div>' : '') +
+      '<div class="ag-acts">' +
+        (pu.retirar ? '<button type="button" class="ag-btn" data-agd="retirar">Marcar como Retirado</button>' : '') +
+        (pu.reintegrar ? '<button type="button" class="btn btn-primary" data-agd="reintegrar">Reintegrar participante</button>' : '') +
+      '</div>' +
+      '<p class="cfg-hint">Retirado no borra nada: conserva historial, documentos, oferta y cobros. No libera la oferta (eso lo hace SEP).</p>' +
+      '</section>';
+    return h;
+  }
+
+  function accionDet66_(m, btn, d, ctx, que, base, hecho) {
+    var conMotivo66 = function (titulo, texto, ruta, extra, ok, aviso) {
+      Swal.fire({ icon: 'warning', title: titulo, text: texto, input: 'textarea', inputLabel: 'Motivo (queda en el historial)',
+        showCancelButton: true, confirmButtonText: 'Confirmar', cancelButtonText: 'Cancelar',
+        inputValidator: function (v) { return String(v || '').trim().length < 5 && 'Escribe el motivo (mínimo 5 caracteres).'; } }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost(ruta, Object.assign({ motivo: x.value }, extra, base), { avion: { titulo: aviso } }).then(function (n) { hecho(n, ok); });
+        });
+      });
+    };
+    var confirmar66 = function (titulo, texto, ruta, extra, ok, aviso) {
+      Swal.fire({ icon: 'question', title: titulo, text: texto, showCancelButton: true, confirmButtonText: 'Confirmar', cancelButtonText: 'Cancelar' }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost(ruta, Object.assign({}, extra, base), { avion: { titulo: aviso } }).then(function (n) { hecho(n, ok); });
+        });
+      });
+    };
+    var v = d.viaje || {}, vi = v.visa || {};
+    if (que === 'vEnviar') {
+      var notas = String((m.querySelector('#agd-vnotas') || {}).value || '').trim();
+      escudo_(btn, function () {
+        return apiPost('agVerif', Object.assign({ accion: 'ENVIAR', notas: notas }, base), { avion: { titulo: 'Enviando la verificación a SEP…' } })
+          .then(function (n) { hecho(n, 'Enviada a SEP'); });
+      });
+      return true;
+    }
+    if (que === 'vAprobar') { confirmar66('Aprobar la verificación', 'Segunda revisión de SEP. Después se puede confirmar el DS-2019.', 'agVerif', { accion: 'APROBAR' }, 'Verificación aprobada', 'Aprobando…'); return true; }
+    if (que === 'vDevolver') { conMotivo66('Devolver a la agencia', 'La agencia verá el motivo para corregir y reenviar.', 'agVerif', { accion: 'DEVOLVER' }, 'Devuelta a la agencia', 'Devolviendo…'); return true; }
+    if (que === 'vReabrir') { conMotivo66('Reabrir la verificación', 'Vuelve a la agencia para corregir.', 'agVerif', { accion: 'REABRIR' }, 'Verificación reabierta', 'Reabriendo…'); return true; }
+    if (que === 'dsOk') { confirmar66('Confirmar DS-2019', 'Marca que el participante llegó a visa y genera una sola vez el cobro de DS-2019 de esta temporada.', 'agDs2019', { accion: 'CONFIRMAR' }, 'DS-2019 confirmado', 'Confirmando…'); return true; }
+    if (que === 'dsCorregir') { conMotivo66('Corregir DS-2019', 'Se desmarca y el cobro queda reversado con este motivo.', 'agDs2019', { accion: 'CORREGIR' }, 'DS-2019 corregido', 'Corrigiendo…'); return true; }
+    if (que === 'visa') {
+      var val = function (id) { return String((m.querySelector(id) || {}).value || '').trim(); };
+      var start = val('#agd-v-start'), cas = val('#agd-v-cas').replace('T', ' '), con = val('#agd-v-consul').replace('T', ' '), res = val('#agd-v-res');
+      var body = {};
+      if (start !== (vi.start || '')) body.start = start;
+      if (cas !== (vi.cas || '')) body.cas = cas;
+      if (con !== (vi.consul || '')) body.consul = con;
+      if (res !== (vi.resultado || 'PENDIENTE')) body.resultado = res;
+      if (!Object.keys(body).length) { Swal.fire({ icon: 'info', title: 'Sin cambios', timer: 1000, showConfirmButton: false }); return true; }
+      if (cas && con && cas > con) { Swal.fire({ icon: 'warning', title: 'Revisa las fechas', text: 'La cita de huellas (CAS) va antes o el mismo día que la cita consular.' }); return true; }
+      var enviar = function () {
+        escudo_(btn, function () {
+          return apiPost('agVisa', Object.assign(body, base), { avion: { titulo: 'Guardando la visa…' } }).then(function (n) { hecho(n, 'Visa guardada'); });
+        });
+      };
+      if (body.resultado === 'APROBADA') {
+        Swal.fire({ icon: 'question', title: 'Visa aprobada', text: 'Se habilita al participante la carga de su vuelo. No se le envían mensajes.', showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar' })
+          .then(function (x) { if (x.isConfirmed) enviar(); });
+      } else enviar();
+      return true;
+    }
+    if (que === 'vueloOk') { confirmar66('Aprobar el vuelo', 'Con el vuelo aprobado el participante cuenta como viajero de la temporada.', 'agDocRevisar', { doc: 'ITINERARIO', accion: 'APROBAR' }, 'Vuelo aprobado', 'Aprobando el vuelo…'); return true; }
+    if (que === 'vueloNo') {
+      Swal.fire({ icon: 'warning', title: 'Rechazar el vuelo', input: 'textarea', inputLabel: 'Motivo (lo ve el participante)', showCancelButton: true, confirmButtonText: 'Rechazar', cancelButtonText: 'Cancelar',
+        inputValidator: function (x) { return String(x || '').trim().length < 5 && 'Escribe el motivo (mínimo 5 caracteres).'; } }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost('agDocRevisar', Object.assign({ doc: 'ITINERARIO', accion: 'RECHAZAR', motivo: x.value }, base), { avion: { titulo: 'Rechazando el vuelo…' } })
+            .then(function (n) { hecho(n, 'Vuelo rechazado'); });
+        });
+      });
+      return true;
+    }
+    if (que === 'retirar') { conMotivo66('Marcar como Retirado', 'No se borra nada ni se reversan cobros, y la oferta no se libera (eso lo hace SEP).', 'agRetiro', { accion: 'RETIRAR' }, 'Marcado como Retirado', 'Guardando…'); return true; }
+    if (que === 'reintegrar') { confirmar66('Reintegrar participante', 'Continúa desde donde iba. Si SEP liberó su oferta, vuelve a escoger una.', 'agRetiro', { accion: 'REINTEGRAR' }, 'Participante reintegrado', 'Reintegrando…'); return true; }
     return false;
   }
 
