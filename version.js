@@ -3,6 +3,12 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.9 · RENDIMIENTO DE LAS ESCRITURAS DE VIAJE (16/10/2026 · 8).
+ *   · Verificación, DS-2019, visa, retiro y vuelo de subagencias piden al
+ *     servidor la respuesta liviana (vl=1): el detalle conserva los bloques
+ *     del formulario que ya tiene (esas acciones no los cambian).
+ *   Archivos: js/agencias.js, version.js, sw.js (caché v68).
+ * ------------------------------------------------------------
  * FASE 6.8 · CIERRE DE LA FASE 6 DE SUBAGENCIAS (16/10/2026 · 7).
  *   · Documentos del participante de agencia: privados. El detalle dice con
  *     qué correo se abren (contacto de la agencia) y marca "Permiso de
@@ -903,4 +909,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.16.07";
+var APP_VERSION = "2026.10.16.08";

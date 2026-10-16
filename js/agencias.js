@@ -1037,9 +1037,12 @@
   function accionDet_(m, btn, d, ctx) {
     /* 6.6 — hn: las escrituras devuelven solo el historial nuevo (no se
        relee la auditoría completa); aquí se pone encima del que ya hay. */
-    var base = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id, hn: 1 } : { id: d.id, hn: 1 };
+    var base = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id, hn: 1, vl: 1 } : { id: d.id, hn: 1, vl: 1 };
     var hecho = function (nuevo, txt) {
       if (nuevo && nuevo.histNuevo) nuevo.historial = histJunto_(nuevo, d);
+      /* 6.9 — vl: las escrituras de viaje llegan sin los bloques del formulario
+         (no cambian con ellas): se conservan los que ya están en pantalla. */
+      if (nuevo && nuevo.viaje && nuevo.viaje.sinBloques && nuevo.viaje.verif && d.viaje && d.viaje.verif) nuevo.viaje.verif.bloques = d.viaje.verif.bloques || [];
       /* 6.5 — las escrituras nuevas devuelven SOLO el bloque que cambió. */
       if (nuevo && nuevo.parcial) nuevo = Object.assign({}, d, nuevo, { parcial: false });
       patchLista_(nuevo, ctx);
@@ -1231,6 +1234,8 @@
       NDOCS.abrir({ id: d.id, nombres: cab.nom || '', apellidos: cab.ape || '', documento: cab.ced || '' }, {
         ag: { base: base, datos: d.documentos, alCambiar: function (res) {
           if (!res) return;
+          /* 6.9 — el vuelo devuelve la vista de viaje sin los bloques del formulario. */
+          if (res.viaje && res.viaje.sinBloques && res.viaje.verif && d.viaje && d.viaje.verif) res.viaje.verif.bloques = d.viaje.verif.bloques || [];
           Object.assign(d, { documentos: res.documentos || d.documentos, viaje: res.viaje || d.viaje,
             historial: res.histNuevo ? histJunto_(res, d) : (res.historial || d.historial) });
           if (m.parentNode) pintarDet_(m, d, ctx);
