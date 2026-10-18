@@ -20,7 +20,7 @@
  *   subes APP_VERSION, y servirlo viejo dejaría la app clavada en una versión
  *   antigua. Tampoco se cachea nada que lleve query string.
  * ============================================================ */
-const SEP_CACHE = 'sep-group-v68';
+const SEP_CACHE = 'sep-group-v69';
 
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
@@ -45,12 +45,13 @@ const SHELL = [
   './css/avion.css', './js/avion.js', './css/ancho.css',                /* 10/10/2026 — avión y ancho */
   './css/rueda.css', './js/rueda.js',                                   /* 10/10/2026 — rueda iOS única */
   './css/agencias.css', './js/agencias.js', './img/agencias.svg',       /* Fase 6.2 (16/10/2026) — subagencias */
+  './js/archivo-visor.js',                 /* Fase 6.10 (17/10/2026) — archivos privados dentro de la app */
   './img/sep_logo.png'
 ];
 
 /* Lo que se sirve desde la caché primero */
 const ESTATICO = /\.(?:css|js|png|jpe?g|webp|gif|svg|ico|woff2?)$/i;
-const CDN = /^https:\/\/(?:cdn\.jsdelivr\.net|www\.gstatic\.com)\//;
+const CDN = /^https:\/\/(?:cdn\.jsdelivr\.net|www\.gstatic\.com|cdnjs\.cloudflare\.com)\//;   // 6.10: pdf.js del visor
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

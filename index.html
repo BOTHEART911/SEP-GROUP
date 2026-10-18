@@ -267,6 +267,10 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
       <h1 class="app-header__title">Subagencias</h1>
+      <!-- FASE 6.10 — Actualizar sin recargar la página -->
+      <button class="app-header__icon" id="ag-refresh" title="Actualizar" aria-label="Actualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
     </header>
     <div class="container">
       <div class="ag-tabs" id="ag-tabs" role="tablist">
@@ -312,6 +316,10 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
       <h1 class="app-header__title">Mi agencia</h1>
+      <!-- FASE 6.10 — Actualizar sin recargar la página -->
+      <button class="app-header__icon" id="agm-refresh" title="Actualizar" aria-label="Actualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
     </header>
     <div class="container" id="ag-mia-cuerpo"></div>
   </section>
@@ -323,6 +331,10 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
       <h1 class="app-header__title">Mis participantes</h1>
+      <!-- FASE 6.10 — Actualizar sin recargar la página -->
+      <button class="app-header__icon" id="agp-refresh" title="Actualizar" aria-label="Actualizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
     </header>
     <div class="container">
       <p class="agp-tmp" id="agp-tmp-txt"></p>
@@ -337,6 +349,7 @@
         </button>
       </div>
       <div class="ag-chips agp-pills" id="agp-pills"></div>
+      <div class="agp-falta" id="agp-falta"></div>   <!-- FASE 6.10 — filtro Falta -->
       <div id="agp-tras"></div>
       <div id="agp-cards" class="ag-cards"></div>
       <div id="agp-empty" class="usr-empty hidden">
@@ -1575,6 +1588,7 @@
   <script src="js/temporadas-cfg.js"></script>
   <script src="app.js"></script>
   <script src="js/contador.js"></script>
+  <script src="js/archivo-visor.js"></script>   <!-- FASE 6.10 · archivos privados dentro de la app (pieza única con SEP-AGENDA) -->
   <script src="js/agencias.js"></script>   <!-- FASE 6.2 · subagencias -->
   <!-- NIVEL DE INGLÉS (16/08 · Fase 3 SEP · Entrega 2) -->
   <script src="js/nivel.js"></script>

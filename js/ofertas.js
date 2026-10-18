@@ -1069,6 +1069,7 @@ function ofePartAbierto_() {
 
 function cerrarParticipantes_() {
   document.querySelector('#modal-ofe-part')?.classList.add('hidden');
+  document.body.classList.remove('ofe-part-on');   // 6.10
   OFE.part = null;
 }
 
@@ -1077,6 +1078,8 @@ async function abrirParticipantes_(id) {
   if (!modal) return;
   OFE.part = { ofertaId: id, datos: null, pantalla: 'lista', resultados: [], buscado: '' };
   modal.classList.remove('hidden');
+  /* 6.10 — "Ver formulario" y la hoja de vida se abren ENCIMA de este modal. */
+  document.body.classList.add('ofe-part-on');
   document.querySelector('#ofe-part-body').innerHTML = '';   // 5.5-D — la silueta la pone la capa 5
   await recargarParticipantes_();
 }
@@ -1176,6 +1179,7 @@ function ofePartFilaHtml_(p) {
       </div>
       <span class="ofe-badge" style="background:${p.estadoColor};">${p.estadoIc} ${esc_(p.estadoLabel)}</span>
     </div>
+    ${ofePartRapidoHtml_(p)}
     <div class="ofe-part__meta">
       ${spChip}
       <span>${p.origen === 'SEP' ? '🏛️' : '🙋'} ${esc_(p.origenLabel)}</span>
@@ -1187,6 +1191,59 @@ function ofePartFilaHtml_(p) {
     ${conf}${ent}${res}${exc}${hab}${rech}
     <div class="ofe-part__acts">${acciones.join('')}</div>
   </article>`;
+}
+
+/* ============================================================
+   FASE 6.10 (17/10/2026) — AJUSTES DE JAVIER EN OFERTA → PARTICIPANTES
+   ============================================================
+   · Accesos rápidos de cada participante de SEP, sin salir de la oferta:
+     Asesor de Procesos, celular, "Ver formulario" (el mismo de Nivel de
+     Inglés) y "Descargar hoja de vida". Llegan en el MISMO viaje
+     (ofertaParticipantes); un backend viejo no los trae y no se pintan.
+   · Participantes de SUBAGENCIAS que tomaron cupo en esta oferta: solo
+     informativos (nombre, celular, correo y agencia), sin acciones.   */
+function ofeIdDrive_(url) { const m = String(url || '').match(/[-\w]{25,}/); return m ? m[0] : ''; }
+function ofePartRapidoHtml_(p) {
+  if (p.asesorProcesos === undefined && !p.nivelN && !p.hvUrl) return '';
+  const tel = String(p.whatsapp || '').replace(/\D/g, '');
+  const id = ofeIdDrive_(p.hvUrl);
+  return `<div class="ofe-part__rapido">
+      <span title="Asesor de Procesos">🧭 ${esc_(p.asesorProcesos || 'Sin asesor de Procesos')}</span>
+      ${tel ? `<span title="Celular">📱 ${esc_(tel)}</span>` : ''}
+      <span class="ofe-part__rapido-acts">
+        ${p.nivelN ? `<button type="button" class="ofe-mini" data-pform="${esc_(p.id)}">📝 Ver formulario</button>` : ''}
+        ${id ? `<a class="ofe-mini" href="https://drive.google.com/uc?export=download&id=${esc_(id)}" target="_blank" rel="noopener">⬇️ Descargar hoja de vida</a>` : ''}
+      </span>
+    </div>`;
+}
+function ofePartVerForm_(id) {
+  const p = ((OFE.part && OFE.part.datos && OFE.part.datos.participantes) || []).find(x => x.id === id);
+  if (!p || !p.nivelN) return;
+  if (typeof NPERFIL === 'undefined' || !NPERFIL.abrirFormulario) {
+    Swal.fire({ icon: 'info', title: 'Ver formulario', text: 'Abre el participante desde Nivel de Inglés.' });
+    return;
+  }
+  const partes = String(p.nombre || '').split(' ');
+  NPERFIL.abrirFormulario({ n: p.nivelN, documento: p.nivelDoc || p.documento || '', id: p.idRegistro,
+                            nombres: partes.slice(0, 2).join(' '), apellidos: partes.slice(2).join(' '), hvUrl: p.hvUrl || '' });
+}
+function ofePartAgenciasHtml_(lista) {
+  if (!lista || !lista.length) return '';
+  return `<section class="ofe-part__ag">
+      <h4>🏢 Participantes de subagencias (${lista.length}) <small>solo consulta · los gestiona su agencia</small></h4>
+      ${lista.map(a => `<article class="ofe-part__card ofe-part__card--ag">
+        <div class="ofe-part__top">
+          <div><b>${esc_(a.nombre)}</b><span class="muted">${esc_(a.agencia)} · ${esc_(a.idRegistro)}</span></div>
+          <span class="ofe-badge" style="background:${esc_(a.estadoColor || '#64748b')};">${a.estadoIc || ''} ${esc_(a.estadoLabel || a.estado)}</span>
+        </div>
+        <div class="ofe-part__meta">
+          ${a.celular ? `<span>📱 ${esc_(a.celular)}</span>` : ''}
+          ${a.correo ? `<span>✉️ ${esc_(a.correo)}</span>` : ''}
+          <span>📅 ${esc_(a.fecha)} ${esc_(a.hora || '')}</span>
+          <span>🎟️ cupo ${esc_(a.cupo)}</span>
+        </div>
+      </article>`).join('')}
+    </section>`;
 }
 
 /* ============================================================
@@ -1241,10 +1298,11 @@ function renderParticipantes_() {
     ? lista.map(ofePartFilaHtml_).join('')
     : `<p class="muted center" style="padding:22px 0">${todos.length
         ? 'Nadie en esta oferta cumple ese filtro.'
-        : 'Todavía no hay participantes en esta oferta.'}</p>`;
+        : ((d.agencias || []).length ? 'Todavía no hay participantes de SEP en esta oferta.' : 'Todavía no hay participantes en esta oferta.')}</p>`;
 
   cont.innerHTML = ofePartCabecera_() + (todos.length ? ofePartFiltroSpHtml_(todos) : '')
-    + `<div class="ofe-part__list">${cuerpo}</div>`;
+    + `<div class="ofe-part__list">${cuerpo}</div>` + ofePartAgenciasHtml_(d.agencias);   // 6.10
+  cont.querySelectorAll('[data-pform]').forEach(b => b.addEventListener('click', () => ofePartVerForm_(b.getAttribute('data-pform'))));
 
   cont.querySelectorAll('[data-spf]').forEach(b => b.addEventListener('click', () => {
     OFE.part.filtroSp = b.getAttribute('data-spf');

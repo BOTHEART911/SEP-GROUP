@@ -125,13 +125,9 @@ var NDOCS = (function () {
         'bloquean ninguna etapa. Mientras no esté aprobado, el participante o la agencia pueden reemplazarlo; ' +
         'al aprobarlo queda bloqueado (solo SEP lo reabre). El contrato Agencia–Participante lo carga la agencia. ' +
         'No se envían mensajes al participante.</p>' +
-        /* FASE 6.8 — los archivos son privados: lectura para el correo de
-           contacto de la agencia, el participante y SEP (cola de permisos). */
-        '<p class="conta-sub ndoc-intro ndoc-priv">🔒 Los archivos son privados: se abren con la cuenta de Google ' +
-        (D.data && D.data.privado && D.data.privado.correo
-          ? 'del correo de contacto de la agencia (' + esc(D.data.privado.correo) + ')'
-          : 'del correo de contacto de la agencia (sin correo registrado: pídele a SEP que lo agregue)') +
-        ', la del participante o la de SEP. Un archivo recién cargado puede tardar hasta 30 min en abrir.</p>'
+        /* FASE 6.10 — privados en Drive, pero se ven y descargan aquí mismo
+           (los entrega el servidor): sin iniciar sesión en Google. */
+        '<p class="conta-sub ndoc-intro ndoc-priv">🔒 Los archivos son privados: se ven y se descargan aquí mismo, sin iniciar sesión en Google.</p>'
       :
       '<p class="conta-sub ndoc-intro">Solo PDF (el itinerario de vuelo también en imagen). Mientras un documento no esté aprobado, el participante ' +
       'o SEP pueden reemplazarlo. Al aprobarlo queda bloqueado. Si lo rechazas, vuelve a pendiente con tu motivo ' +
@@ -175,8 +171,12 @@ var NDOCS = (function () {
 
     if (d.tieneArchivo) {
       acciones.push('<button class="act-btn" data-ver="' + esc(d.clave) + '">👁 Ver</button>');
-      acciones.push('<a class="act-btn" href="https://drive.google.com/uc?export=download&id=' +
-                    esc(idDrive_(d.url)) + '" target="_blank" rel="noopener">⬇️ Descargar</a>');
+      /* FASE 6.10 — subagencia: el visor de la app ya trae Descargar (el
+         archivo es privado y lo entrega el servidor). */
+      if (!(D.opts.ag && D.opts.ag.ver)) {
+        acciones.push('<a class="act-btn" href="https://drive.google.com/uc?export=download&id=' +
+                      esc(idDrive_(d.url)) + '" target="_blank" rel="noopener">⬇️ Descargar</a>');
+      }
     }
     if (!d.soloVer) {
       /* FASE 5.1-C — aprobado = bloqueado también para SEP. */
@@ -216,7 +216,7 @@ var NDOCS = (function () {
                (d.origen ? ' (' + esc(d.origen === 'SEP' ? 'por SEP' : (d.origen === 'AGENCIA' ? 'por la agencia' : 'por el participante')) + ')' : '') : 'Sin archivo') +
              (d.revisadoPor ? ' · Revisó ' + esc(d.revisadoPor) + (d.fechaRevision ? ' el ' + esc(d.fechaRevision) : '') : '') +
       '  </div>' +
-      (D.opts.ag && d.permisoPendiente
+      (D.opts.ag && d.permisoPendiente && !D.opts.ag.ver
         ? '  <div class="ndoc-cond">⏳ Permiso de lectura en camino: se abre en máximo 30 min.</div>'
         : '') +
       ((d.estado === 'RECHAZADO' || d.estado === 'CORRECCION') && d.nota
@@ -262,6 +262,7 @@ var NDOCS = (function () {
       b.addEventListener('click', function () {
         var d = doc(b.dataset.ver);
         if (!d || !d.url) return;
+        if (D.opts.ag && typeof D.opts.ag.ver === 'function') { D.opts.ag.ver(d); return; }   // 6.10 — privado, dentro de la app
         if (typeof NPERFIL !== 'undefined' && NPERFIL.visor) NPERFIL.visor(d.url, d.nombre);
         else window.open(d.url, '_blank');
       });

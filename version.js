@@ -3,6 +3,22 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.10 · AJUSTES DE JAVIER A SUBAGENCIAS (17/10/2026 · 1).
+ *   · Filtro "Falta" (agencia y Superusuario) con Invitación para la prueba.
+ *   · Botón Actualizar en Subagencias, Mi agencia y Mis participantes.
+ *   · Documentos, hoja de vida, vuelo y comprobantes de la agencia: se ven y
+ *     se descargan dentro de la app (privados, los entrega el servidor).
+ *   · Oferta → Participantes: los de subagencias (solo consulta) y, para los
+ *     de SEP, asesor de Procesos, celular, Ver formulario y Descargar HV.
+ *   · Verificación académica: la agencia corrige URL, usuario y clave.
+ *   · Eliminar participante de subagencia (solo Superusuario, con motivo).
+ *   · Arreglos encontrados: en el teléfono el botón del tema tapaba el último
+ *     icono de la cabecera (Actualizar) y en Oferta → Participantes las
+ *     insignias de estado se amontonaban en la esquina del modal.
+ *   Archivos: js/archivo-visor.js (nuevo), js/agencias.js, js/nivel-docs.js,
+ *   js/ofertas.js, css/agencias.css, css/ofertas.css, css/ancho.css,
+ *   index.html, version.js, sw.js (caché v69).
+ * ------------------------------------------------------------
  * FASE 6.9 · RENDIMIENTO DE LAS ESCRITURAS DE VIAJE (16/10/2026 · 8).
  *   · Verificación, DS-2019, visa, retiro y vuelo de subagencias piden al
  *     servidor la respuesta liviana (vl=1): el detalle conserva los bloques
@@ -909,4 +925,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.16.08";
+var APP_VERSION = "2026.10.17.01";

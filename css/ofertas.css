@@ -320,3 +320,22 @@ html[data-tema="oscuro"] .ofe-part__aviso--info {
 html[data-tema="oscuro"] .ofe-sp--si { color: #4ade80; }
 html[data-tema="oscuro"] .ofe-sp--no { color: #fbbf24; }
 html[data-tema="oscuro"] .ofe-spf__b.is-on { color: var(--on-primary, #101822); }
+
+/* ============================================================
+   FASE 6.10 (17/10/2026) — Oferta → Participantes
+   ============================================================ */
+/* "Ver formulario" y el visor de la HV se abren encima de este modal */
+body.ofe-part-on #modal-nform, body.ofe-part-on #nive-visor { z-index: 9100; }
+.ofe-part__rapido { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 6px 0 4px; font-size: 12.5px; color: var(--text-main, #0f172a); }
+.ofe-part__rapido-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.ofe-mini { display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); background: var(--bg-soft, #f1f5f9); color: var(--primary, #0b3b7a); font: inherit; font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.ofe-mini:hover { border-color: var(--primary, #0b3b7a); }
+.ofe-part__ag { margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border, #e2e8f0); }
+.ofe-part__ag h4 { margin: 0 0 8px; font-size: 14px; color: var(--primary, #0b3b7a); }
+.ofe-part__ag h4 small { font-weight: 600; color: var(--text-soft, #64748b); margin-left: 6px; }
+.ofe-part__card--ag { opacity: .95; border-style: dashed; }
+@media (max-width: 560px) { .ofe-part__rapido-acts { margin-left: 0; width: 100%; } }
+/* 17/10/2026 (6.10) — el estado de cada participante va en su tarjeta: la
+   insignia es absoluta para la foto de la oferta y aquí se iba a la esquina
+   del modal, encimada sobre el título (todas en el mismo punto). */
+.ofe-part__top .ofe-badge { position: static; flex-shrink: 0; box-shadow: none; white-space: nowrap; }

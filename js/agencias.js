@@ -28,6 +28,12 @@
  *      anular pagos (Contador o Super) y cierre / reapertura de la
  *      temporada (Super). La agencia ve su cuenta en Mi agencia (solo
  *      lectura) y, con la temporada cerrada, todo queda en solo lectura.
+ *   6. (6.10 · ajustes de Javier, 17/10/2026) filtro "Falta" (paso
+ *      siguiente pendiente, con Invitación para la prueba), botón
+ *      Actualizar en las tres vistas, documentos privados vistos y
+ *      descargados DENTRO de la app (SEPArchivo, servidos por el backend),
+ *      corrección del acceso al portal académico (URL, usuario y clave)
+ *      y eliminar participante (solo Superusuario, con motivo).
  *
  * RENDIMIENTO
  *   · Una vista, un viaje: agenciasInit trae agencias + temporadas +
@@ -48,7 +54,10 @@
   function e_(s) { return (typeof esc_ === 'function') ? esc_(s) : String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function soloAdmin_() { return !!(AGS.data && AGS.data.esAdmin); }
   function logo_(a) { return (a && a.logoUrl) ? a.logoUrl : LOGO_DEF; }
-  function err_(e) { if (typeof esCorte_ === 'function' && esCorte_(e)) return; Swal.fire({ icon: 'error', title: 'No se pudo completar', text: String((e && e.message) || e) }); }
+  /* 6.10 — con el servidor aún sin publicar, una ruta nueva responde
+     "Acción no reconocida": se dice en palabras de la persona. */
+  function txtNueva_(m) { m = String(m || ''); return /Acción no reconocida: ag/.test(m) ? 'Esta opción se activa cuando SEP publique la versión nueva del servidor.' : m; }
+  function err_(e) { if (typeof esCorte_ === 'function' && esCorte_(e)) return; Swal.fire({ icon: 'error', title: 'No se pudo completar', text: txtNueva_((e && e.message) || e) }); }
   function money_(v, mon) {
     if (v === '' || v === null || v === undefined) return '—';
     var n = Number(v); if (isNaN(n)) return '—';
@@ -64,6 +73,40 @@
     if (btn && btn.disabled) return Promise.resolve();
     ocupado_(btn, true);
     return Promise.resolve().then(fn).catch(err_).then(function () { ocupado_(btn, false); });
+  }
+
+  /* FASE 6.10 — archivos privados DENTRO de la app (js/archivo-visor.js).
+     El servidor revisa el permiso y entrega el archivo: no hace falta
+     iniciar sesión en Google. Es una lectura: sin rid; un reintento solo
+     ante falla de red o el 404 de echo. El token se toma al despachar. */
+  function archivoPedir_(extra) {
+    var tk = (typeof sesionTk_ === 'function') ? sesionTk_() : '';
+    var cuerpo = Object.assign({}, extra, tk ? { tk: tk } : {}, (currentUser && !(typeof esAgencia_ === 'function' && esAgencia_())) ? { usuarioId: currentUser.id } : {});
+    var url = API_BASE + '?action=agArchivo' + (tk ? '&tk=' + encodeURIComponent(tk) : '');
+    var una = function () {
+      return fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(cuerpo) }).then(function (r) {
+        if (r.status === 404) { var e = new Error('echo404'); e.red = true; throw e; }
+        return r.json().catch(function () { var e2 = new Error('RESPUESTA_NO_JSON'); e2.red = true; throw e2; });
+      });
+    };
+    var esRed = function (e) { return !!(e && (e.red || e.name === 'TypeError')); };
+    return una().catch(function (e) {
+      if (!esRed(e)) throw e;
+      return new Promise(function (ok) { setTimeout(ok, 800); }).then(una);
+    }).catch(function (e) {
+      if (esRed(e)) throw new Error('No se pudo conectar con el servidor. Revisa tu conexión e intenta de nuevo.');
+      throw e;
+    }).then(function (j) {
+      if (!j.ok) {
+        if (typeof sesionRevisarError_ === 'function') sesionRevisarError_(j.error, tk);
+        throw new Error(txtNueva_((typeof sesionTextoError_ === 'function') ? sesionTextoError_(j.error) : (j.error || 'No se pudo abrir el archivo')));
+      }
+      return j.data;
+    });
+  }
+  function verArchivo_(titulo, extra) {
+    if (!window.SEPArchivo) { Swal.fire({ icon: 'error', title: 'No se pudo abrir', text: 'Recarga la página e intenta de nuevo.' }); return; }
+    SEPArchivo.abrir(titulo, function () { return archivoPedir_(extra); });
   }
 
   /* ============================================================
@@ -173,6 +216,15 @@
   }
 
   function abrirMia_() {
+    var rf = $1('#agm-refresh');
+    if (rf && !rf.__w) {
+      rf.__w = true;
+      rf.addEventListener('click', function () {   // 6.10 — Actualizar
+        if (rf.disabled) return;
+        rf.disabled = true; setTimeout(function () { rf.disabled = false; }, 1500);
+        AGM.inicio = null; pintarMia_(); cargarInicioAg_();
+      });
+    }
     showView('agencia-mia');
     pintarMia_();
     if (!AGM.inicio) cargarInicioAg_();
@@ -246,6 +298,15 @@
 
   function wire_() {
     if (AGS.wired) return; AGS.wired = true;
+    /* 6.10 — Actualizar: lo de la vista vuelve a pedirse (agencias, valores,
+       cuentas y, si se abrió, la lista de participantes y la auditoría). */
+    var rf = $1('#ag-refresh');
+    if (rf) rf.addEventListener('click', function () {
+      if (rf.disabled) return;
+      AGS.part = null; AGS.aud = {};
+      rf.disabled = true; setTimeout(function () { rf.disabled = false; }, 1500);
+      window.abrirAgencias_();
+    });
     $1('#ag-search').addEventListener('input', function (e) { AGS.filtro = e.target.value; renderLista_(); });
     $1('#ag-add').addEventListener('click', function () { modalAgencia_(null); });
     $1('#ag-tmp').addEventListener('change', function (e) { AGS.tmp = e.target.value; render_(); });
@@ -603,7 +664,7 @@
      búsqueda y temporadas son locales. Tras registrar se parcha la
      lista en memoria (no se recarga).
      ============================================================ */
-  var AGP = { data: null, filtro: '', anio: '', cargando: null };
+  var AGP = { data: null, filtro: '', anio: '', cargando: null, fa: '', inv: '' };
 
   function sinTildes_(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
   function blob_(r) { return sinTildes_([r.nom, r.ape, r.cel, r.ced, r.cor, r.clave, r.id, r.agn].join(' ')); }
@@ -620,8 +681,64 @@
     mail: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>',
     reloj: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     /* 6.4 — portapapeles con check: prueba y formulario del participante */
-    det: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="m9 13 2 2 4-4"/></svg>'
+    det: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="m9 13 2 2 4-4"/></svg>',
+    /* 6.10 — ver la clave del portal y eliminar participante */
+    ojo: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    basura: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
   };
+
+  /* FASE 6.10 — FALTA: el paso siguiente pendiente de cada participante
+     (lo calcula el servidor en la lista; tras una acción se recalcula con
+     el detalle). Con "Falta prueba" se separa quién ya tiene la invitación. */
+  var FALTA_TXT = { PRUEBA: 'Falta prueba', FORM: 'Falta formulario', OFERTA: 'Falta elección de oferta',
+    VERIF: 'Falta verificación académica', DS: 'Falta DS-2019', VISA: 'Falta fechas de visa', VUELO: 'Falta vuelo subido' };
+  var FALTA_ORDEN = ['PRUEBA', 'FORM', 'OFERTA', 'VERIF', 'DS', 'VISA', 'VUELO'];
+  function faltaDe_(r) { return (r && r.est && r.est.fa) || ''; }
+  function faltaHtml_(regs, fa, inv) {
+    var n = {}, ni = { si: 0, no: 0 };
+    regs.forEach(function (r) {
+      var k = faltaDe_(r); if (k) n[k] = (n[k] || 0) + 1;
+      if (k === 'PRUEBA') ni[(r.est && r.est.inv) ? 'si' : 'no']++;
+    });
+    return '<label class="agp-falta__l"><span>Falta</span><select data-falta aria-label="Filtrar por lo que falta">' +
+        '<option value="">Todos (' + regs.length + ')</option>' +
+        FALTA_ORDEN.map(function (k) { return '<option value="' + k + '"' + (k === fa ? ' selected' : '') + '>' + FALTA_TXT[k] + ' (' + (n[k] || 0) + ')</option>'; }).join('') +
+      '</select></label>' +
+      (fa === 'PRUEBA' ? '<label class="agp-falta__l"><span>Invitación</span><select data-falta-inv aria-label="Filtrar por invitación a la prueba">' +
+        '<option value="">Todos</option>' +
+        '<option value="si"' + (inv === 'si' ? ' selected' : '') + '>Ya invitados (' + ni.si + ')</option>' +
+        '<option value="no"' + (inv === 'no' ? ' selected' : '') + '>Sin invitar (' + ni.no + ')</option>' +
+      '</select></label>' : '');
+  }
+  function filtroFalta_(regs, fa, inv) {
+    if (!fa) return regs;
+    return regs.filter(function (r) {
+      if (faltaDe_(r) !== fa) return false;
+      return fa !== 'PRUEBA' || !inv || (!!(r.est && r.est.inv)) === (inv === 'si');
+    });
+  }
+  /* Lo mismo que el servidor (agjFaltaDe_), con el detalle que ya llegó. */
+  function faltaDeDet_(d) {
+    var v = d.viaje || {}, p = d.prueba || {}, f = d.formulario || {}, o = d.oferta || {}, s = o.sel;
+    if (v.retiro && v.retiro.retirado) return '';
+    if (!p.alcanza) return p.puntaje ? '' : 'PRUEBA';
+    if (!f.aprobado) return 'FORM';
+    if (!s || s.estado !== 'APROBADA') return (s && o.activa) ? '' : 'OFERTA';
+    if ((v.verif || {}).estado !== 'APROBADA') return 'VERIF';
+    if (!(v.ds2019 && v.ds2019.confirmado)) return 'DS';
+    var vi = v.visa || {};
+    if (!vi.start || !vi.cas || !vi.consul) return 'VISA';
+    var vu = v.vuelo && v.vuelo.estado;
+    if (vi.resultado === 'APROBADA' && vu !== 'EN_REVISION' && vu !== 'APROBADO') return 'VUELO';
+    return '';
+  }
+
+  /* FASE 6.10 — Actualizar: vuelve a pedir la lista (sin recargar la página). */
+  function refrescarPart_() {
+    AGP.data = null;
+    var c = $1('#agp-cards'); if (c) c.innerHTML = (window.SEPEsqueleto && SEPEsqueleto.html('persona', 4)) || '';
+    cargarPart_();
+  }
 
   function abrirPart_() {
     wirePart_();
@@ -647,6 +764,14 @@
     var v = $1('#view-agencia-part'); if (!v || v.__w) return; v.__w = true;
     $1('#agp-search').addEventListener('input', function (e) { AGP.filtro = e.target.value; renderPartLista_(); });
     $1('#agp-add').addEventListener('click', function () { modalRegistro_(); });
+    var rf = $1('#agp-refresh');
+    if (rf) rf.addEventListener('click', function () { if (!AGP.cargando) refrescarPart_(); });
+    var fl = $1('#agp-falta');
+    if (fl) fl.addEventListener('change', function (e) {
+      if (e.target.matches('[data-falta]')) { AGP.fa = e.target.value; AGP.inv = ''; }
+      else if (e.target.matches('[data-falta-inv]')) AGP.inv = e.target.value;
+      renderPartLista_();
+    });
     $1('#agp-pills').addEventListener('click', function (e) {
       var b = e.target.closest('[data-anio]'); if (!b) return;
       AGP.anio = b.getAttribute('data-anio'); renderPart_();
@@ -719,11 +844,14 @@
       (form ? '<span class="ag-pill ' + form[1] + '">' + e_(form[0]) + '</span>' : '') +
       (of && !et ? '<span class="ag-pill ' + of[1] + '">' + e_(of[0]) + '</span>' : '') +
       (et ? '<span class="ag-pill ' + et[1] + '">' + e_(et[0]) + '</span>' : '') +
+      (x.fa && FALTA_TXT[x.fa] ? '<span class="ag-pill warn agp-pill-falta">' + e_(FALTA_TXT[x.fa]) + '</span>' : '') +
       '</div><button type="button" class="ag-btn" data-det="' + e_(r.id) + '" title="Prueba, formulario, documentos, oferta, verificación, visa y vuelo">' + IC_P.det + '<span>Detalle</span></button></div>';
   }
   function renderPartLista_() {
     var d = AGP.data; if (!d) return;
-    var lista = filtrarPart_(d.registros, AGP.anio, AGP.filtro);
+    var base = filtrarPart_(d.registros, AGP.anio, AGP.filtro);
+    var fl = $1('#agp-falta'); if (fl) fl.innerHTML = d.registros.length ? faltaHtml_(base, AGP.fa || '', AGP.inv || '') : '';
+    var lista = filtroFalta_(base, AGP.fa || '', AGP.inv || '');
     $1('#agp-empty').classList.toggle('hidden', lista.length > 0);
     $1('#agp-empty-txt').textContent = d.registros.length ? 'Ningún participante coincide con el filtro.' : 'Aún no has registrado participantes.';
     var cont = $1('#agp-cards');
@@ -878,16 +1006,25 @@
       '<div class="com-toolbar"><div class="search-bar"><svg class="search-bar__ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
       '<input id="agps-q" type="search" placeholder="Buscar participante…" autocomplete="off" value="' + e_(AGS.partQ || '') + '" /></div>' +
       '<select id="agps-ag"><option value="">Todas las agencias</option>' + ags.map(function (a) { return '<option value="' + e_(a.id) + '"' + (a.id === agSel ? ' selected' : '') + '>' + e_(a.nombre) + '</option>'; }).join('') + '</select></div>' +
-      '<p class="cfg-hint">' + lista.length + ' participante' + (lista.length === 1 ? '' : 's') + ' de agencias en ' + e_(t ? t.nombre : 'la temporada') + '. No aparecen en Comercial, Participantes ni Estadísticas de SEP.</p>' +
+      '<div class="agp-falta" id="agps-falta"></div>' +
+      '<p class="cfg-hint" id="agps-n"></p>' +
       '<div id="agps-cards" class="ag-cards"></div>';
     var cont = $1('#agps-cards');
-    if (typeof tandaPintar_ === 'function') tandaPintar_(cont, lista, function (r) { return tarjetaPart_(r, true); });
-    else cont.innerHTML = lista.map(function (r) { return tarjetaPart_(r, true); }).join('');
-    $1('#agps-q').addEventListener('input', function (e) {
-      AGS.partQ = e.target.value;
-      var l = filtrarPart_(AGS.part.registros, anio, AGS.partQ).filter(function (r) { return !AGS.partAg || r.ag === AGS.partAg; });
+    /* 6.10 — búsqueda, agencia y Falta, todo local (sin viajes). */
+    var pintar = function () {
+      var b = filtrarPart_(AGS.part.registros, anio, AGS.partQ).filter(function (r) { return !AGS.partAg || r.ag === AGS.partAg; });
+      $1('#agps-falta').innerHTML = AGS.part.registros.length ? faltaHtml_(b, AGS.partFa || '', AGS.partInv || '') : '';
+      var l = filtroFalta_(b, AGS.partFa || '', AGS.partInv || '');
+      $1('#agps-n').textContent = l.length + ' participante' + (l.length === 1 ? '' : 's') + ' de agencias en ' + (t ? t.nombre : 'la temporada') + '. No aparecen en Comercial, Participantes ni Estadísticas de SEP.';
       if (typeof tandaPintar_ === 'function') tandaPintar_(cont, l, function (r) { return tarjetaPart_(r, true); });
       else cont.innerHTML = l.map(function (r) { return tarjetaPart_(r, true); }).join('');
+    };
+    pintar();
+    $1('#agps-q').addEventListener('input', function (e) { AGS.partQ = e.target.value; pintar(); });
+    $1('#agps-falta').addEventListener('change', function (e) {
+      if (e.target.matches('[data-falta]')) { AGS.partFa = e.target.value; AGS.partInv = ''; }
+      else if (e.target.matches('[data-falta-inv]')) AGS.partInv = e.target.value;
+      pintar();
     });
     $1('#agps-ag').addEventListener('change', function (e) { AGS.partAg = e.target.value; renderPartSup_(); });
     p.onclick = function (e) {
@@ -944,6 +1081,7 @@
     var params = ctx.esSuper ? { usuarioId: currentUser.id, id: id } : { id: id };
     apiGet('agParticipante', params, { silent: true }).then(function (d) {
       if (!m.parentNode || sesionTk_() !== tk) return;
+      patchLista_(d, ctx);   // 6.10 — la tarjeta queda al día (y su Falta)
       pintarDet_(m, d, ctx);
     }).catch(function (e) {
       if (!m.parentNode) return;
@@ -962,6 +1100,7 @@
               of: o && (d.oferta.activa || o.estado === 'APROBADA') ? o.estadoLabel : '', ofc: ofc };
     var et = d.viaje && d.viaje.etapa;
     if (et) { r.est.et = et.l; r.est.etc = et.c; }
+    var fa = faltaDeDet_(d); if (fa) r.est.fa = fa;   // 6.10
     try { ctx.repintar(); } catch (_) {}
   }
 
@@ -1027,7 +1166,7 @@
     var ro = !!(d.viaje && d.viaje.temporadaCerrada);
     m.classList.toggle('ag-ro', ro);
     c.innerHTML = (ro ? '<div class="agr-aviso warn ag-ro-aviso"><b>Temporada cerrada · solo lectura</b><div>No se hacen cambios en el proceso. Solo un Superadmin puede reabrirla.</div></div>' : '') +
-      prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + secViaje_(d, ctx) + hist;
+      prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + secViaje_(d, ctx) + hist + secEliminar_(d, ctx);
     c.onclick = function (ev) {
       var b = ev.target.closest('[data-agd]'); if (!b) return;
       accionDet_(m, b, d, ctx);
@@ -1050,6 +1189,8 @@
       Swal.fire({ icon: 'success', title: txt, timer: 1100, showConfirmButton: false });
     };
     var que = btn.getAttribute('data-agd');
+    if (que === 'verArch') { verArchivo_(btn.getAttribute('data-t') + ' · ' + nombreCab_(d), { id: d.id, f: btn.getAttribute('data-f') }); return; }
+    if (accionDet610_(m, btn, d, ctx, que, base, hecho)) return;
     if (que === 'inv') {
       var marcar = btn.getAttribute('data-v') === '1';
       escudo_(btn, function () {
@@ -1100,6 +1241,107 @@
   }
 
   /* ============================================================
+     FASE 6.10 · AJUSTES DE JAVIER EN EL DETALLE
+     · Acceso al portal académico (URL, usuario, clave): la agencia lo
+       corrige antes de enviar su revisión; SEP mientras no la apruebe.
+       "Ver clave" queda en la auditoría de la agencia.
+     · Eliminar participante: solo Superusuario, con motivo y escribiendo
+       el ID (la agencia nunca ve el botón; el servidor también lo frena).
+     ============================================================ */
+  function nombreCab_(d) { var c = (d && d.cab) || {}; return String((c.nom || '') + ' ' + (c.ape || '')).trim(); }
+  function campoForm_(bloques, k) {
+    var v = '';
+    (bloques || []).forEach(function (b) { (b.campos || []).forEach(function (c) { if (c.k === k && c.v) v = c.v; }); });
+    return v;
+  }
+  function claveHay_(bloques) {
+    return (bloques || []).some(function (b) { return (b.campos || []).some(function (c) { return c.t === 'secreto' && c.hay; }); });
+  }
+  function secEliminar_(d, ctx) {
+    if (!ctx.esSuper) return '';
+    return '<section class="agd-sec agd-peligro"><h3>Eliminar participante</h3>' +
+      '<p class="cfg-hint">Solo para registros creados por error. Borra su expediente y sus archivos, devuelve el cupo de su oferta y reversa sus cobros con el motivo. Queda en la auditoría de la agencia (quién, cuándo y por qué). No se puede deshacer.</p>' +
+      '<div class="ag-acts"><button type="button" class="ag-btn agd-btn-peligro" data-agd="eliminar">' + IC_P.basura + '<span>Eliminar participante</span></button></div></section>';
+  }
+  function accionDet610_(m, btn, d, ctx, que, base, hecho) {
+    var v = d.viaje || {}, vf = v.verif || {};
+    if (que === 'cred') {
+      var url0 = campoForm_(vf.bloques, 'PLATAFORMA_URL'), usu0 = campoForm_(vf.bloques, 'PLATAFORMA_USUARIO');
+      Swal.fire({
+        title: 'Acceso al portal académico',
+        html: '<div class="agv-cred">' +
+          '<label for="agc-url">URL del portal</label><input id="agc-url" class="swal2-input" type="url" maxlength="500" placeholder="https://…" value="' + e_(url0) + '">' +
+          '<label for="agc-usu">Usuario</label><input id="agc-usu" class="swal2-input" type="text" maxlength="150" autocomplete="off" value="' + e_(usu0) + '">' +
+          '<label for="agc-cla">Clave</label><input id="agc-cla" class="swal2-input" type="text" maxlength="150" autocomplete="off" placeholder="Déjala vacía para conservar la actual">' +
+          '<p class="cfg-hint">Compruébalo entrando al portal antes de enviar la verificación a SEP. Queda en la auditoría.</p></div>',
+        showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', focusConfirm: false,
+        preConfirm: function () {
+          var u = String(document.getElementById('agc-url').value || '').trim();
+          var us = String(document.getElementById('agc-usu').value || '').trim();
+          var cl = String(document.getElementById('agc-cla').value || '');
+          if (!/^https?:\/\/\S{3,}$/i.test(u)) { Swal.showValidationMessage('Escribe la URL completa (empieza por http:// o https://).'); return false; }
+          if (!us) { Swal.showValidationMessage('Escribe el usuario.'); return false; }
+          return { url: u, usuario: us, clave: cl };
+        }
+      }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost('agCredenciales', Object.assign({}, x.value, base), { avion: { titulo: 'Guardando el acceso…' } }).then(function (n) {
+            if (d.viaje && d.viaje.verif && n && n.bloques) d.viaje.verif.bloques = n.bloques;
+            if (x.value.clave) d._clave = '';
+            if (m.parentNode) pintarDet_(m, d, ctx);
+            Swal.fire({ icon: 'success', title: (n && n.cambios && n.cambios.length) ? 'Acceso actualizado' : 'Sin cambios', timer: 1100, showConfirmButton: false });
+          });
+        });
+      });
+      return true;
+    }
+    if (que === 'verClave') {
+      if (d._clave) { d._clave = ''; pintarDet_(m, d, ctx); return true; }
+      escudo_(btn, function () {
+        return apiPost('agVerClave', { id: d.id, usuarioId: base.usuarioId }, { silent: true }).then(function (r) {
+          d._clave = (r && r.clave) || '';
+          if (m.parentNode) pintarDet_(m, d, ctx);
+        });
+      });
+      return true;
+    }
+    if (que === 'eliminar') {
+      if (!ctx.esSuper) return true;
+      Swal.fire({
+        icon: 'warning', title: 'Eliminar a ' + nombreCab_(d),
+        html: '<div class="agv-cred"><label for="age-mot">Motivo (queda en la auditoría)</label><textarea id="age-mot" class="swal2-textarea" maxlength="500"></textarea>' +
+          '<label for="age-id">Para confirmar, escribe <b>' + e_(d.id) + '</b></label><input id="age-id" class="swal2-input" type="text" autocomplete="off"></div>',
+        showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626', focusConfirm: false,
+        preConfirm: function () {
+          var mo = String(document.getElementById('age-mot').value || '').trim();
+          var id = String(document.getElementById('age-id').value || '').trim().toUpperCase();
+          if (mo.length < 5) { Swal.showValidationMessage('Escribe el motivo (mínimo 5 caracteres).'); return false; }
+          if (id !== String(d.id).toUpperCase()) { Swal.showValidationMessage('Escribe el ID exacto: ' + d.id); return false; }
+          return { motivo: mo, confirmar: id };
+        }
+      }).then(function (x) {
+        if (!x.isConfirmed) return;
+        escudo_(btn, function () {
+          return apiPost('agEliminar', { usuarioId: currentUser.id, id: d.id, motivo: x.value.motivo, confirmar: x.value.confirmar }, { avion: { titulo: 'Eliminando al participante…' } }).then(function (r) {
+            var l = ctx.lista() || [];
+            var i = l.findIndex(function (z) { return z.id === d.id; });
+            if (i >= 0) l.splice(i, 1);
+            try { ctx.repintar(); } catch (_) {}
+            if (m.cerrar) m.cerrar();
+            var f = (r && r.filas) || {};
+            Swal.fire({ icon: 'success', title: 'Participante eliminado',
+              html: e_(r.nombre) + '<br><small>' + (f.cupos ? 'Cupo devuelto a la oferta · ' : '') + (r.cobrosReversados || 0) + ' cobro(s) reversado(s) · ' + (r.archivos || 0) + ' archivo(s) borrado(s)</small>' +
+                ((r.errores || []).length ? '<br><small>Avisos: ' + e_(r.errores.join(' · ')) + '</small>' : '') });
+          });
+        });
+      });
+      return true;
+    }
+    return false;
+  }
+
+  /* ============================================================
      FASE 6.5 · HOJA DE VIDA, DOCUMENTOS Y OFERTA DEL PARTICIPANTE
      Todo llega en el mismo detalle (un viaje). Cada escritura responde
      solo el bloque que cambió y se parcha sobre el detalle.
@@ -1118,9 +1360,8 @@
       (hv.error ? '<div class="agr-aviso err"><b>No se pudo generar la hoja de vida</b><div>' + e_(hv.error) + '</div></div>' : '') +
       (!hv.url && hv.puedeGenerar ? '<div class="ag-acts"><button type="button" class="btn btn-primary" data-agd="hvgen">Generar hoja de vida</button></div>' : '') +
       (hv.url
-        ? '<div class="ag-pills"><span class="ag-pill ok">Generada' + (hv.fecha ? ' · ' + e_(hv.fecha) : '') + '</span>' +
-          (hv.permisoPendiente ? '<span class="ag-pill warn">Permiso de lectura en camino (máx. 30 min)</span>' : '') + '</div>' +
-          '<div class="ag-acts"><a class="btn btn-ghost" href="' + e_(hv.url) + '" target="_blank" rel="noopener">' + IC_P.doc + ' Ver hoja de vida</a>' +
+        ? '<div class="ag-pills"><span class="ag-pill ok">Generada' + (hv.fecha ? ' · ' + e_(hv.fecha) : '') + '</span></div>' +
+          '<div class="ag-acts"><button type="button" class="btn btn-ghost" data-agd="verArch" data-f="' + e_(hv.url) + '" data-t="Hoja de vida">' + IC_P.doc + ' Ver hoja de vida</button>' +
           (hv.puedeRegenerar ? '<button type="button" class="ag-btn" data-agd="hv">Volver a generar</button>' : '') + '</div>'
         : '<p class="cfg-hint">Se genera al aprobar el formulario, con el nombre de la agencia y «Generated by SEP Group».</p>') +
       '</section>';
@@ -1232,7 +1473,9 @@
       if (typeof NDOCS === 'undefined') return true;
       var cab = d.cab || {};
       NDOCS.abrir({ id: d.id, nombres: cab.nom || '', apellidos: cab.ape || '', documento: cab.ced || '' }, {
-        ag: { base: base, datos: d.documentos, alCambiar: function (res) {
+        ag: { base: base, datos: d.documentos,
+          ver: function (doc) { verArchivo_(doc.nombre + ' · ' + nombreCab_(d), { id: d.id, f: doc.url }); },   // 6.10
+          alCambiar: function (res) {
           if (!res) return;
           /* 6.9 — el vuelo devuelve la vista de viaje sin los bloques del formulario. */
           if (res.viaje && res.viaje.sinBloques && res.viaje.verif && d.viaje && d.viaje.verif) res.viaje.verif.bloques = d.viaje.verif.bloques || [];
@@ -1310,7 +1553,7 @@
     var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(s || ''));
     return m ? m[3] + '/' + m[2] + '/' + m[1] + (m[4] ? ' ' + m[4] + ':' + m[5] : '') : '';
   }
-  function bloqueForm_(b) {
+  function bloqueForm_(b, clave) {
     var filas = (b.campos || []).map(function (c) {
       var v;
       if (c.t === 'lista') {
@@ -1319,11 +1562,12 @@
         return '<div class="agv-campo agv-campo--ancho"><span>' + e_(c.l) + '</span>' + v + '</div>';
       }
       if (c.t === 'chips') v = (c.v || []).length ? c.v.map(e_).join(', ') : '—';
-      else if (c.t === 'secreto') v = c.hay ? '•••••• (oculta)' : '—';
+      else if (c.t === 'secreto') v = c.hay ? (clave ? '<code class="agv-clave">' + e_(clave) + '</code>' : '•••••• (oculta)') : '—';
       else v = e_(c.v || '—');
       return '<div class="agv-campo"><span>' + e_(c.l) + '</span><b>' + v + '</b></div>';
     }).join('');
-    return '<details class="agv-bloque"><summary>' + e_((b.icono ? b.icono + ' ' : '') + b.n + '. ' + b.titulo) + '</summary><div class="agv-campos">' + filas + '</div></details>';
+    var abre = clave && (b.campos || []).some(function (c) { return c.t === 'secreto' && c.hay; });   // 6.10 — la clave revelada se ve abierta
+    return '<details class="agv-bloque"' + (abre ? ' open' : '') + '><summary>' + e_((b.icono ? b.icono + ' ' : '') + b.n + '. ' + b.titulo) + '</summary><div class="agv-campos">' + filas + '</div></details>';
   }
   function secViaje_(d, ctx) {
     var v = d.viaje;
@@ -1346,9 +1590,15 @@
         (vf.estado === 'DEVUELTA' && vf.motivo ? '<div class="agr-aviso warn"><b>SEP la devolvió para corregir</b><div>' + e_(vf.motivo) + '</div></div>' : '') +
         (certs.length ? '<div class="agv-certs">' + certs.map(function (x) {
           return '<div class="agv-cert"><span>' + e_(x.nombre) + '</span><span class="ag-pill ' + (x.estado === 'APROBADO' ? 'ok' : (x.estado === 'RECHAZADO' ? 'bad' : (x.estado === 'EN_REVISION' ? 'warn' : 'off'))) + '">' + e_(x.estadoLabel || x.estado) + '</span>' +
-            (x.url ? '<a class="ag-btn" href="' + e_(x.url) + '" target="_blank" rel="noopener">' + IC_P.doc + '<span>Ver</span></a>' : '') + '</div>';
+            (x.url ? '<button type="button" class="ag-btn" data-agd="verArch" data-f="' + e_(x.url) + '" data-t="' + e_(x.nombre) + '">' + IC_P.doc + '<span>Ver</span></button>' : '') + '</div>';
         }).join('') + '</div><p class="cfg-hint">Los certificados se aprueban o rechazan en «Abrir documentos».</p>' : '') +
-        ((vf.bloques || []).length ? '<div class="agv-bloques">' + vf.bloques.map(bloqueForm_).join('') + '</div>' : '') +
+        ((vf.bloques || []).length ? '<div class="agv-bloques">' + vf.bloques.map(function (b) { return bloqueForm_(b, d._clave || ''); }).join('') + '</div>' : '') +
+        /* 6.10 — acceso al portal académico: la agencia lo corrige antes de
+           enviar su primera revisión; SEP mientras no la apruebe. */
+        ((pu.verifEnviar || pu.verifAprobar || claveHay_(vf.bloques)) ? '<div class="ag-acts agv-acceso">' +
+          ((pu.verifEnviar || pu.verifAprobar) ? '<button type="button" class="ag-btn" data-agd="cred">' + IC_P.llave + '<span>Corregir acceso al portal</span></button>' : '') +
+          (claveHay_(vf.bloques) ? '<button type="button" class="ag-btn" data-agd="verClave">' + IC_P.ojo + (d._clave ? '<span>Ocultar clave</span>' : '<span>Ver clave</span>') + '</button>' : '') +
+          '</div>' : '') +
         (pu.verifEnviar ? '<div class="fld agv-notas"><label>Notas de la revisión (las ve SEP)</label><textarea id="agd-vnotas" rows="3" maxlength="3000" placeholder="Qué revisaste y qué encontraste…">' + e_(vf.notas || '') + '</textarea></div>'
           : (vf.notas ? '<p class="cfg-hint">Notas: ' + e_(vf.notas) + (vf.notasPor ? ' · ' + e_(vf.notasPor) : '') + '</p>' : '')) +
         '<div class="ag-acts">' +
@@ -1406,7 +1656,7 @@
           (vu.fechaCarga ? '<div class="ag-meta">Cargado ' + e_(vu.fechaCarga) + (vu.revisadoPor ? ' · revisado por ' + e_(vu.revisadoPor) : '') + '</div>' : '<div class="ag-meta">El participante lo carga en su portal (tarjeta «Tu vuelo»).</div>') +
           (vu.nota ? '<div class="agr-aviso warn"><b>Rechazado</b><div>' + e_(vu.nota) + '</div></div>' : '') +
           '<div class="ag-acts">' +
-            (vu.url ? '<a class="ag-btn" href="' + e_(vu.url) + '" target="_blank" rel="noopener">' + IC_P.doc + '<span>Ver vuelo</span></a>' : '') +
+            (vu.url ? '<button type="button" class="ag-btn" data-agd="verArch" data-f="' + e_(vu.url) + '" data-t="Itinerario de vuelo">' + IC_P.doc + '<span>Ver vuelo</span></button>' : '') +
             (pu.vueloRevisar ? '<button type="button" class="btn btn-primary" data-agd="vueloOk">Aprobar vuelo</button><button type="button" class="ag-btn" data-agd="vueloNo">Rechazar vuelo</button>' : '') +
           '</div></div>';
       }
@@ -1666,13 +1916,12 @@
           (sep && (p.historial || []).length > 1 ? '<details class="agc-hist"><summary>Historial</summary>' + p.historial.map(function (h) { return '<div>' + e_(h.f) + ' · ' + e_(h.p) + ' · ' + e_(h.d) + (h.m ? ' · ' + e_(h.m) : '') + '</div>'; }).join('') + '</details>' : '') +
           '</div><div class="agc-fila__val"><b>' + money_(p.valor, p.moneda) + '</b><span class="ag-pill ' + e[1] + '">' + e_(e[0]) + '</span>' +
           '<div class="agc-fila__btns">' +
-            (p.comprobante ? '<a class="ag-btn" href="' + e_(p.comprobante.url) + '" target="_blank" rel="noopener" title="' + e_(p.comprobante.nombre) + '">' + IC.recibo + '<span>Comprobante</span></a>' : '') +
+            (p.comprobante ? '<button type="button" class="ag-btn" data-agc="comp" data-id="' + e_(p.id) + '" title="' + e_(p.comprobante.nombre) + '">' + IC.recibo + '<span>Comprobante</span></button>' : '') +
             (pu.pagos && p.estado === 'VIGENTE' ? '<button class="ag-btn" data-agc="corregir" data-id="' + e_(p.id) + '">' + IC.editar + '<span>Corregir</span></button>' +
               '<button class="ag-btn" data-agc="anular" data-id="' + e_(p.id) + '"><span>Anular</span></button>' : '') +
           '</div></div></div>';
       }).join('') + '</div>' : '<p class="cfg-hint">Sin pagos registrados.</p>') +
       (pu.pagos ? '<div class="ag-acts"><button class="btn btn-primary" data-agc="pago">' + IC.pago + ' Registrar pago</button></div>' : '') +
-      (o.propia ? '<p class="cfg-hint">Los comprobantes se abren con la cuenta de Google del correo de contacto que tu agencia tiene registrado en SEP.</p>' : '') +
       '</section>';
 
     c.innerHTML = selTmp + (sep || ci.cerrada ? cierre : '') + cargos + pagos;
@@ -1690,6 +1939,10 @@
       else if (q === 'revisar') revisarCierre_(b, d);
       else if (q === 'reabrir') reabrir_(b, d);
       else if (q === 'cerrar') cerrar_(b, d);
+      else if (q === 'comp') {   // 6.10 — comprobante dentro de la app
+        var pc = d.pagos.find(function (x) { return x.id === b.getAttribute('data-id'); });
+        if (pc && pc.comprobante) verArchivo_('Comprobante · ' + (pc.fechaPago || '') + ' · ' + money_(pc.valor, pc.moneda), { pago: pc.id, f: pc.comprobante.id });
+      }
     };
   }
   /* Tras cualquier escritura: repinta la cuenta abierta y el resumen. */

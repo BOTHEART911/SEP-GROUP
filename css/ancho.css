@@ -59,9 +59,15 @@
 
 /* La barra de la cabecera sigue de lado a lado (su fondo); lo de adentro
    (volver, título, botones) se alinea con el borde del contenido. */
+/* 17/10/2026 (6.10) — a la derecha se respeta el hueco del botón del tema
+   (66 px; 56 px en el teléfono, css/tema-oscuro.css): sin él, en el teléfono
+   el botón fijo del tema tapaba el último icono de la cabecera (Actualizar). */
 .view > .app-header {
   padding-left:  calc(max(0px, (100% - var(--anc-vista)) / 2) + 16px);
-  padding-right: calc(max(0px, (100% - var(--anc-vista)) / 2) + 16px);
+  padding-right: max(66px, calc(max(0px, (100% - var(--anc-vista)) / 2) + 16px));
+}
+@media (max-width: 560px) {
+  .view > .app-header { padding-right: max(56px, calc(max(0px, (100% - var(--anc-vista)) / 2) + 16px)); }
 }
 
 /* ── Familia ESTÁNDAR: las listas de tarjetas ──────────────────────────── */
