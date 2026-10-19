@@ -296,19 +296,23 @@ function tandaPintar_(cont, lista, html, bind){
   const id = cont.id;
   const prev = TANDAS[id];
   if (prev && prev.obs) { try { prev.obs.disconnect(); } catch(_){} }
+  /* 19/10 — un repintado de la MISMA lista (refresco en vivo, guardado,
+     cambio de filtro) conserva lo que el usuario ya había abierto con
+     "Ver más": antes volvía a 24 y el aviso EN VIVO deshacía cada clic. */
+  const yaVistas = (prev && cont.offsetParent !== null) ? prev.pint : 0;
   const st = TANDAS[id] = { lista: lista, pint: 0, html: html, bind: bind, obs: null };
   let mas = document.getElementById(id + '-mas');
   if (!mas){ mas = document.createElement('div'); mas.id = id + '-mas'; mas.className = 'tanda-mas'; cont.insertAdjacentElement('afterend', mas); }
   cont.innerHTML = ''; mas.innerHTML = '';
-  tandaMas_(id);
+  tandaMas_(id, Math.max(TANDA_N, yaVistas));
   if (typeof IntersectionObserver === 'function' && st.pint < lista.length){
     st.obs = new IntersectionObserver(ent => { if (ent.some(x => x.isIntersecting)) tandaMas_(id); }, { rootMargin: '700px' });
     st.obs.observe(mas);
   }
 }
-function tandaMas_(id){
+function tandaMas_(id, cuantas){
   const st = TANDAS[id]; const cont = document.getElementById(id); if (!st || !cont) return;
-  const desde = st.pint, hasta = Math.min(st.lista.length, desde + TANDA_N);
+  const desde = st.pint, hasta = Math.min(st.lista.length, desde + (cuantas || TANDA_N));
   if (desde >= hasta) return;
   const parte = st.lista.slice(desde, hasta);
   cont.insertAdjacentHTML('beforeend', parte.map((r, k) => st.html(r, desde + k)).join(''));
@@ -319,6 +323,9 @@ function tandaMas_(id){
   if (mas) mas.innerHTML = resta > 0
     ? `<button class="btn btn-ghost btn-sm" data-tanda-mas="${id}">Ver ${Math.min(TANDA_N, resta)} más · ${hasta} de ${st.lista.length}</button>` : '';
   if (resta <= 0 && st.obs){ try { st.obs.disconnect(); } catch(_){} st.obs = null; }
+  /* Si "Ver más" sigue a la vista tras pintar, el observador no vuelve a
+     avisar (no hubo cambio): se le pide mirar de nuevo. */
+  else if (st.obs && mas){ try { st.obs.unobserve(mas); st.obs.observe(mas); } catch(_){} }
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-tanda-mas]'); if (b) tandaMas_(b.getAttribute('data-tanda-mas')); });
 

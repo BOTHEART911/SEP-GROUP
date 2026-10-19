@@ -314,8 +314,15 @@ var NPERFIL = (function () {
   /* ============================================================
      4. VER EL FORMULARIO (solo lectura)
      ============================================================ */
-  async function abrirFormulario(r) {
+  /* FASE 6.10 (19/10/2026) — opts (participante de SUBAGENCIA, desde su
+     detalle): { pedir: () => Promise<datos>, verArchivo(url, titulo),
+     verClave() => Promise<clave> }. Siempre en solo lectura: sin editar,
+     sin reabrir y sin pie; los archivos se ven con el visor privado de la
+     app y el modal va encima del detalle de la agencia. */
+  async function abrirFormulario(r, opts) {
     if (!r) return;
+    F.opts = opts || null;
+    var mf = q('#modal-nform'); if (mf) mf.style.zIndex = F.opts ? '9300' : '';
     /* 17/08/2026 — nada de girador al abrir: el modal se abre YA y la
        capa 5 pinta el esqueleto de los bloques dentro de #nform-body
        mientras llega la respuesta. Por eso se abre ANTES de la llamada. */
@@ -327,7 +334,7 @@ var NPERFIL = (function () {
 
     var d;
     try {
-      d = await apiPost('nivelFormulario', cuerpoApi_(r));
+      d = F.opts && F.opts.pedir ? await F.opts.pedir() : await apiPost('nivelFormulario', cuerpoApi_(r));
     } catch (e) {
       cerrarFormulario_();
       Swal.fire({ icon: 'error', title: 'No se pudo abrir el formulario', text: String(e && e.message ? e.message : e) });
@@ -355,7 +362,9 @@ var NPERFIL = (function () {
     F.claveOcupado = true; pintarFormulario_();
     var t0 = Date.now();
     try {
-      var out = await apiPost('verClave', { usuarioId: currentUser.id, tipo: SECRETOS[k], id: id }, { silent: true });
+      var out = (F.opts && F.opts.verClave)   // 6.10 — agencia: su propia ruta (queda en su auditoría)
+        ? { clave: await F.opts.verClave() }
+        : await apiPost('verClave', { usuarioId: currentUser.id, tipo: SECRETOS[k], id: id }, { silent: true });
       try { (window.__sepMed = window.__sepMed || []).push({ ruta: 'verClave', ms: Date.now() - t0, t: Date.now() }); } catch (_) {}
       if (F.r === r) F.clave[k] = out.clave || '';
     } catch (e) {
@@ -385,11 +394,20 @@ var NPERFIL = (function () {
         : '');
 
     var body = q('#nform-body');
+    /* 19/10 — repintar (Ver clave, Ocultar…) no cierra los bloques que
+       estaban abiertos: la clave quedaba escondida en un bloque cerrado. */
+    var abiertos = {};
+    body.querySelectorAll('.nfm-bloque details[open]').forEach(function (x) {
+      var nb = x.closest('.nfm-bloque'); if (nb) abiertos[nb.getAttribute('data-bloque')] = true;
+    });
     body.innerHTML = cabeceraHtml_(d) + (d.bloques || []).map(function (b) {
       return bloqueHtml_(b, d);
     }).join('');
+    Object.keys(abiertos).forEach(function (n) {
+      var x = body.querySelector('.nfm-bloque[data-bloque="' + n + '"] details'); if (x) x.open = true;
+    });
 
-    q('#nform-foot').innerHTML = pieHtml_(d);
+    q('#nform-foot').innerHTML = (F.opts || d.soloLectura) ? '' : pieHtml_(d);   // 6.10 — agencia: solo lectura
 
     /* El bloque que se está editando se deja abierto y a la vista. */
     if (F.edit) {
@@ -400,6 +418,7 @@ var NPERFIL = (function () {
     /* Cableado (elementos recién creados: no hay escuchas repetidas). */
     body.querySelectorAll('[data-arch]').forEach(function (b) {
       b.addEventListener('click', function () {
+        if (F.opts && F.opts.verArchivo) { F.opts.verArchivo(b.dataset.arch, b.dataset.archT || 'Documento'); return; }   // 6.10
         abrirVisor_(b.dataset.arch, b.dataset.archT || 'Documento');
       });
     });

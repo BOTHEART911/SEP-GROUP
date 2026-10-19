@@ -204,7 +204,7 @@
 .agc-rev { margin: 8px 0; }
 .agc-modal .agd-sec h3 svg, .agc-card .ag-pill svg { vertical-align: -3px; }
 /* Temporada cerrada: el detalle del participante queda sin acciones */
-.agd-modal.ag-ro [data-agd]:not([data-agd="docs"]):not([data-agd="verArch"]):not([data-agd="verClave"]), .agd-modal.ag-ro .agd-nota { display: none !important; }   /* 6.10: ver archivos y la clave siguen */
+.agd-modal.ag-ro [data-agd]:not([data-agd="docs"]):not([data-agd="verArch"]):not([data-agd="verClave"]):not([data-agd="verForm"]), .agd-modal.ag-ro .agd-nota { display: none !important; }   /* 6.10: ver archivos y la clave siguen */
 @media (max-width: 560px) {
   .agc-cajas { grid-template-columns: 1fr; }
   .agc-fila { flex-direction: column; }

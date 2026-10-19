@@ -3,6 +3,17 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.10 · 2 FALLAS QUE REPORTÓ JAVIER (19/10/2026 · 1).
+ *   · Participantes: "Ver más" se deshacía con cada aviso EN VIVO (la lista
+ *     volvía a 24/48). Ahora un repintado conserva lo ya abierto y el
+ *     refresco que trae lo mismo no repinta (vale para todas las listas
+ *     por tandas).
+ *   · Subagencias → detalle → Formulario: botón Ver formulario (solo
+ *     lectura, archivos en el visor privado, Ver clave auditada).
+ *   · Formulario: Ver clave ya no cierra el bloque donde aparece.
+ *   Archivos: app.js, js/nivel.js, js/nivel-perfil.js, js/agencias.js,
+ *   css/agencias.css, version.js, sw.js (caché v70).
+ *
  * FASE 6.10 · AJUSTES DE JAVIER A SUBAGENCIAS (17/10/2026 · 1).
  *   · Filtro "Falta" (agencia y Superusuario) con Invitación para la prueba.
  *   · Botón Actualizar en Subagencias, Mi agencia y Mis participantes.
@@ -925,4 +936,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.17.01";
+var APP_VERSION = "2026.10.19.01";

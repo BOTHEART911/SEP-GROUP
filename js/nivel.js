@@ -172,6 +172,7 @@ async function cargarNivel_() {
     estPartCargar_(d.catalogo && d.catalogo.estadosPart);         // FASE 5.1 · D
     TEMP.set(d.temporadas); TEMP.montar('nivel');                  // FASE 5.1
     NIVE.todos     = d.registros || [];
+    NIVE.firma     = JSON.stringify(NIVE.todos);                    // 19/10
     NIVE.registros = TEMP.filtrar(NIVE.todos);
     NIVE.cargado   = true;
     renderNiveFiltros_(); renderNiveCards_(); renderNiveResumen_();
@@ -190,7 +191,12 @@ TEMP.alCambiar(() => {
 
 async function recargarNivel_(silencioso) {
   try {
-    NIVE.todos = await apiGet('listNivel', { usuarioId: currentUser.id }, { silent: !!silencioso, vista: 'nivel' });
+    const nuevos = await apiGet('listNivel', { usuarioId: currentUser.id }, { silent: !!silencioso, vista: 'nivel' });
+    /* 19/10 — el refresco en vivo que trae lo mismo no repinta nada. */
+    const firma = JSON.stringify(nuevos || []);
+    if (silencioso && NIVE.firma === firma) return;
+    NIVE.firma = firma;
+    NIVE.todos = nuevos;
     NIVE.registros = TEMP.filtrar(NIVE.todos);                      // FASE 5.1
     renderNiveFiltros_(); renderNiveCards_(); renderNiveResumen_();
   } catch (e) {

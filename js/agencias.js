@@ -1146,6 +1146,8 @@
       (f.falta ? '<div class="agr-aviso warn"><b>Todavía no se puede aprobar</b><div>' + e_(f.falta) + '</div></div>' : '') +
       ((f.docsPendientes || []).length ? '<p class="cfg-hint">Documentos pendientes: ' + e_(f.docsPendientes.join(', ')) + '.</p>' : '') +
       '<div class="ag-acts">' +
+        /* 6.10 (19/10) — ver el formulario completo, en solo lectura */
+        ((f.habilitado || f.terminado || f.aprobado) ? '<button type="button" class="ag-btn" data-agd="verForm">' + IC_P.det + '<span>Ver formulario</span></button>' : '') +
         (pu.aprobar ? '<button type="button" class="btn btn-primary" data-agd="aprobar">Aprobar formulario</button>' : '') +
         (pu.reversar ? '<button type="button" class="ag-btn" data-agd="reversar">Reversar aprobación</button>' : '') +
       '</div>' +
@@ -1293,6 +1295,16 @@
             Swal.fire({ icon: 'success', title: (n && n.cambios && n.cambios.length) ? 'Acceso actualizado' : 'Sin cambios', timer: 1100, showConfirmButton: false });
           });
         });
+      });
+      return true;
+    }
+    if (que === 'verForm') {
+      if (typeof NPERFIL === 'undefined' || !NPERFIL.abrirFormulario) return true;
+      var p0 = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id } : { id: d.id };
+      NPERFIL.abrirFormulario({ id: d.id, nombres: (d.cab || {}).nom || '', apellidos: (d.cab || {}).ape || '' }, {
+        pedir: function () { return apiGet('agFormulario', p0, { silent: true }); },
+        verArchivo: function (url, t) { verArchivo_(t + ' · ' + nombreCab_(d), { id: d.id, f: url }); },
+        verClave: function () { return apiPost('agVerClave', { id: d.id, usuarioId: base.usuarioId }, { silent: true }).then(function (r) { return (r && r.clave) || ''; }); }
       });
       return true;
     }
