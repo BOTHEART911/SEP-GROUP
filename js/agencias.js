@@ -396,9 +396,9 @@
     if (!t) { p.innerHTML = '<p class="muted">No hay temporadas de Summer Work and Travel. Créala en Configuración → Temporadas.</p>'; return; }
     var g = globalDe_(t.id) || { minViajeros: d.minDefecto, sponsors: d.sponsors.slice(), porDefecto: true };
     var edit = soloAdmin_();
-    p.innerHTML = '<div class="cfg-card"><h3 class="cfg-card__title">' + e_(t.nombre) + ' · igual para todas las agencias</h3>' +
-      '<p class="cfg-card__sub">Lo que aquí se guarde aplica a todas las subagencias de esta temporada. Se cambia sin tocar código.</p>' +
-      '<div class="cfg-grid"><div class="cfg-field"><label for="ag-min">Mínimo de viajeros para evitar el cargo por volumen</label>' +
+    p.innerHTML = '<div class="cfg-card"><h3 class="cfg-card__title">' + e_(t.nombre) + ' · general para las agencias</h3>' +
+      '<p class="cfg-card__sub">Aplica a las subagencias de esta temporada. Cada agencia puede tener su propio mínimo en Valores; si no lo tiene, usa este. Se cambia sin tocar código.</p>' +
+      '<div class="cfg-grid"><div class="cfg-field"><label for="ag-min">Mínimo general de viajeros para evitar el cargo por volumen</label>' +
       '<input id="ag-min" type="number" min="0" step="1" inputmode="numeric" value="' + e_(g.minViajeros) + '"' + (edit ? '' : ' disabled') + ' /></div></div>' +
       '<div class="ag-sp-titulo">Sponsors visibles para las subagencias</div>' +
       '<div class="ag-chips" id="ag-sp">' + d.sponsors.map(function (s) {
@@ -622,6 +622,7 @@
     var d = AGS.data, t = tmpSel_(), edit = soloAdmin_();
     if (!t) { Swal.fire({ icon: 'info', title: 'Sin temporada', text: 'No hay temporadas de Summer Work and Travel.' }); return; }
     var v = valoresDe_(a.id, t.id) || { inscripcion: '', sponsor: '', ds2019: '', volumen: '' };
+    var gMin = (globalDe_(t.id) || { minViajeros: d.minDefecto }).minViajeros;   // 6.11 — el general de la temporada
     var mo = monedasDe_(v.agenciaId ? v : null);
     var mons = d.monedas || ['USD', 'COP'];
     /* 6.7 — cada concepto con su moneda (sección 17: inscripción en COP, el resto en USD). */
@@ -633,7 +634,12 @@
     var m = modal_('Valores · ' + a.nombre,
       '<p class="cfg-card__sub">' + e_(t.nombre) + '. Cada agencia puede tener valores distintos; se cambian sin tocar código. COP y USD no se convierten entre sí.</p>' +
       '<div class="form-grid">' + campo('inscripcion', 'Valor de inscripción') + campo('sponsor', 'Valor de Aplicada al Sponsor') +
-      campo('ds2019', 'Valor de DS-2019 confirmado') + campo('volumen', 'Valor del cargo por volumen (por viajero)') + '</div>' +
+      campo('ds2019', 'Valor de DS-2019 confirmado') + campo('volumen', 'Valor del cargo por volumen (por viajero)') +
+      /* 6.11 — mínimo de viajeros propio de esta agencia (vacío = el general) */
+      '<div class="fld agv-campo"><label for="agv-min">Mínimo de viajeros para evitar el cargo por volumen</label>' +
+        '<input id="agv-min" type="number" min="0" step="1" inputmode="numeric" placeholder="General: ' + e_(gMin) + '" value="' + e_(v.minViajeros == null ? '' : v.minViajeros) + '"' + (edit ? '' : ' disabled') + ' />' +
+        '<small class="cfg-hint">Vacío = usa el general de la temporada (' + e_(gMin) + '). Lo usa el cierre de temporada.</small></div>' +
+      '</div>' +
       (v.actualizadoPor ? '<p class="cfg-hint">Última vez: ' + e_(v.actualizadoPor) + ' · ' + e_(v.fecha) + '</p>' : ''),
       '<button class="btn btn-ghost" data-x>Cerrar</button>' + (edit ? '<button class="btn btn-primary" id="agv-save">Guardar</button>' : ''));
     m.querySelector('[data-x]').addEventListener('click', m.cerrar);
@@ -646,6 +652,9 @@
         body.monedas[k] = m.querySelector('[data-mon="' + k + '"]').value;
       });
       body.moneda = body.monedas.sponsor;   // la columna MONEDA de antes
+      var mv = String(m.querySelector('#agv-min').value || '').trim();
+      if (mv && (!/^\d+$/.test(mv) || Number(mv) > 10000)) { Swal.fire({ icon: 'warning', title: 'Revisa el mínimo', text: 'Escribe un número entero de viajeros o déjalo vacío para usar el general.' }); return; }
+      body.minViajeros = mv;   // 6.11
       escudo_(btn, function () {
         return apiPost('agenciaValores', body).then(function (r) {
           var arr = AGS.data.valores; var i = arr.findIndex(function (x) { return x.agenciaId === a.id && x.temporadaId === t.id; });
@@ -826,11 +835,11 @@
       (r.cor ? '<span class="agp-cor">' + IC_P.mail + e_(r.cor) + '</span>' : '') + '<span>' + IC_P.reloj + e_(r.fecha) + '</span></div>' +
       (r.clave ? '<div class="agp-clave"><span>' + IC_P.llave + 'Clave de acceso <b>' + e_(r.clave) + '</b></span>' +
         '<button type="button" class="ag-btn" data-copiar="' + e_(r.clave) + '" title="Copiar la clave">' + IC_P.copiar + '<span>Copiar</span></button></div>' : '') +
-      estadoPart_(r) +
+      estadoPart_(r, conAgencia) +
       '</article>';
   }
   /* FASE 6.4 — estado corto de la prueba y del formulario + el detalle. */
-  function estadoPart_(r) {
+  function estadoPart_(r, conAgencia) {
     var x = r.est || {};
     var prueba = !x.inv && !x.pts ? ['Prueba: sin invitar', 'off']
       : (!x.pts ? ['Prueba: invitado', 'warn'] : ['Nota ' + x.pts, x.ok ? 'ok' : 'bad']);
@@ -845,7 +854,10 @@
       (of && !et ? '<span class="ag-pill ' + of[1] + '">' + e_(of[0]) + '</span>' : '') +
       (et ? '<span class="ag-pill ' + et[1] + '">' + e_(et[0]) + '</span>' : '') +
       (x.fa && FALTA_TXT[x.fa] ? '<span class="ag-pill warn agp-pill-falta">' + e_(FALTA_TXT[x.fa]) + '</span>' : '') +
-      '</div><button type="button" class="ag-btn" data-det="' + e_(r.id) + '" title="Prueba, formulario, documentos, oferta, verificación, visa y vuelo">' + IC_P.det + '<span>Detalle</span></button></div>';
+      '</div><div class="ag-acts">' +
+      /* 6.11 — Superusuario: eliminar desde la tarjeta (donde lo busca) */
+      (conAgencia ? '<button type="button" class="ag-btn agd-btn-peligro ag-btn-ic" data-elim="' + e_(r.id) + '" title="Eliminar participante (solo Superusuario)" aria-label="Eliminar a ' + e_(r.nom + ' ' + r.ape) + '">' + IC_P.basura + '</button>' : '') +
+      '<button type="button" class="ag-btn" data-det="' + e_(r.id) + '" title="Prueba, formulario, documentos, oferta, verificación, visa y vuelo">' + IC_P.det + '<span>Detalle</span></button></div></div>';
   }
   function renderPartLista_() {
     var d = AGP.data; if (!d) return;
@@ -1029,8 +1041,15 @@
     $1('#agps-ag').addEventListener('change', function (e) { AGS.partAg = e.target.value; renderPartSup_(); });
     p.onclick = function (e) {
       var c = e.target.closest('[data-copiar]'); if (c) { copiar_(c.getAttribute('data-copiar'), 'Clave copiada'); return; }
+      var ctxS = { lista: function () { return AGS.part && AGS.part.registros; }, repintar: renderPartSup_, esSuper: true };
+      var el = e.target.closest('[data-elim]');
+      if (el) {   // 6.11
+        var re = (AGS.part.registros || []).find(function (z) { return z.id === el.getAttribute('data-elim'); });
+        if (re) eliminarPart_(el, re.id, (re.nom + ' ' + re.ape).trim(), ctxS, null);
+        return;
+      }
       var dt = e.target.closest('[data-det]');
-      if (dt) { abrirDet_(dt.getAttribute('data-det'), { lista: function () { return AGS.part && AGS.part.registros; }, repintar: renderPartSup_, esSuper: true }); return; }
+      if (dt) { abrirDet_(dt.getAttribute('data-det'), ctxS); return; }
       var b = e.target.closest('[data-tras]'); if (!b) return;
       resolverTras_(b, b.getAttribute('data-id'), b.getAttribute('data-tras'));
     };
@@ -1107,6 +1126,7 @@
   function pintarDet_(m, d, ctx) {
     var c = m.querySelector('#agd-cuerpo'); if (!c) return;
     var p = d.prueba || {}, f = d.formulario || {}, pu = d.puede || {};
+    var gest = d.gestion || { puede: false, motivo: '' };   // 6.11 — backend viejo: solo lectura
     var minimo = Number(p.minimo || 4.5).toFixed(1);
 
     var estPrueba = p.puntaje
@@ -1146,12 +1166,13 @@
       (f.falta ? '<div class="agr-aviso warn"><b>Todavía no se puede aprobar</b><div>' + e_(f.falta) + '</div></div>' : '') +
       ((f.docsPendientes || []).length ? '<p class="cfg-hint">Documentos pendientes: ' + e_(f.docsPendientes.join(', ')) + '.</p>' : '') +
       '<div class="ag-acts">' +
-        /* 6.10 (19/10) — ver el formulario completo, en solo lectura */
-        ((f.habilitado || f.terminado || f.aprobado) ? '<button type="button" class="ag-btn" data-agd="verForm">' + IC_P.det + '<span>Ver formulario</span></button>' : '') +
+        /* 6.10 (19/10) — ver el formulario completo · 6.11: y gestionarlo (editar / reabrir) sin oferta elegida */
+        ((f.habilitado || f.terminado || f.aprobado) ? '<button type="button" class="ag-btn" data-agd="verForm">' + IC_P.det + '<span>' + (gest.puede ? 'Ver y editar formulario' : 'Ver formulario') + '</span></button>' : '') +
         (pu.aprobar ? '<button type="button" class="btn btn-primary" data-agd="aprobar">Aprobar formulario</button>' : '') +
         (pu.reversar ? '<button type="button" class="ag-btn" data-agd="reversar">Reversar aprobación</button>' : '') +
       '</div>' +
-      (f.aprobado && !pu.reversar ? '<p class="cfg-hint">Solo SEP puede reversar la aprobación.</p>' : '') +
+      (gest.puede ? '<p class="cfg-hint">Puedes editar cualquier bloque o reabrirlo para que el participante lo corrija (lo ve en su portal, sin mensajes). Con oferta elegida el formulario queda en solo lectura.</p>'
+        : (gest.motivo && (f.habilitado || f.terminado || f.aprobado) ? '<p class="cfg-hint">' + e_(gest.motivo) + '</p>' : '')) +
       '</section>';
 
     var hist = '<section class="agd-sec"><h3>Historial</h3>' +
@@ -1168,7 +1189,7 @@
     var ro = !!(d.viaje && d.viaje.temporadaCerrada);
     m.classList.toggle('ag-ro', ro);
     c.innerHTML = (ro ? '<div class="agr-aviso warn ag-ro-aviso"><b>Temporada cerrada · solo lectura</b><div>No se hacen cambios en el proceso. Solo un Superadmin puede reabrirla.</div></div>' : '') +
-      prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + secViaje_(d, ctx) + hist + secEliminar_(d, ctx);
+      secEliminar_(d, ctx) + prueba + form + secHv_(d) + secDocs_(d) + secOferta_(d, ctx) + secViaje_(d, ctx) + hist;
     c.onclick = function (ev) {
       var b = ev.target.closest('[data-agd]'); if (!b) return;
       accionDet_(m, b, d, ctx);
@@ -1214,7 +1235,7 @@
       return;
     }
     if (que === 'aprobar') {
-      Swal.fire({ icon: 'question', title: 'Aprobar el formulario', text: 'Confirmas que el participante está listo para continuar con las ofertas. Solo SEP puede reversarlo.',
+      Swal.fire({ icon: 'question', title: 'Aprobar el formulario', text: 'Confirmas que el participante está listo para continuar con las ofertas. Mientras no elija oferta, se puede reversar o reabrir bloques.',
         showCancelButton: true, confirmButtonText: 'Aprobar', cancelButtonText: 'Cancelar' }).then(function (x) {
         if (!x.isConfirmed) return;
         escudo_(btn, function () {
@@ -1259,12 +1280,77 @@
   function claveHay_(bloques) {
     return (bloques || []).some(function (b) { return (b.campos || []).some(function (c) { return c.t === 'secreto' && c.hay; }); });
   }
+  /* 6.11 — Javier no lo veía: estaba al final del detalle, debajo del
+     historial. Ahora va arriba del detalle y en cada tarjeta de
+     Subagencias → Participantes (solo Superusuario). */
   function secEliminar_(d, ctx) {
     if (!ctx.esSuper) return '';
-    return '<section class="agd-sec agd-peligro"><h3>Eliminar participante</h3>' +
-      '<p class="cfg-hint">Solo para registros creados por error. Borra su expediente y sus archivos, devuelve el cupo de su oferta y reversa sus cobros con el motivo. Queda en la auditoría de la agencia (quién, cuándo y por qué). No se puede deshacer.</p>' +
-      '<div class="ag-acts"><button type="button" class="ag-btn agd-btn-peligro" data-agd="eliminar">' + IC_P.basura + '<span>Eliminar participante</span></button></div></section>';
+    return '<div class="agd-tools"><button type="button" class="ag-btn agd-btn-peligro" data-agd="eliminar" title="Solo para registros creados por error. Queda en la auditoría de la agencia.">' + IC_P.basura + '<span>Eliminar participante</span></button></div>';
   }
+  /* ============================================================
+     FASE 6.11 · GESTIÓN DEL FORMULARIO Y PRIMERA VERIFICACIÓN
+     El mismo visor de Nivel de Inglés (NPERFIL) con las rutas de la
+     agencia: editar un bloque (agFormBloque) y reabrir (agFormReabrir).
+     verif = solo Academic Information y Academic Verification (6 y 7).
+     El servidor decide los permisos (oferta elegida = solo lectura).
+     Tras guardar se parcha el detalle en memoria (sin otro viaje); si el
+     formulario está aprobado y algo cambió, la hoja de vida se rehace de
+     fondo. Reabrir devuelve el detalle nuevo.
+     ============================================================ */
+  function abrirFormAg_(m, d, ctx, base, verif) {
+    if (typeof NPERFIL === 'undefined' || !NPERFIL.abrirFormulario) return;
+    var p0 = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id } : { id: d.id };
+    if (verif) p0.v = 1;
+    var post = function (extra) { var b = Object.assign({ id: d.id }, extra); if (ctx.esSuper) b.usuarioId = currentUser.id; return b; };
+    NPERFIL.abrirFormulario({ id: d.id, nombres: (d.cab || {}).nom || '', apellidos: (d.cab || {}).ape || '' }, {
+      pedir: function () { return apiGet('agFormulario', p0, { silent: true }); },
+      verArchivo: function (url, t) { verArchivo_(t + ' · ' + nombreCab_(d), { id: d.id, f: url }); },
+      verClave: function () { return apiPost('agVerClave', { id: d.id, usuarioId: base.usuarioId }, { silent: true }).then(function (r) { return (r && r.clave) || ''; }); },
+      guardar: function (bloque, datos) {
+        return apiPost('agFormBloque', post(verif ? { bloque: bloque, datos: datos, v: 1 } : { bloque: bloque, datos: datos }), { avion: { titulo: 'Guardando el bloque…' } });
+      },
+      reabrir: verif ? null : function (bloques, motivo) {
+        return apiPost('agFormReabrir', post({ bloques: bloques, motivo: motivo }), { avion: { titulo: 'Reabriendo…' } });
+      },
+      alCambiar: function (out, que) { formAgCambio_(m, d, ctx, base, out, que, verif); }
+    });
+  }
+  function formAgCambio_(m, d, ctx, base, out, que, verif) {
+    if (!out) return;
+    if (que === 'reabrir' && out.detalle) {
+      var nuevo = Object.assign({}, out.detalle);
+      patchLista_(nuevo, ctx);
+      Object.assign(d, nuevo);
+      if (m.parentNode) pintarDet_(m, d, ctx);
+      return;
+    }
+    if (verif) {
+      if (out.verifBloques && d.viaje && d.viaje.verif) d.viaje.verif.bloques = out.verifBloques;
+      if (m.parentNode) pintarDet_(m, d, ctx);
+      return;
+    }
+    /* Estado de los bloques y del formulario con lo que devolvió el guardado. */
+    var f = d.formulario || (d.formulario = {});
+    if (out.bloques) f.bloques = out.bloques.map(function (b) { return { n: b.n, t: b.titulo, e: b.estado }; });
+    if (out.completados != null) f.completados = Number(out.completados);
+    if (out.total != null) f.total = Number(out.total);
+    if (out.terminado != null) f.terminado = !!out.terminado;
+    f.falta = out.motivoNoAprobar || '';
+    patchLista_(d, ctx);
+    if (m.parentNode) pintarDet_(m, d, ctx);
+    /* Formulario aprobado y con cambios: la hoja de vida se rehace de fondo. */
+    var aprobado = !!(out.estudiante && out.estudiante.aprobado);
+    if (aprobado && (out.cambios || []).length) {
+      d.hv = Object.assign({}, d.hv || {}, { generando: true, error: '' });
+      if (m.parentNode) pintarDet_(m, d, ctx);
+      apiPost('agHvRegenerar', base, { silent: true }).then(function (n) {
+        Object.assign(d, { hv: n.hv || d.hv, historial: n.histNuevo ? histJunto_(n, d) : (n.historial || d.historial) });
+      }).catch(function (e) {
+        d.hv = Object.assign({}, d.hv, { generando: false, error: String((e && e.message) || e), puedeGenerar: true });
+      }).then(function () { if (m.parentNode) pintarDet_(m, d, ctx); });
+    }
+  }
+
   function accionDet610_(m, btn, d, ctx, que, base, hecho) {
     var v = d.viaje || {}, vf = v.verif || {};
     if (que === 'cred') {
@@ -1298,14 +1384,8 @@
       });
       return true;
     }
-    if (que === 'verForm') {
-      if (typeof NPERFIL === 'undefined' || !NPERFIL.abrirFormulario) return true;
-      var p0 = ctx.esSuper ? { usuarioId: currentUser.id, id: d.id } : { id: d.id };
-      NPERFIL.abrirFormulario({ id: d.id, nombres: (d.cab || {}).nom || '', apellidos: (d.cab || {}).ape || '' }, {
-        pedir: function () { return apiGet('agFormulario', p0, { silent: true }); },
-        verArchivo: function (url, t) { verArchivo_(t + ' · ' + nombreCab_(d), { id: d.id, f: url }); },
-        verClave: function () { return apiPost('agVerClave', { id: d.id, usuarioId: base.usuarioId }, { silent: true }).then(function (r) { return (r && r.clave) || ''; }); }
-      });
+    if (que === 'verForm' || que === 'verifEditar') {
+      abrirFormAg_(m, d, ctx, base, que === 'verifEditar');
       return true;
     }
     if (que === 'verClave') {
@@ -1319,10 +1399,21 @@
       return true;
     }
     if (que === 'eliminar') {
-      if (!ctx.esSuper) return true;
+      eliminarPart_(btn, d.id, nombreCab_(d), ctx, m);
+      return true;
+    }
+    return false;
+  }
+
+  /* Eliminar participante de subagencia (solo Superusuario): desde el
+     detalle o desde la tarjeta. Motivo + escribir el ID; con escudo y rid. */
+  function eliminarPart_(btn, id, nombre, ctx, m) {
+    if (!ctx.esSuper) return;
+    var d = { id: id };
       Swal.fire({
-        icon: 'warning', title: 'Eliminar a ' + nombreCab_(d),
+        icon: 'warning', title: 'Eliminar a ' + nombre,
         html: '<div class="agv-cred"><label for="age-mot">Motivo (queda en la auditoría)</label><textarea id="age-mot" class="swal2-textarea" maxlength="500"></textarea>' +
+          '<p class="cfg-hint">Solo para registros creados por error. Borra su expediente y sus archivos, devuelve el cupo de su oferta y reversa sus cobros con el motivo. No se puede deshacer.</p>' +
           '<label for="age-id">Para confirmar, escribe <b>' + e_(d.id) + '</b></label><input id="age-id" class="swal2-input" type="text" autocomplete="off"></div>',
         showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626', focusConfirm: false,
         preConfirm: function () {
@@ -1340,7 +1431,7 @@
             var i = l.findIndex(function (z) { return z.id === d.id; });
             if (i >= 0) l.splice(i, 1);
             try { ctx.repintar(); } catch (_) {}
-            if (m.cerrar) m.cerrar();
+            if (m && m.cerrar) m.cerrar();
             var f = (r && r.filas) || {};
             Swal.fire({ icon: 'success', title: 'Participante eliminado',
               html: e_(r.nombre) + '<br><small>' + (f.cupos ? 'Cupo devuelto a la oferta · ' : '') + (r.cobrosReversados || 0) + ' cobro(s) reversado(s) · ' + (r.archivos || 0) + ' archivo(s) borrado(s)</small>' +
@@ -1348,9 +1439,6 @@
           });
         });
       });
-      return true;
-    }
-    return false;
   }
 
   /* ============================================================
@@ -1590,7 +1678,7 @@
     var et = v.etapa ? '<span class="ag-pill ' + e_(v.etapa.c) + '">' + e_(v.etapa.l) + '</span>' : '';
 
     /* 1. Verificación académica (se abre con Contratado). */
-    if (v.contratado || vf.estado) {
+    if (vf.abierta || v.contratado || vf.estado) {   // 6.11 — se abre con el formulario aprobado (como en SEP)
       var certs = ((d.documentos && d.documentos.documentos) || []).filter(function (x) { return x.clave === 'CERT_ENE_JUL' || x.clave === 'CERT_AGO_DIC'; });
       h += '<section class="agd-sec agv"><h3>Verificación académica</h3>' +
         '<div class="ag-pills"><span class="ag-pill ' + (VERIF_CLS[vf.estado] || 'off') + '">' + e_(vf.label || 'Pendiente') + '</span>' +
@@ -1608,18 +1696,20 @@
         /* 6.10 — acceso al portal académico: la agencia lo corrige antes de
            enviar su primera revisión; SEP mientras no la apruebe. */
         ((pu.verifEnviar || pu.verifAprobar || claveHay_(vf.bloques)) ? '<div class="ag-acts agv-acceso">' +
+          /* 6.11 — editar Academic Information y Academic Verification */
+          ((pu.verifEnviar || pu.verifAprobar) ? '<button type="button" class="ag-btn" data-agd="verifEditar">' + IC_P.det + '<span>Editar información académica</span></button>' : '') +
           ((pu.verifEnviar || pu.verifAprobar) ? '<button type="button" class="ag-btn" data-agd="cred">' + IC_P.llave + '<span>Corregir acceso al portal</span></button>' : '') +
           (claveHay_(vf.bloques) ? '<button type="button" class="ag-btn" data-agd="verClave">' + IC_P.ojo + (d._clave ? '<span>Ocultar clave</span>' : '<span>Ver clave</span>') + '</button>' : '') +
           '</div>' : '') +
-        (pu.verifEnviar ? '<div class="fld agv-notas"><label>Notas de la revisión (las ve SEP)</label><textarea id="agd-vnotas" rows="3" maxlength="3000" placeholder="Qué revisaste y qué encontraste…">' + e_(vf.notas || '') + '</textarea></div>'
+        (pu.verifEnviar ? '<div class="fld agv-notas"><label>Hallazgos de tu primera revisión (los ve SEP)</label><textarea id="agd-vnotas" rows="3" maxlength="3000" placeholder="Qué validaste y qué debe revisar SEP…">' + e_(vf.notas || '') + '</textarea></div>'
           : (vf.notas ? '<p class="cfg-hint">Notas: ' + e_(vf.notas) + (vf.notasPor ? ' · ' + e_(vf.notasPor) : '') + '</p>' : '')) +
         '<div class="ag-acts">' +
-          (pu.verifEnviar ? '<button type="button" class="btn btn-primary" data-agd="vEnviar">' + (vf.estado === 'DEVUELTA' ? 'Reenviar corregida a SEP' : 'Enviar a revisión de SEP') + '</button>' : '') +
+          (pu.verifEnviar ? '<button type="button" class="btn btn-primary" data-agd="vEnviar">' + (vf.estado === 'DEVUELTA' ? 'Reenviar corregida a SEP' : 'Enviar a SEP') + '</button>' : '') +
           (pu.verifAprobar ? '<button type="button" class="btn btn-primary" data-agd="vAprobar">Aprobar verificación (SEP)</button>' : '') +
           (pu.verifDevolver ? '<button type="button" class="ag-btn" data-agd="vDevolver">Devolver a la agencia</button>' : '') +
           (pu.verifReabrir ? '<button type="button" class="ag-btn" data-agd="vReabrir">Reabrir verificación</button>' : '') +
         '</div>' +
-        '<p class="cfg-hint">Primera revisión: la agencia. Segunda: SEP. Si SEP encuentra un problema, la devuelve para corregir.</p>' +
+        '<p class="cfg-hint">Se abre con el formulario aprobado. Primera revisión: la agencia (certificados, información académica y hallazgos). Segunda: SEP, antes de la luz verde final. Si SEP encuentra un problema, la devuelve para corregir.</p>' +
         '</section>';
     }
 
@@ -2088,4 +2178,10 @@
 
   document.addEventListener('DOMContentLoaded', bindLogin_);
   if (document.readyState !== 'loading') bindLogin_();
+
+  /* Puerta para las pruebas automatizadas (como window.__sepPerfil). */
+  window.__sepAg = {
+    abrirDet: abrirDet_, tarjeta: tarjetaPart_,
+    valores: function (a, datos, tmp) { AGS.data = datos; AGS.tmp = tmp; modalValores_(a); }
+  };
 })();

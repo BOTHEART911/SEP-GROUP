@@ -233,7 +233,13 @@
 .agd-peligro { border-color: rgba(220, 38, 38, .35) !important; }
 .agd-btn-peligro { color: #b91c1c; border-color: rgba(220, 38, 38, .45); }
 .agd-btn-peligro:hover { color: #fff; background: #dc2626; border-color: #dc2626; }
+/* 6.11 — Eliminar arriba del detalle y en la tarjeta del Superusuario */
+.agd-tools { display: flex; justify-content: flex-end; margin: 0 0 10px; }
+.agp-est > .ag-acts { flex-wrap: nowrap; }
+.ag-btn.ag-btn-ic { padding-left: 8px; padding-right: 8px; }
+.ag-btn.ag-btn-ic span { display: none; }
 @media (max-width: 560px) {
+  .agd-tools .ag-btn span { display: inline !important; }
   .agp-falta { flex-direction: column; }
   .agp-falta__l { justify-content: space-between; }
   .agp-falta__l select { flex: 1; }

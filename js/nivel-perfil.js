@@ -316,9 +316,11 @@ var NPERFIL = (function () {
      ============================================================ */
   /* FASE 6.10 (19/10/2026) — opts (participante de SUBAGENCIA, desde su
      detalle): { pedir: () => Promise<datos>, verArchivo(url, titulo),
-     verClave() => Promise<clave> }. Siempre en solo lectura: sin editar,
-     sin reabrir y sin pie; los archivos se ven con el visor privado de la
-     app y el modal va encima del detalle de la agencia. */
+     verClave() => Promise<clave> }. Los archivos se ven con el visor
+     privado de la app y el modal va encima del detalle de la agencia.
+     FASE 6.11 — gestión como SEP: { guardar(bloque, datos) => Promise<out>,
+     reabrir(bloques, motivo) => Promise<out>, alCambiar(out, que) }. Sin
+     guardar/reabrir, o con d.soloLectura (oferta elegida), solo lectura. */
   async function abrirFormulario(r, opts) {
     if (!r) return;
     F.opts = opts || null;
@@ -380,8 +382,8 @@ var NPERFIL = (function () {
     if (!d) return;
     var e = d.estudiante || {};
 
-    q('#nform-title').textContent =
-      'Formulario · ' + txt_(e.nombres + ' ' + e.apellidos) + ' · N° ' + txt_(e.n);
+    q('#nform-title').textContent = (d.modo === 'VERIF' ? 'Verificación académica · ' : 'Formulario · ') +
+      txt_(e.nombres + ' ' + e.apellidos) + (e.n ? ' · N° ' + txt_(e.n) : '');
 
     q('#nform-sub').innerHTML =
       '<span class="nfm-pill ' + (d.terminado ? 'ok' : 'prog') + '">' +
@@ -407,7 +409,8 @@ var NPERFIL = (function () {
       var x = body.querySelector('.nfm-bloque[data-bloque="' + n + '"] details'); if (x) x.open = true;
     });
 
-    q('#nform-foot').innerHTML = (F.opts || d.soloLectura) ? '' : pieHtml_(d);   // 6.10 — agencia: solo lectura
+    /* 6.10/6.11 — agencia: el pie de reabrir solo si puede reabrir. */
+    q('#nform-foot').innerHTML = (d.soloLectura || (F.opts && !F.opts.reabrir) || !(d.permisos ? d.permisos.reabrir !== false : true)) ? '' : pieHtml_(d);
 
     /* El bloque que se está editando se deja abierto y a la vista. */
     if (F.edit) {
@@ -475,7 +478,14 @@ var NPERFIL = (function () {
   function cabeceraHtml_(d) {
     var e = d.estudiante || {};
     var lineas = '';
-    if (d.motivoNoAprobar) {
+    /* 6.11 — por qué no se puede editar (oferta elegida, verificación en
+       revisión de SEP…). */
+    if (d.soloLectura && d.motivoSoloLectura) {
+      lineas += '<div class="nfm-nota nfm-nota--warn">🔒 ' + esc(d.motivoSoloLectura) + '</div>';
+    }
+    if (d.modo === 'VERIF') {
+      lineas += '<div class="nfm-nota">Solo Academic Information y Academic Verification. Lo que cambies queda en la auditoría de la agencia.</div>';
+    } else if (d.motivoNoAprobar) {
       lineas += '<div class="nfm-nota nfm-nota--warn">⚠️ Todavía no se puede aprobar: ' + esc(d.motivoNoAprobar) + '</div>';
     } else if (d.puedeAprobar && !e.aprobado) {
       lineas += '<div class="nfm-nota nfm-nota--ok">✅ El formulario está completo: ya se le puede marcar <b>Aprobado</b>.</div>';
@@ -940,10 +950,12 @@ var NPERFIL = (function () {
 
     var out;
     try {
-      out = await apiPost('nivelGuardarBloque', {
-        usuarioId: currentUser.id, n: F.r.n, documento: F.r.documento,
-        bloque: bloque, datos: F.edit.valores
-      });
+      out = (F.opts && F.opts.guardar)   // 6.11 — subagencia: su propia ruta (escudo + rid)
+        ? await F.opts.guardar(bloque, F.edit.valores)
+        : await apiPost('nivelGuardarBloque', {
+            usuarioId: currentUser.id, n: F.r.n, documento: F.r.documento,
+            bloque: bloque, datos: F.edit.valores
+          });
     } catch (e) {
       F.edit.guardando = false;
       pintarFormulario_();
@@ -965,7 +977,9 @@ var NPERFIL = (function () {
     F.data = out;
     F.edit = null;
     pintarFormulario_();
-    refrescarLista_();
+    if (F.opts) { if (F.opts.alCambiar) F.opts.alCambiar(out, 'guardar'); }   // 6.11 — sin recargar la vista Nivel
+    else refrescarLista_();
+    var agencia = !!F.opts;
 
     Swal.fire({
       icon: 'success',
@@ -973,13 +987,15 @@ var NPERFIL = (function () {
       html: '<div class="nive-conf">' +
         '<div class="nive-conf__d">' +
           (cambios.length === 1 ? 'Se cambió 1 campo.' : ('Se cambiaron ' + cambios.length + ' campos.')) +
-          ' Al estudiante <b>no</b> se le avisó: queda en la auditoría.</div>' +
+          (agencia ? ' Al participante <b>no</b> se le avisó: queda en la auditoría de la agencia.' : ' Al estudiante <b>no</b> se le avisó: queda en la auditoría.') + '</div>' +
         (avisos.length
           ? '<div class="nive-conf__re">Faltan documentos que solo puede subir el estudiante:<br>' +
             avisos.map(function (a) { return esc(a); }).join('<br>') + '</div>'
           : '') +
-        (aprobado
-          ? '<div class="nive-conf__re">El perfil está aprobado: si esto sale en la hoja de vida, dale a <b>Regenerar HV</b>.</div>'
+        (aprobado && cambios.length
+          ? (agencia
+            ? '<div class="nive-conf__re">El formulario está aprobado: la hoja de vida se rehace sola en segundo plano.</div>'
+            : '<div class="nive-conf__re">El perfil está aprobado: si esto sale en la hoja de vida, dale a <b>Regenerar HV</b>.</div>')
           : '') +
         '</div>'
     });
@@ -988,6 +1004,20 @@ var NPERFIL = (function () {
   /* ── Pie de reapertura del "Ver formulario" ────────────────── */
   function pieHtml_(d) {
     var aprobado = !!(d.estudiante && d.estudiante.aprobado);
+    if (F.opts && F.opts.reabrir) {   // 6.11 — subagencia: sin mensajes, el participante lo ve en su portal
+      return '<div class="nfm-pie">' +
+        '<small class="conta-hint">' + (aprobado
+          ? 'Al reabrir se le quita la aprobación al formulario (se reversa). El participante ve en su portal los bloques a corregir con este motivo; no se le envía mensaje.'
+          : 'El participante ve en su portal los bloques a corregir con este motivo; no se le envía mensaje.') + '</small>' +
+        '<div class="nfm-pie__sel"><b id="nfm-cuenta">0</b> <span id="nfm-cuenta-t">bloques seleccionados</span></div>' +
+        '<label for="nfm-motivo">Motivo (lo ve el participante en su portal)</label>' +
+        '<textarea id="nfm-motivo" rows="3" maxlength="' + MOTIVO_MAX + '" ' +
+          'placeholder="Ej.: en Experiencia laboral faltan las funciones del último trabajo.">' +
+          esc(F.motivo) + '</textarea>' +
+        '<div class="nfm-chars"><span id="nfm-chars">0</span> / ' + MOTIVO_MAX + '</div>' +
+        '<button type="button" id="nfm-reabrir" class="btn btn-primary" disabled>↩️ Reabrir los bloques seleccionados</button>' +
+        '</div>';
+    }
     /* FASE 3.1 · ajuste 9 — antes este pie estaba apagado si el perfil
        no estaba aprobado. Ahora siempre está vivo; lo único que cambia
        es el aviso de si además se le quita el check. */
@@ -1132,6 +1162,7 @@ var NPERFIL = (function () {
     }
 
     var nombres = nombresBloques_(bloques);
+    if (F.opts && F.opts.reabrir && origen === 'nform') return lanzarReaperturaAgencia_(bloques, motivo, nombres);
     var conf = await Swal.fire({
       icon: 'question', title: '¿Reabrir estos bloques?',
       html: '<div class="nive-conf">' +
@@ -1176,6 +1207,39 @@ var NPERFIL = (function () {
       Swal.fire({ icon: 'error', title: 'No se pudo reabrir', text: String(e && e.message ? e.message : e) });
       return false;
     }
+  }
+
+  /* FASE 6.11 — reabrir desde el detalle de una subagencia: sin mensajes
+     (el participante ve los bloques en su portal); si estaba aprobado se
+     reversa. La respuesta trae el detalle nuevo (alCambiar). */
+  async function lanzarReaperturaAgencia_(bloques, motivo, nombres) {
+    var aprobado = !!(F.data && F.data.estudiante && F.data.estudiante.aprobado);
+    var conf = await Swal.fire({
+      icon: 'question', title: '¿Reabrir estos bloques?',
+      html: '<div class="nive-conf">' +
+        '<ul class="nive-avisos">' + nombres.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
+        '<div class="nive-conf__d">Motivo: <b>' + esc(motivo) + '</b></div>' +
+        (aprobado ? '<div class="nive-conf__re">El formulario está aprobado: se le quita la aprobación. Su hoja de vida actual se conserva hasta que lo vuelvas a aprobar.</div>' : '') +
+        '<div class="nive-conf__d">El participante lo verá en su portal; no se le envía mensaje.</div></div>',
+      showCancelButton: true, confirmButtonText: 'Sí, reabrir', cancelButtonText: 'Cancelar', focusCancel: true
+    });
+    if (!conf.isConfirmed || F.reabriendo) return false;
+    F.reabriendo = true;
+    var btn = q('#nfm-reabrir'); if (btn) { btn.disabled = true; btn.textContent = 'Reabriendo…'; }
+    try {
+      var out = await F.opts.reabrir(bloques, motivo);
+      var op = F.opts;
+      cerrarFormulario_();
+      if (op && op.alCambiar) op.alCambiar(out, 'reabrir');
+      Swal.fire({ icon: 'success', title: bloques.length === 1 ? 'Se reabrió 1 bloque' : ('Se reabrieron ' + bloques.length + ' bloques'),
+        html: '<div class="nive-conf"><div class="nive-conf__d">' + esc((out && out.nombres) || nombres.join(' · ')) + '</div>' +
+          ((out && out.estabaAprobado) ? '<div class="nive-conf__re">Se reversó la aprobación del formulario.</div>' : '') + '</div>' });
+      return true;
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'No se pudo reabrir', text: String(e && e.message ? e.message : e) });
+      if (btn) { btn.disabled = false; btn.textContent = '↩️ Reabrir los bloques seleccionados'; }
+      return false;
+    } finally { F.reabriendo = false; }
   }
 
   /* Nombre legible de cada bloque, con lo que ya está en pantalla. */

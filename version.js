@@ -3,6 +3,20 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * FASE 6.11 · AJUSTES FINALES DE JAVIER A SUBAGENCIAS (19/10/2026 · 2).
+ *   · Formulario de la agencia: ve todas las respuestas, edita cualquier
+ *     bloque y lo reabre para que el participante lo corrija (sin
+ *     mensajes; lo ve en su portal). Reabrir o reversar un aprobado solo
+ *     sin oferta elegida; con oferta, solo lectura con el motivo.
+ *   · Primera verificación académica: se abre con el formulario aprobado
+ *     (como en SEP). La agencia edita Academic Information y Academic
+ *     Verification, escribe sus hallazgos y la manda con "Enviar a SEP".
+ *   · Mínimo de viajeros por agencia en Valores (vacío = el general).
+ *   · Eliminar participante (Superusuario): arriba del detalle y en cada
+ *     tarjeta de Subagencias → Participantes.
+ *   Archivos: js/agencias.js, js/nivel-perfil.js, css/agencias.css,
+ *   version.js, sw.js (caché v71).
+ *
  * FASE 6.10 · 2 FALLAS QUE REPORTÓ JAVIER (19/10/2026 · 1).
  *   · Participantes: "Ver más" se deshacía con cada aviso EN VIVO (la lista
  *     volvía a 24/48). Ahora un repintado conserva lo ya abierto y el
@@ -936,4 +950,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.19.01";
+var APP_VERSION = "2026.10.19.02";
