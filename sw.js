@@ -20,7 +20,7 @@
  *   subes APP_VERSION, y servirlo viejo dejaría la app clavada en una versión
  *   antigua. Tampoco se cachea nada que lleve query string.
  * ============================================================ */
-const SEP_CACHE = 'sep-group-v72';
+const SEP_CACHE = 'sep-group-v73';
 
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
@@ -55,7 +55,9 @@ const CDN = /^https:\/\/(?:cdn\.jsdelivr\.net|www\.gstatic\.com|cdnjs\.cloudflar
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
-  e.waitUntil(caches.open(SEP_CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
+  /* 22/10/2026 — cache:'reload': la copia nueva sale de la red, nunca de la
+     caché HTTP del navegador (GitHub Pages la guarda ~10 min). */
+  e.waitUntil(caches.open(SEP_CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).catch(() => {}));
 });
 
 self.addEventListener('activate', (e) => {
@@ -84,7 +86,9 @@ self.addEventListener('fetch', (e) => {
   if ((mismaCasa && ESTATICO.test(url.pathname)) || CDN.test(req.url)) {
     e.respondWith(
       caches.match(req).then((guardado) => {
-        const red = fetch(req).then((resp) => {
+        /* 22/10/2026 — revalida con la red (ETag/304): sin esto, la caché HTTP
+           del navegador podía devolver el archivo viejo justo tras publicar. */
+        const red = fetch(mismaCasa ? new Request(req, { cache: 'no-cache' }) : req).then((resp) => {
           if (resp && resp.ok) {
             const copia = resp.clone();
             caches.open(SEP_CACHE).then((c) => c.put(req, copia)).catch(() => {});

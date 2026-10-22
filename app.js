@@ -509,7 +509,26 @@ async function checkVersion(){
 
 /* ================== ARRANQUE ================== */
 if ('serviceWorker' in navigator){
-  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  /* 22/10/2026 — update(): pide YA la revisión del sw.js (el navegador a veces
+     la demoraba y la primera apertura se quedaba con lo viejo). */
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .then(reg => reg && reg.update && reg.update()).catch(()=>{}));
+  /* 22/10/2026 — PRIMERA APERTURA TRAS PUBLICAR. La página arrancaba con los
+     .js viejos del service worker anterior (caché primero) y version.js ya
+     nuevo, así que no recargaba: lo publicado se veía solo en la 2.ª
+     apertura (Javier no veía el nivel de inglés en Visas). Cuando el
+     service worker nuevo toma el control, se recarga UNA vez por versión
+     (mismo freno sepRecargaVer: nunca en bucle). Sin control previo (1.ª
+     instalación) no recarga. */
+  const swHabia = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if (!swHabia) return;
+    const marca = 'sw:' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '');
+    let ya = ''; try { ya = sessionStorage.getItem('sepRecargaSw') || ''; } catch(_){}
+    if (ya === marca) return;
+    try { sessionStorage.setItem('sepRecargaSw', marca); } catch(_){}
+    location.reload();
+  });
 }
 window.addEventListener('load', initApp_);
 
