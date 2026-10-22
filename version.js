@@ -3,6 +3,11 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTE 22/10/2026 · 2 (Javier) — Panel de Visas, bloque Sistema de Visa:
+ *   correo del Sistema de Visa visible y editable (lo registra el
+ *   participante en su portal junto con la clave, que sigue oculta).
+ *   Archivos: js/visas.js, css/visas.css, version.js, sw.js (caché v74).
+ *
  * FASE 6.11 · AJUSTES FINALES DE JAVIER A SUBAGENCIAS (19/10/2026 · 2).
  *   · Formulario de la agencia: ve todas las respuestas, edita cualquier
  *     bloque y lo reabre para que el participante lo corrija (sin
@@ -950,4 +955,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.22.01";
+var APP_VERSION = "2026.10.22.02";

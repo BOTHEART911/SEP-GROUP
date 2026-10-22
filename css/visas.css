@@ -81,6 +81,7 @@
   width: 100%; max-width: 100%; min-width: 0;
 }
 .vis-in--num { text-transform: uppercase; letter-spacing: .02em; }
+.vis-in--correo { text-transform: none; min-width: 0; width: 100%; }   /* AJUSTE 22/10 */
 .vis-in:focus { outline: 2px solid #2563eb; outline-offset: 0; }
 .vis-in:disabled { opacity: .55; }
 .vis-sel { cursor: pointer; }

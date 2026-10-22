@@ -17,6 +17,10 @@
  *   · Clave del Sistema de Visa: oculta; la ven y la escriben PROCESOS
  *     y SUPERUSUARIO, con registro (verClave, la misma pieza de la
  *     clave del portal académico).
+ *   · AJUSTE 22/10/2026 — Correo del Sistema de Visa (svCorreo): lo
+ *     registra el participante en su portal (Paso 1) junto con la clave,
+ *     y aquí se ve y se corrige. Si lo registró él, la casilla "Cuenta
+ *     creada" queda marcada a su nombre.
  *   · 5.2-C: Documentación consular lista (automática, el backend dice
  *     qué condición falta), ☐ Carpeta entregada (solo con la
  *     documentación lista; el candado real está en el backend) y
@@ -333,6 +337,14 @@ function visClaveHtml_(r) {
   return `<div class="vis-clave"><span class="vis-clave__l">Clave</span>${v}</div>`;
 }
 
+/* AJUSTE 22/10/2026 — correo del Sistema de Visa (se ve y se corrige). */
+function visCorreoHtml_(r) {
+  const dis = VIS.ocupado[r.id] ? ' disabled' : '';
+  return `<label class="vis-campo"><span>Correo del Sistema de Visa</span>
+      <input class="vis-in vis-in--correo" type="email" data-vk="svCorreo" value="${esc_(r.svCorreo || '')}"
+      placeholder="Sin correo" maxlength="120" autocapitalize="off" spellcheck="false" inputmode="email"${dis}></label>`;
+}
+
 function visPagoHtml_(r) {
   return `<span class="vis-tag ${r.pagoTotal ? 'is-ok' : 'is-pend'}">${r.pagoTotal ? '✅ Pago total completado' : '⏳ Pago total pendiente'}</span>
     <span class="vis-tag ${r.bancoTotal ? 'is-ok' : 'is-pend'}" title="Validado en banco (Contador)">🏦 ${r.bancoTotal ? 'Validado en banco' : 'Sin validar en banco'}</span>`;
@@ -409,8 +421,8 @@ function visBloques_(r) {
       visLeida_('Real', r.ds160r, r.ds160rF, r.ds160rQ, 'Se marca cuando SEP aprueba el DS-160 (copia y confirmación) en Mis documentos') +
       visInput_(r, 'ds160rNum', 'text', 'N° real', 'N°')),
     b('sv', 'Sistema de Visa', '#0d9488',
-      r.sv && r.pv ? 'ok' : (r.sv || r.pv || r.svHay ? 'proc' : 'pend'),
-      visCheck_(r, 'sv', 'Cuenta creada') + visClaveHtml_(r) + visCheck_(r, 'pv', 'Pago de la visa')),
+      r.sv && r.pv ? 'ok' : (r.sv || r.pv || r.svHay || r.svCorreo ? 'proc' : 'pend'),
+      visCheck_(r, 'sv', 'Cuenta creada') + visCorreoHtml_(r) + visClaveHtml_(r) + visCheck_(r, 'pv', 'Pago de la visa')),
     b('cita', 'Cita', '#d97706',
       r.cita ? 'ok' : (r.cas || r.consul || r.start ? 'proc' : 'pend'),
       visCheck_(r, 'cita', 'Agendada', !r.cita && !(r.cas && r.consul), 'Requiere Fecha/Hora CAS y Consulado') +
@@ -551,13 +563,14 @@ document.addEventListener('change', e => {
   let v = visTxt_(el.value);
   if (el.type === 'datetime-local') v = v.replace('T', ' ').slice(0, 16);
   if (el.type === 'text') { v = v.toUpperCase().replace(/[\s-]/g, ''); el.value = v; }
+  if (el.type === 'email') { v = v.toLowerCase().replace(/\s+/g, ''); el.value = v; }   // AJUSTE 22/10
   if (v === visTxt_(r[k])) return;
   visGuardar_(r, { [k]: v });
 });
 /* Enter en un número = guardar (el change se dispara al salir). */
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  const el = e.target.closest('#vis-cards input[type="text"][data-vk]');
+  const el = e.target.closest('#vis-cards input[type="text"][data-vk], #vis-cards input[type="email"][data-vk]');
   if (el) { e.preventDefault(); el.blur(); }
 });
 
