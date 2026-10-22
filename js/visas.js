@@ -443,6 +443,16 @@ function visBloques_(r) {
   ];
 }
 
+/* AJUSTE 21/10/2026 (Javier) — nivel de inglés del participante (NIVEL_INGLES,
+   viene en la misma lista visasInit: sin viaje extra). Nivel del puntaje SEA,
+   puntaje y el nivel que va en la hoja de vida. */
+function visIngHtml_(r) {
+  if (!r.ingN && !r.ingP) return '<div class="vis-ing is-falta" title="Nivel de inglés">🗣️ Sin puntaje de inglés registrado</div>';
+  return `<div class="vis-ing" title="Nivel de inglés (Nivel de Inglés → Puntaje SEA)">🗣️ <span>Nivel de inglés</span>
+      ${r.ingN ? `<b>${esc_(r.ingN)}</b>` : ''}${r.ingP ? `<em>${esc_(r.ingP)}<small>/9</small></em>` : ''}
+      ${r.ingH ? `<span class="vis-ing__hv" title="Nivel impreso en la hoja de vida">HV · ${esc_(r.ingH)}</span>` : ''}</div>`;
+}
+
 function visCardHtml_(r) {
   const oc = VIS.ocupado[r.id];
   const e = (typeof EST_PART !== 'undefined' && r.est) ? EST_PART.porClave[r.est] : null;
@@ -471,6 +481,7 @@ function visCardHtml_(r) {
       ${r.pasaporte ? '' : '<span class="veri-falta" title="Pasaporte">🛂 sin pasaporte</span>'}
       ${typeof procesoChipHtml_ === 'function' ? procesoChipHtml_(r.proceso, false) : ''}
     </div>
+    ${visIngHtml_(r)}
     <div class="vis-blqs">${bl.map(x => `<section class="vis-blq vis-blq--${x.est}" style="--g:${x.color}" data-vblq="${x.k}">
         <div class="vis-blq__h"><span>${esc_(x.l)}</span><b>${VIS_EST_TXT[x.est]}</b></div>
         <div class="vis-blq__b">${x.html}</div></section>`).join('')}</div>
