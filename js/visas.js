@@ -45,7 +45,12 @@ const VIS = {
   ctrl: null,
   ocupado: {},       // id → true mientras esa tarjeta escribe (escudo)
   lista: [], pintadas: 0, obs: null,   // 5.5-B — tandas de tarjetas
-  clave: {}          // id → clave del Sistema de Visa ya revelada
+  clave: {},         // id → clave del Sistema de Visa ya revelada
+  /* 17/11/2026 (Javier, puntos 2 y 3) — filtros por estado, rango de
+     fecha de cita y orden. Todo local: cero viajes. */
+  fx: {},                                   // clave → valor elegido
+  cita: { tipo: 'cas', desde: '', hasta: '' },
+  orden: ''                                 // '' · cas-asc · cas-desc · consul-asc · consul-desc
 };
 const VIS_SIN = '— Sin asignar —';
 
@@ -169,8 +174,82 @@ function visBaseSponsor_() {
   const b = visBaseAsesor_();
   return VIS.filtroSponsor === '__ALL__' ? b : b.filter(r => visSponsorDe_(r) === VIS.filtroSponsor);
 }
+/* ============================================================
+   17/11/2026 (Javier, puntos 2, 3 y 4) — FILTROS POR ESTADO, FECHA DE
+   CITA, ORDEN Y EXCEL. Mismos datos de la tarjeta (visasInit): nada
+   nuevo viaja. Los filtros se combinan entre sí y con los de siempre.
+   ============================================================ */
+const VIS_NO_RES = 'Sin resultado';
+function visResLabel_(r) {
+  const v = r.resultado || '';
+  if (!v || v === 'PENDIENTE') return v === 'PENDIENTE' ? ((((VIS.catalogo && VIS.catalogo.resultados) || []).find(o => o.k === v) || {}).l || 'Pendiente') : VIS_NO_RES;
+  return ((((VIS.catalogo && VIS.catalogo.resultados) || []).find(o => o.k === v)) || { l: v }).l;
+}
+const VIS_FX = [
+  { k: 'res', ic: '🛂', color: '#16a34a', all: 'Resultado consular', tit: 'Resultado consular', v: visResLabel_ },
+  { k: 'ds',  ic: '📨', color: '#7c3aed', all: 'DS-2019', tit: 'DS-2019',
+    v: r => r.ds2019 ? 'Recibido' : (r.ds2019Sol ? 'Solicitado' : 'Sin solicitar'), ops: ['Sin solicitar', 'Solicitado', 'Recibido'] },
+  { k: 'doc', ic: '🗂️', color: '#0f766e', all: 'Documentos completos', tit: 'Documentación consular completa',
+    v: r => r.consular ? 'Documentos completos: Sí' : 'Documentos completos: No', ops: ['Documentos completos: Sí', 'Documentos completos: No'] },
+  { k: 'car', ic: '📁', color: '#1e40af', all: 'Carpeta', tit: 'Carpeta',
+    v: r => r.carpeta ? 'Carpeta entregada' : 'Carpeta no entregada', ops: ['Carpeta entregada', 'Carpeta no entregada'] },
+  { k: 'pre', ic: '✈️', color: '#0369a1', all: 'Pre-Arrival', tit: 'Pre-Arrival',
+    v: r => r.pre ? 'Pre-Arrival completado' : 'Pre-Arrival pendiente', ops: ['Pre-Arrival completado', 'Pre-Arrival pendiente'] },
+  { k: 'vue', ic: '🛫', color: '#2563eb', all: 'Vuelo', tit: 'Vuelo',
+    v: r => (r.vueloCarga || r.vuelo) ? 'Vuelo cargado' : 'Vuelo pendiente', ops: ['Vuelo cargado', 'Vuelo pendiente'] }
+];
+function visFxDef_(k) { return VIS_FX.find(f => f.k === k); }
+function visCitaDia_(r) { return String(r[VIS.cita.tipo] || '').slice(0, 10); }
+function visCitaOn_() { return !!(VIS.cita.desde || VIS.cita.hasta); }
+/* Aplica los filtros nuevos; `salvo` deja fuera uno (conteos de su hoja). */
+function visAplicaFx_(b, salvo) {
+  VIS_FX.forEach(f => {
+    if (f.k === salvo || VIS.fx[f.k] === undefined) return;
+    b = b.filter(r => f.v(r) === VIS.fx[f.k]);
+  });
+  if (salvo !== 'cita' && visCitaOn_()) {
+    b = b.filter(r => {
+      const d = visCitaDia_(r);
+      if (!d) return false;
+      return (!VIS.cita.desde || d >= VIS.cita.desde) && (!VIS.cita.hasta || d <= VIS.cita.hasta);
+    });
+  }
+  return b;
+}
+function visBaseFx_() { return visAplicaFx_(visBaseSponsor_()); }
+function visFxActivos_() {
+  return Object.keys(VIS.fx).length + (visCitaOn_() ? 1 : 0) + (VIS.orden ? 1 : 0) +
+    (VIS.filtroTop !== '__ALL__' ? 1 : 0) + (VIS.filtroAsesor !== '__ALL__' ? 1 : 0) + (VIS.filtroSponsor !== '__ALL__' ? 1 : 0);
+}
+function visLimpiar_() {
+  VIS.fx = {}; VIS.cita = { tipo: 'cas', desde: '', hasta: '' }; VIS.orden = '';
+  VIS.filtroTop = '__ALL__'; VIS.filtroAsesor = '__ALL__'; VIS.filtroSponsor = '__ALL__';
+}
+/* Orden por fecha de cita: la más próxima primero o al revés; sin fecha al final. */
+function visOrdenar_(l) {
+  if (!VIS.orden) return l;
+  const [k, dir] = VIS.orden.split('-');
+  return l.slice().sort((a, b) => {
+    const x = String(a[k] || ''), y = String(b[k] || '');
+    if (!x && !y) return b.n - a.n;
+    if (!x) return 1;
+    if (!y) return -1;
+    return dir === 'asc' ? x.localeCompare(y) : y.localeCompare(x);
+  });
+}
+const VIS_ORDENES = [
+  { k: '', l: 'Orden de siempre (N° más reciente)' },
+  { k: 'cas-asc', l: 'Fecha CAS · más próxima primero' },
+  { k: 'cas-desc', l: 'Fecha CAS · más lejana primero' },
+  { k: 'consul-asc', l: 'Fecha consular · más próxima primero' },
+  { k: 'consul-desc', l: 'Fecha consular · más lejana primero' }
+];
+function visFechaTxt_(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+}
+
 function visBaseTop_() {
-  const b = visBaseSponsor_();
+  const b = visBaseFx_();
   const t = VIS_TOPS.find(x => x.clave === VIS.filtroTop);
   return t ? b.filter(t.f) : b;
 }
@@ -193,7 +272,7 @@ function visOpciones_(k) {
 }
 
 function visNorm_(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
-function visVisibles_() { return visBaseTop_(); }   // 5.5-D — el buscador ya está en la raíz
+function visVisibles_() { return visOrdenar_(visBaseTop_()); }   // 5.5-D buscador en la raíz · 17/11 orden
 
 /* ============================================================
    PINTADO
@@ -203,7 +282,7 @@ function visPintarTodo_() { visPintarTop_(); visPintarPills_(); visPintarTabla_(
 
 function visPintarTop_() {
   const cont = visQ_('#vis-resumen'); if (!cont) return;
-  const base = visBaseSponsor_();
+  const base = visBaseFx_();                       // 17/11 — los KPIs cuentan con los filtros nuevos
   cont.innerHTML = VIS_TOPS.map(t => `<button class="conta-kpi veri-top${VIS.filtroTop === t.clave ? ' is-on' : ''}"
       data-vtop="${t.clave}" style="--k:${t.color}" aria-pressed="${VIS.filtroTop === t.clave}">
       <span class="conta-kpi__n">${base.filter(t.f).length}</span>
@@ -227,6 +306,161 @@ function visPintarPills_() {
     </button>`;
   }).join('');
   visPills_().forEach(f => visQ_('#visfp-' + f.key)?.addEventListener('click', () => visAbrirSheet_(f.key)));
+  visPintarFx_(cont);
+}
+
+/* 17/11/2026 — pastillas nuevas: estados, fecha de cita, orden, limpiar y Excel. */
+function visPillBtn_(id, ic, label, n, on, color) {
+  return `<button class="fpill ${on ? 'is-on' : ''}" id="${id}" style="--fp:${color}" aria-haspopup="dialog" title="${esc_(label)}">
+      <span class="fpill__ic">${ic}</span><span class="fpill__label">${esc_(label)}</span>
+      ${n === null ? '' : `<span class="fpill__count">${n}</span>`}
+      <svg class="fpill__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>`;
+}
+function visPintarFx_(cont) {
+  const n = visBaseFx_().length;
+  let h = VIS_FX.map(f => {
+    const on = VIS.fx[f.k] !== undefined;
+    return visPillBtn_('visfx-' + f.k, f.ic, on ? VIS.fx[f.k] : f.all, on ? n : null, on, f.color);
+  }).join('');
+  const c = VIS.cita;
+  const citaTxt = visCitaOn_()
+    ? (c.tipo === 'cas' ? 'Cita CAS' : 'Cita consular') + ' ' + (c.desde ? visFechaTxt_(c.desde) : '…') + ' – ' + (c.hasta ? visFechaTxt_(c.hasta) : '…')
+    : 'Fecha de cita';
+  h += visPillBtn_('visfx-cita', '📅', citaTxt, visCitaOn_() ? n : null, visCitaOn_(), '#b45309');
+  h += visPillBtn_('visfx-orden', '↕️', VIS.orden ? (VIS_ORDENES.find(o => o.k === VIS.orden) || {}).l : 'Ordenar', null, !!VIS.orden, '#475569');
+  const act = visFxActivos_();
+  if (act) h += `<button class="fpill seg-limpiar" id="visfx-limpiar">✕ Limpiar filtros (${act})</button>`;
+  if (typeof XLSXL !== 'undefined' && XLSXL.puede()) h += `<button class="fpill vis-excel" id="visfx-excel" title="Descarga en Excel lo que está en pantalla">⬇️ Descargar Excel</button>`;
+  cont.insertAdjacentHTML('beforeend', h);
+  VIS_FX.forEach(f => visQ_('#visfx-' + f.k)?.addEventListener('click', () => visAbrirFx_(f.k)));
+  visQ_('#visfx-cita')?.addEventListener('click', visAbrirCita_);
+  visQ_('#visfx-orden')?.addEventListener('click', visAbrirOrden_);
+  visQ_('#visfx-limpiar')?.addEventListener('click', () => { visLimpiar_(); visPintarTodo_(); });
+  visQ_('#visfx-excel')?.addEventListener('click', e => visExcel_(e.currentTarget));
+}
+function visSheet_(titulo, html, alAbrir) {
+  const sheet = visQ_('#vis-fsheet'), lista = visQ_('#vis-fsheet-list');
+  if (!sheet || !lista) return null;
+  visQ_('#vis-fsheet-title').textContent = titulo;
+  lista.innerHTML = html; lista.scrollTop = 0;
+  if (alAbrir) alAbrir(lista);
+  sheet.classList.remove('hidden'); sheet.setAttribute('aria-hidden', 'false');
+  return lista;
+}
+function visOptBtn_(ic, valor, label, count, sel, all) {
+  return `<button class="fopt ${sel ? 'is-sel' : ''} ${all ? 'is-all' : ''}" data-valor="${esc_(valor)}">
+      <span class="fopt__ic">${ic}</span><span class="fopt__label">${esc_(label)}</span>
+      ${count === null ? '' : `<span class="fopt__count">${count}</span>`}<span class="fopt__check">✓</span></button>`;
+}
+function visAbrirFx_(k) {
+  const f = visFxDef_(k); if (!f) return;
+  const base = visAplicaFx_(visBaseSponsor_(), k);
+  const c = {}; base.forEach(r => { const x = f.v(r); c[x] = (c[x] || 0) + 1; });
+  let ops = f.ops ? f.ops.slice() : Object.keys(c).sort((a, b) => (a === VIS_NO_RES) - (b === VIS_NO_RES) || a.localeCompare(b));
+  if (k === 'res') {
+    const cat = ((VIS.catalogo && VIS.catalogo.resultados) || []).map(o => o.l);
+    ops = cat.concat([VIS_NO_RES]).filter((x, i, a) => a.indexOf(x) === i);
+  }
+  const actual = VIS.fx[k];
+  visSheet_(f.tit,
+    visOptBtn_(f.ic, '__ALL__', 'Todos', base.length, actual === undefined, true) +
+    ops.map(o => visOptBtn_(f.ic, o, o, c[o] || 0, actual === o, false)).join(''),
+    l => l.querySelectorAll('.fopt').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.valor === '__ALL__') delete VIS.fx[k]; else VIS.fx[k] = b.dataset.valor;
+      visCerrarSheet_(); visPintarTodo_();
+    })));
+}
+function visAbrirOrden_() {
+  visSheet_('Ordenar por fecha de cita',
+    VIS_ORDENES.map(o => visOptBtn_('↕️', o.k || '__ALL__', o.l, null, VIS.orden === o.k, !o.k)).join(''),
+    l => l.querySelectorAll('.fopt').forEach(b => b.addEventListener('click', () => {
+      VIS.orden = b.dataset.valor === '__ALL__' ? '' : b.dataset.valor;
+      visCerrarSheet_(); visPintarTodo_();
+    })));
+}
+/* Rango de fecha de cita: CAS o consular, Desde/Hasta (ambos incluidos). */
+function visAbrirCita_() {
+  const borr = Object.assign({}, VIS.cita);
+  const pintar = l => {
+    const base = visAplicaFx_(visBaseSponsor_(), 'cita');
+    const dentro = base.filter(r => { const d = String(r[borr.tipo] || '').slice(0, 10);
+      return d && (!borr.desde || d >= borr.desde) && (!borr.hasta || d <= borr.hasta); }).length;
+    l.innerHTML = `<div class="vis-cita-f">
+        <div class="vis-cita-f__tipo" role="group" aria-label="Qué cita">
+          <button type="button" class="fpill ${borr.tipo === 'cas' ? 'is-on' : ''}" data-ct="cas">🗓️ Cita CAS</button>
+          <button type="button" class="fpill ${borr.tipo === 'consul' ? 'is-on' : ''}" data-ct="consul">🏛️ Cita consular</button>
+        </div>
+        <div class="vis-cita-f__rango">
+          <button type="button" class="btn btn-ghost" data-cr="desde">Desde: <b>${borr.desde ? visFechaTxt_(borr.desde) : 'sin límite'}</b></button>
+          <button type="button" class="btn btn-ghost" data-cr="hasta">Hasta: <b>${borr.hasta ? visFechaTxt_(borr.hasta) : 'sin límite'}</b></button>
+        </div>
+        <p class="vis-cita-f__n">${(borr.desde || borr.hasta) ? dentro + ' participantes en el rango (incluye ambas fechas)' : 'Elige Desde, Hasta o los dos.'}</p>
+        <div class="vis-cita-f__acc">
+          <button type="button" class="btn btn-ghost" data-ca="quitar">Quitar rango</button>
+          <button type="button" class="btn btn-accent" data-ca="aplicar">Aplicar</button>
+        </div></div>`;
+    l.querySelectorAll('[data-ct]').forEach(b => b.addEventListener('click', () => { borr.tipo = b.dataset.ct; pintar(l); }));
+    l.querySelectorAll('[data-cr]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.cr, y = new Date().getFullYear();
+      if (typeof RUEDA === 'undefined' || !RUEDA.abrir) return;
+      RUEDA.abrir({ modo: 'fecha', titulo: k === 'desde' ? 'Desde' : 'Hasta', desde: y - 1, hasta: y + 2,
+        valor: borr[k] || '', fechaDef: (borr.desde || new Date().toISOString().slice(0, 10)),
+        onOk: iso => { borr[k] = iso || ''; if (borr.desde && borr.hasta && borr.desde > borr.hasta) { const t = borr.desde; borr.desde = borr.hasta; borr.hasta = t; } pintar(l); } });
+    }));
+    l.querySelector('[data-ca="quitar"]').addEventListener('click', () => {
+      VIS.cita = { tipo: borr.tipo, desde: '', hasta: '' }; visCerrarSheet_(); visPintarTodo_(); });
+    l.querySelector('[data-ca="aplicar"]').addEventListener('click', () => {
+      VIS.cita = borr; visCerrarSheet_(); visPintarTodo_(); });
+  };
+  visSheet_('Rango de fecha de cita', '', pintar);
+}
+
+/* Punto 4 — Excel de lo que está en pantalla (solo Super y Dev). */
+let visExcelOcupado_ = false;
+async function visExcel_(btn) {
+  if (visExcelOcupado_) return;
+  visExcelOcupado_ = true; if (btn) btn.disabled = true;
+  try {
+    const l = visVisibles_();
+    if (!l.length) { Swal.fire({ icon: 'info', title: 'No hay participantes con estos filtros' }); return; }
+    const si = x => x ? 'Sí' : 'No';
+    const fil = [];
+    if (VIS.texto) fil.push('Búsqueda: ' + VIS.texto);
+    if (VIS.filtroAsesor !== '__ALL__') fil.push('Asesor de Procesos: ' + VIS.filtroAsesor);
+    if (VIS.filtroSponsor !== '__ALL__') fil.push('Sponsor: ' + VIS.filtroSponsor);
+    const top = VIS_TOPS.find(t => t.clave === VIS.filtroTop); if (top) fil.push('Indicador: ' + top.label);
+    VIS_FX.forEach(f => { if (VIS.fx[f.k] !== undefined) fil.push(f.tit + ': ' + VIS.fx[f.k]); });
+    if (visCitaOn_()) fil.push((VIS.cita.tipo === 'cas' ? 'Cita CAS' : 'Cita consular') + ' desde ' + (visFechaTxt_(VIS.cita.desde) || '…') + ' hasta ' + (visFechaTxt_(VIS.cita.hasta) || '…'));
+    if (VIS.orden) fil.push('Orden: ' + (VIS_ORDENES.find(o => o.k === VIS.orden) || {}).l);
+    const estNom = r => { const e = (typeof EST_PART !== 'undefined' && r.est) ? EST_PART.porClave[r.est] : null; return e ? e.nombre : (r.est || ''); };
+    const n = await XLSXL.descargar({
+      nombre: 'SEP_Visas', hoja: 'Visas', titulo: 'Panel de Visas · SEP Group', filtros: fil, filas: l,
+      columnas: [
+        { t: 'N°', v: r => r.n, ancho: 7 }, { t: 'Nombres', v: r => r.nombres }, { t: 'Apellidos', v: r => r.apellidos },
+        { t: 'Documento', v: r => r.documento }, { t: 'Teléfono', v: r => r.telefono }, { t: 'Correo', v: r => r.correo, ancho: 28 },
+        { t: 'Pasaporte', v: r => r.pasaporte }, { t: 'Asesor de Procesos', v: r => r.asesorProcesos }, { t: 'Sponsor', v: r => r.sponsor },
+        { t: 'Estado', v: estNom, ancho: 22 },
+        { t: 'DS-160 interno', v: r => si(r.ds160i) }, { t: 'N° DS-160 interno', v: r => r.ds160iNum },
+        { t: 'DS-160 real', v: r => si(r.ds160r) }, { t: 'N° DS-160 real', v: r => r.ds160rNum },
+        { t: 'Sistema de Visa', v: r => si(r.sv) }, { t: 'Correo Sistema de Visa', v: r => r.svCorreo, ancho: 26 },
+        { t: 'Pago de la visa', v: r => si(r.pv) }, { t: 'Cita agendada', v: r => si(r.cita) },
+        { t: 'Start Date', v: r => r.start }, { t: 'Fecha/Hora CAS', v: r => r.cas }, { t: 'Fecha/Hora Consulado', v: r => r.consul },
+        { t: 'Docs Sponsor', v: r => si(r.spon) }, { t: 'DS-2019', v: r => r.ds2019 ? 'Recibido' : (r.ds2019Sol ? 'Solicitado' : 'Sin solicitar') },
+        { t: 'N° SEVIS', v: r => r.sevisNum }, { t: 'Pago SEVIS', v: r => si(r.sevis) },
+        { t: 'Asesoría Visa', v: r => si(r.ase) }, { t: 'Pasos del portal (de 6)', v: r => r.pasosV != null ? Number(r.pasosV) || 0 : '' },
+        { t: 'Documentos completos (consular)', v: r => si(r.consular) }, { t: 'Carpeta entregada', v: r => si(r.carpeta) },
+        { t: 'Resultado consular', v: visResLabel_ }, { t: 'Pre-Arrival', v: r => r.pre ? 'Completado' : 'Pendiente' },
+        { t: 'Vuelo', v: r => r.vuelo ? (r.vuelo === 'APROBADO' ? 'Aprobado' : r.vuelo === 'EN_REVISION' ? 'En revisión' : r.vuelo === 'RECHAZADO' ? 'Rechazado' : r.vuelo) : ((r.vueloCarga) ? 'Cargado' : 'Pendiente') },
+        { t: 'Rifa 72 h', v: r => r.rifa === 'SI' ? 'Sí' : (r.vueloCarga ? 'No' : '') }
+      ]
+    });
+    Swal.fire({ icon: 'success', title: 'Excel descargado', text: n + ' participantes', timer: 1500, showConfirmButton: false });
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'No se pudo descargar', text: String(e.message || e) });
+  } finally {
+    visExcelOcupado_ = false; if (btn && btn.isConnected) btn.disabled = false;
+  }
 }
 
 function visAbrirSheet_(key) {

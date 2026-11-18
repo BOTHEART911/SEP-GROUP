@@ -3,6 +3,17 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTES OPERATIVOS DE JAVIER · ENTREGA 2 (17/11/2026 · 2) — VISAS.
+ *   · Filtros combinables: Resultado consular, DS-2019 (Sin solicitar /
+ *     Solicitado / Recibido), Documentos completos (documentación
+ *     consular), Carpeta, Pre-Arrival y Vuelo; rango de fecha de cita CAS
+ *     o consular (Desde/Hasta, incluye ambas); Ordenar por fecha CAS o
+ *     consular (próxima o lejana primero); «Limpiar filtros».
+ *   · «Descargar Excel» (.xlsx) de lo que está en pantalla, solo
+ *     Superusuario y Desarrollador (pieza nueva js/excel-lista.js).
+ *   Archivos: js/visas.js, js/excel-lista.js (nuevo), css/visas.css,
+ *   index.html, version.js, sw.js (caché v76).
+ *
  * AJUSTES OPERATIVOS DE JAVIER · ENTREGA 1 (17/11/2026 · 1).
  *   · Participantes: pastilla «Etapa de la oferta» (Pendiente aplicación /
  *     Contratado); botón «📤 Aplicada al sponsor» en la tarjeta de quien ya
@@ -968,4 +979,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.11.17.01";
+var APP_VERSION = "2026.11.17.02";

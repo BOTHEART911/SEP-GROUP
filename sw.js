@@ -20,7 +20,7 @@
  *   subes APP_VERSION, y servirlo viejo dejaría la app clavada en una versión
  *   antigua. Tampoco se cachea nada que lleve query string.
  * ============================================================ */
-const SEP_CACHE = 'sep-group-v75';
+const SEP_CACHE = 'sep-group-v76';
 
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
@@ -38,7 +38,7 @@ const SHELL = [
   './js/nivel-docs.js',                    /* Fase 4 · Entrega 6 (04/09/2026) */
   './css/temporada.css', './js/temporada.js', './js/temporadas-cfg.js',   /* Fase 5.1 · A (07/10/2026) */
   './css/verif.css', './js/verif.js', './img/verificacion.webp',         /* Fase 5.2 · A (07/10/2026) */
-  './css/visas.css', './js/visas.js', './img/visas.webp',                /* Fase 5.2 · B (08/10/2026) */
+  './css/visas.css', './js/visas.js', './js/excel-lista.js', './img/visas.webp',                /* Fase 5.2 · B (08/10/2026) */
   './css/seguimiento.css', './js/seguimiento.js', './img/seguimiento.webp', /* Fase 5.4 · A (08/10/2026) */
   './css/estadisticas.css', './js/estadisticas.js', './img/estadisticas.webp', /* Fase 5.4 · C (08/10/2026) */
   './css/recursos.css', './js/recursos.js', './img/recursos.svg',       /* Ajustes Fase 5 (09/10/2026) */
