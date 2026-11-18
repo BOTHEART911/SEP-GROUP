@@ -3,6 +3,18 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTES OPERATIVOS DE JAVIER · ENTREGA 4 (17/11/2026 · 4) — SEGUIMIENTO Y ESTADÍSTICAS.
+ *   · Seguimiento: rango de fecha real de inscripción (Desde/Hasta, incluye
+ *     ambas) y «Exportar datos» (.xlsx, solo Superusuario y Desarrollador)
+ *     con lo filtrado: datos, estado, acción futura y los 27 hitos.
+ *   · Estadísticas: filtros Asesor de Procesos (con «Sin asesor»), Proceso
+ *     (Aplazado, New, Repitente, New y Repitente) y rango de inscripción,
+ *     combinables; tarjetas nuevas «Pagaron la oferta y no han elegido»
+ *     (a: formulario aprobado / b: por completar o aprobar) e «Inscritos
+ *     activos sin pago de oferta».
+ *   Archivos: js/seguimiento.js, js/estadisticas.js, css/seguimiento.css,
+ *   version.js, sw.js (caché v78).
+ *
  * AJUSTES OPERATIVOS DE JAVIER · ENTREGA 3 (17/11/2026 · 3) — RECURSOS.
  *   · Procesos → Recursos: cargar un PDF por recurso (máx. 10 MB), verlo,
  *     descargarlo, reemplazarlo y quitarlo, con los mismos permisos de
@@ -987,4 +999,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.11.17.03";
+var APP_VERSION = "2026.11.17.04";

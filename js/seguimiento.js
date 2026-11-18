@@ -47,8 +47,105 @@ const SEG = {
   det: {}, detCtrl: null, detN: null, detTab: 'hist', detBloque: '',
   sinc: null, sincCtrl: null, sincTipo: '',
   /* 5.4-C — lista exacta que llega de un indicador de Estadísticas. */
-  esp: null
+  esp: null,
+  /* 17/11/2026 (Javier, punto 17) — rango de fecha real de inscripción. */
+  rango: { desde: '', hasta: '' }
 };
+
+/* ============================================================
+   17/11/2026 (Javier, puntos 12 y 17) — RANGO DE INSCRIPCIÓN Y EXCEL
+   Piezas que también usa Estadísticas (js/estadisticas.js).
+   ============================================================ */
+function segRangoOn_(rg) { return !!(rg && (rg.desde || rg.hasta)); }
+/* ¿La fecha de inscripción (r.fins, 'aaaa-mm-dd') cae en el rango?
+   Incluye ambas fechas. Sin fecha → fuera cuando hay rango. Si el
+   servidor aún manda solo el mes ('aaaa-mm'), se compara por mes. */
+function segFinsEnRango_(r, rg) {
+  if (!segRangoOn_(rg)) return true;
+  const f = segTxt_(r.fins);
+  if (!f) return false;
+  const n = f.length >= 10 ? 10 : 7;
+  const d = f.slice(0, n);
+  return (!rg.desde || d >= rg.desde.slice(0, n)) && (!rg.hasta || d <= rg.hasta.slice(0, n));
+}
+function segFechaCorta_(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+}
+function segRangoTxt_(rg) {
+  return segRangoOn_(rg)
+    ? 'Inscripción ' + (rg.desde ? segFechaCorta_(rg.desde) : '…') + ' – ' + (rg.hasta ? segFechaCorta_(rg.hasta) : '…')
+    : 'Fecha de inscripción';
+}
+/* Hoja «Desde / Hasta» con la rueda. contar(rg) dice cuántos quedan. */
+function segRangoSheet_(sel, rg, contar, alAplicar) {
+  const sheet = segQ_(sel.sheet), lista = segQ_(sel.lista);
+  if (!sheet || !lista) return;
+  segQ_(sel.titulo).textContent = 'Rango de fecha de inscripción';
+  const b = { desde: rg.desde || '', hasta: rg.hasta || '' };
+  const pintar = () => {
+    lista.innerHTML = `<div class="seg-rango">
+        <div class="seg-rango__f">
+          <button type="button" class="btn btn-ghost" data-rg="desde">Desde: <b>${b.desde ? segFechaCorta_(b.desde) : 'sin límite'}</b></button>
+          <button type="button" class="btn btn-ghost" data-rg="hasta">Hasta: <b>${b.hasta ? segFechaCorta_(b.hasta) : 'sin límite'}</b></button>
+        </div>
+        <p class="seg-rango__n">${segRangoOn_(b) ? contar(b) + ' participantes inscritos en el rango (incluye ambas fechas)' : 'Fecha real de inscripción (la que registra el Contador). Elige Desde, Hasta o los dos.'}</p>
+        <div class="seg-rango__acc">
+          <button type="button" class="btn btn-ghost" data-rga="quitar">Quitar rango</button>
+          <button type="button" class="btn btn-accent" data-rga="aplicar">Aplicar</button>
+        </div></div>`;
+  };
+  pintar();
+  lista.onclick = e => {
+    const x = e.target.closest('[data-rg],[data-rga]'); if (!x) return;
+    if (x.dataset.rga === 'quitar') { segCerrarRango_(sheet); alAplicar({ desde: '', hasta: '' }); return; }
+    if (x.dataset.rga === 'aplicar') { segCerrarRango_(sheet); alAplicar({ desde: b.desde, hasta: b.hasta }); return; }
+    const k = x.dataset.rg, y = new Date().getFullYear();
+    if (typeof RUEDA === 'undefined' || !RUEDA.abrir) return;
+    RUEDA.abrir({ modo: 'fecha', titulo: k === 'desde' ? 'Desde' : 'Hasta', desde: y - 3, hasta: y + 1,
+      valor: b[k] || '', fechaDef: b.desde || new Date().toISOString().slice(0, 10),
+      onOk: iso => { b[k] = iso || ''; if (b.desde && b.hasta && b.desde > b.hasta) { const t = b.desde; b.desde = b.hasta; b.hasta = t; } pintar(); } });
+  };
+  sheet.classList.remove('hidden'); sheet.setAttribute('aria-hidden', 'false');
+}
+function segCerrarRango_(sheet) { sheet.classList.add('hidden'); sheet.setAttribute('aria-hidden', 'true'); }
+
+/* Punto 12 — «Exportar datos» (.xlsx) de lo que está en pantalla. */
+let segExcelOcupado_ = false;
+async function segExcel_(btn) {
+  if (segExcelOcupado_ || typeof XLSXL === 'undefined') return;
+  segExcelOcupado_ = true; if (btn) btn.disabled = true;
+  try {
+    const l = segVisibles_();
+    if (!l.length) { Swal.fire({ icon: 'info', title: 'No hay participantes con estos filtros' }); return; }
+    const hs = segHitos_();
+    const fil = [];
+    if (SEG.texto) fil.push('Búsqueda: ' + SEG.texto);
+    if (SEG.esp) fil.push('Lista de Estadísticas: ' + SEG.esp.l);
+    SEG_PILLS.forEach(p => { if (SEG.filtros[p.k] !== undefined) fil.push(p.tit + ': ' + SEG.filtros[p.k]); });
+    if (segRangoOn_(SEG.rango)) fil.push(segRangoTxt_(SEG.rango) + ' (incluye ambas)');
+    if (typeof TEMP !== 'undefined' && TEMP.etiqueta) fil.push('Temporada: ' + TEMP.etiqueta());
+    const est = r => { const e = segEst_(r); return e ? e.nombre : 'Sin estado'; };
+    const cols = [
+      { t: 'N°', v: r => r.n, ancho: 7 }, { t: 'Nombres', v: r => r.nom }, { t: 'Apellidos', v: r => r.ape },
+      { t: 'Documento', v: r => r.doc }, { t: 'Teléfono', v: r => r.tel }, { t: 'Correo', v: r => r.cor, ancho: 28 },
+      { t: 'Año', v: r => r.anio, ancho: 8 }, { t: 'Programa', v: r => r.prog }, { t: 'Fecha de inscripción', v: r => segFechaCorta_(r.fins) || segTxt_(r.fins) },
+      { t: 'Asesor comercial', v: r => r.ase }, { t: 'Asesor de Procesos', v: r => r.aseP },
+      { t: 'Estado', v: est, ancho: 22 }, { t: 'Acción futura', v: r => { const e = segEst_(r); return e ? segAccion_(r, e) : ''; }, ancho: 30 },
+      { t: 'Proceso', v: r => r.ret ? 'Retirado' : r.pro }, { t: 'Plan', v: r => r.plan }, { t: 'Nivel de inglés', v: r => r.niv },
+      { t: 'Sponsor', v: r => r.spo }, { t: 'Empleador', v: r => r.emp }, { t: 'Última actualización', v: r => segFecha_(r.act) }
+    ].concat(hs.map((h, i) => ({ t: h.l, v: r => { const x = SEG_VAL[(r.h || '').charAt(i) || '0']; return x ? x.t : ''; }, ancho: 16 })));
+    /* Valores: solo llegan a los roles financieros (el servidor decide). */
+    if (l.some(r => r.$ !== undefined)) {
+      const vv = (r, i) => { const a = typeof r.$ === 'string' ? r.$.split(',') : (Array.isArray(r.$) ? r.$ : []); return Number(a[i]) || 0; };
+      ['Inscripción COP', 'Pago oferta COP', 'Pago oferta USD', 'Programa COP', 'Programa USD', 'Precio programa USD']
+        .forEach((t, i) => cols.push({ t: t, v: r => vv(r, i), ancho: 16 }));
+    }
+    const n = await XLSXL.descargar({ nombre: 'SEP_Seguimiento', hoja: 'Seguimiento', titulo: 'Seguimiento · SEP Group', filtros: fil, filas: l, columnas: cols });
+    Swal.fire({ icon: 'success', title: 'Datos exportados', text: n + ' participantes', timer: 1500, showConfirmButton: false });
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'No se pudo exportar', text: String(e.message || e) });
+  } finally { segExcelOcupado_ = false; if (btn && btn.isConnected) btn.disabled = false; }
+}
 const SEG_TANDA = 24;   /* 5.5-A — tarjetas: tandas de 24 al hacer scroll */
 const SEG_SIN = '— Sin dato —';
 
@@ -197,6 +294,7 @@ function segBase_(salvo) {
     if (val === undefined) return;
     l = l.filter(r => p.v(r) === val);
   });
+  if (salvo !== 'rango' && segRangoOn_(SEG.rango)) l = l.filter(r => segFinsEnRango_(r, SEG.rango));   // 17/11
   return l;
 }
 function segVisibles_() { return segBase_(null); }   // 5.5-D — el buscador ya está en la base
@@ -211,6 +309,7 @@ function segOpciones_(k) {
 function segAbrirFiltrado_(filtros, esp) {
   SEG.filtros = Object.assign({}, filtros || {});
   SEG.esp = (esp && Array.isArray(esp.ids)) ? { l: String(esp.l || 'Estadísticas'), set: new Set(esp.ids.map(Number)) } : null;
+  SEG.rango = { desde: '', hasta: '' };          // 17/11 — la lista exacta ya trae el rango de Estadísticas
   SEG.texto = ''; const s = segQ_('#seg-search'); if (s) s.value = '';
   abrirSeguimiento_();
 }
@@ -222,7 +321,7 @@ function segPintarTodo_() { segPintarPills_(); segPintarLeyenda_(); segPintarTab
 
 function segPintarPills_() {
   const cont = segQ_('#seg-filters'); if (!cont) return;
-  const activos = Object.keys(SEG.filtros).length + (SEG.esp ? 1 : 0);
+  const activos = Object.keys(SEG.filtros).length + (SEG.esp ? 1 : 0) + (segRangoOn_(SEG.rango) ? 1 : 0);
   const nVis = segBase_(null).length;   // 5.5-D — filtros Y buscador: lo que se ve
   cont.innerHTML = (SEG.esp ? `<button class="fpill is-on seg-esp" data-seg-esp-quitar style="--fp:#be123c" title="Viene de Estadísticas. Toca para quitar esta lista.">
       <span class="fpill__ic">📊</span><span class="fpill__label">${esc_(SEG.esp.l)} (${SEG.esp.set.size})</span><span aria-hidden="true">✕</span></button>` : '') +
@@ -234,7 +333,15 @@ function segPintarPills_() {
       <span class="fpill__count">${nVis}</span>
       <svg class="fpill__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>`;
-  }).join('') + (activos ? `<button class="fpill seg-limpiar" data-seg-limpiar>✕ Limpiar filtros (${activos})</button>` : '');
+  }).join('') +
+    /* 17/11/2026 — rango de inscripción y Exportar datos (Super/Dev). */
+    `<button class="fpill ${segRangoOn_(SEG.rango) ? 'is-on' : ''}" data-seg-rango style="--fp:#b45309" aria-haspopup="dialog" title="Fecha real de inscripción">
+      <span class="fpill__ic">📅</span><span class="fpill__label">${esc_(segRangoTxt_(SEG.rango))}</span>
+      ${segRangoOn_(SEG.rango) ? `<span class="fpill__count">${nVis}</span>` : ''}
+      <svg class="fpill__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>` +
+    (activos ? `<button class="fpill seg-limpiar" data-seg-limpiar>✕ Limpiar filtros (${activos})</button>` : '') +
+    ((typeof XLSXL !== 'undefined' && XLSXL.puede()) ? `<button class="fpill vis-excel" data-seg-excel title="Exporta a Excel lo que está en pantalla">⬇️ Exportar datos</button>` : '');
 }
 
 function segPintarLeyenda_() {
@@ -631,7 +738,14 @@ function segPintarSinc_() {
 document.addEventListener('click', e => {
   const p = e.target.closest('[data-segp]');
   if (p) { segAbrirSheet_(p.dataset.segp); return; }
-  if (e.target.closest('[data-seg-limpiar]')) { SEG.filtros = {}; SEG.esp = null; segPintarPills_(); segPintarTabla_(); return; }
+  if (e.target.closest('[data-seg-limpiar]')) { SEG.filtros = {}; SEG.esp = null; SEG.rango = { desde: '', hasta: '' }; segPintarPills_(); segPintarTabla_(); return; }
+  if (e.target.closest('[data-seg-rango]')) {
+    segRangoSheet_({ sheet: '#seg-fsheet', lista: '#seg-fsheet-list', titulo: '#seg-fsheet-title' }, SEG.rango,
+      rg => segBase_('rango').filter(r => segFinsEnRango_(r, rg)).length,
+      rg => { SEG.rango = rg; segPintarPills_(); segPintarTabla_(); });
+    return;
+  }
+  const xb = e.target.closest('[data-seg-excel]'); if (xb) { segExcel_(xb); return; }
   if (e.target.closest('[data-seg-esp-quitar]')) { SEG.esp = null; segPintarPills_(); segPintarTabla_(); return; }
   if (e.target.closest('[data-seg-fsheet-close]')) { segCerrarSheet_(); return; }
   if (e.target.closest('[data-seg-mas]')) { segTanda_(); return; }

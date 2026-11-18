@@ -219,3 +219,10 @@
 .seg-dcard__c { color: var(--text-muted); font-size: .72rem; }
 .seg-nom--sin { cursor: default; }
 
+
+/* 17/11/2026 (Javier, punto 17) — rango de fecha de inscripción (Seguimiento y Estadísticas). */
+.seg-rango { display: grid; gap: 14px; padding: 6px 4px 10px; }
+.seg-rango__f, .seg-rango__acc { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg-rango__f .btn { flex: 1 1 160px; justify-content: flex-start; }
+.seg-rango__acc { justify-content: flex-end; }
+.seg-rango__n { margin: 0; font-size: 13px; color: var(--text-soft, #64748b); }

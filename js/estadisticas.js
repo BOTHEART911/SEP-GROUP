@@ -28,7 +28,7 @@
  * esc_; de temporada.js: TEMP.
  * ============================================================= */
 
-const EST = { filtros: {}, ultimo: null };
+const EST = { filtros: {}, ultimo: null, rango: { desde: '', hasta: '' } };   // 17/11 — rango de inscripción
 
 const EST_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
                    'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -48,8 +48,20 @@ const EST_PILLS = [
   { k: 'spo',  ic: '🏢', color: '#0d9488', all: 'Sponsor', tit: 'Sponsor',
     v: r => segTxt_(r.spo) || SEG_SIN, lead: null },
   { k: 'mes',  ic: '📅', color: '#b45309', all: 'Mes de inscripción', tit: 'Mes de inscripción',
-    v: r => estMesTxt_(segTxt_(r.fins).slice(0, 7)), lead: g => estMesTxt_(g.ym) }
+    v: r => estMesTxt_(segTxt_(r.fins).slice(0, 7)), lead: g => estMesTxt_(g.ym) },
+  /* 17/11/2026 (Javier, punto 13) — Asesor de Procesos, con «Sin asesor».
+     Un lead aún no tiene asesor de Procesos: con este filtro → sin leads. */
+  { k: 'asp',  ic: '🧭', color: '#6d28d9', all: 'Todos los asesores de Procesos', tit: 'Asesor de Procesos',
+    v: r => segTxt_(r.aseP) || EST_SIN_ASESOR, lead: null },
+  /* 17/11/2026 (Javier, punto 14) — Proceso: New y Repitente se suman. */
+  { k: 'prc',  ic: '🔖', color: '#475569', all: 'Todos los procesos', tit: 'Proceso',
+    v: r => segNorm_(r.pro), lead: null,
+    ops: ['Aplazado', 'New', 'Repitente', 'New y Repitente'],
+    ok: (r, val) => { const p = segNorm_(r.pro); return val === 'New y Repitente' ? (p === 'new' || p === 'repitente') : p === segNorm_(val); } }
 ];
+const EST_SIN_ASESOR = 'Sin asesor';
+function estPillOk_(p, r, val) { return p.ok ? p.ok(r, val) : p.v(r) === val; }
+function estRangoOn_() { return typeof segRangoOn_ === 'function' && segRangoOn_(EST.rango); }
 function estPill_(k) { return EST_PILLS.find(p => p.k === k); }
 
 /* ============================================================
@@ -82,14 +94,23 @@ function estBase_(salvo) {
     if (p.k === salvo) return;
     const val = EST.filtros[p.k];
     if (val === undefined) return;
-    l = l.filter(r => p.v(r) === val);
+    l = l.filter(r => estPillOk_(p, r, val));
   });
+  if (salvo !== 'rango' && estRangoOn_()) l = l.filter(r => segFinsEnRango_(r, EST.rango));   // 17/11
   return l;
 }
 function estOpciones_(k) {
   const p = estPill_(k), c = {};
+  if (p.ops) {                                           // 17/11 — opciones fijas (Proceso)
+    const b = estBase_(k);
+    return p.ops.map(v => ({ valor: v, count: b.filter(r => p.ok(r, v)).length }));
+  }
   estBase_(k).forEach(r => { const v = p.v(r); c[v] = (c[v] || 0) + 1; });
   const ks = Object.keys(c);
+  if (k === 'asp') {
+    const ks2 = ks.filter(v => v !== EST_SIN_ASESOR).sort((a, b) => a.localeCompare(b)).concat([EST_SIN_ASESOR]);
+    return ks2.map(v => ({ valor: v, count: c[v] || 0 }));
+  }
   if (k === 'mes') {
     const llave = v => { const i = EST_MESES.findIndex(m => v.toLowerCase().startsWith(m)); const a = (/\d{4}/.exec(v) || ['0000'])[0]; return i < 0 ? '0' : a + String(i + 10); };
     ks.sort((a, b) => llave(b).localeCompare(llave(a)));
@@ -103,6 +124,9 @@ function estLeads_() {
   const L = SEG.catalogo && SEG.catalogo.leads;
   if (!L || !Array.isArray(L.g)) return null;
   if (EST.filtros.spo !== undefined) return null;
+  /* 17/11 — un lead no tiene asesor de Procesos ni Proceso, y su fecha es
+     de ingreso (mes), no de inscripción: con esos filtros no aplica. */
+  if (EST.filtros.asp !== undefined || EST.filtros.prc !== undefined || estRangoOn_()) return null;
   const anio = (typeof TEMP !== 'undefined' && !TEMP.esTodos()) ? TEMP.anio : null;
   let n = 0;
   L.g.forEach(x => {
@@ -161,6 +185,14 @@ function estCalcular_(U) {
       }
     } else if (!ret && insc && !tot) fin.sinPrecio++;
 
+    /* 17/11/2026 (Javier, puntos 15 y 16) — «pago de oferta confirmado» =
+       comprobante cargado (la regla del estado Oferta pagada). */
+    if (ofe && (est === 'FORMULARIO_COMPLETO' || est === 'OFERTA_PAGADA')) {
+      add('pagoSinOferta', r);
+      add(est === 'FORMULARIO_COMPLETO' ? 'sinOfeListo' : 'sinOfePend', r);
+    }
+    if (insc && !ofe && !ret && est !== 'INACTIVO') add('insSinOferta', r);
+
     /* Placement / Procesos (estado actual; hitos sin retirados) */
     if (est === 'FORMULARIO_COMPLETO') add('placePend', r);
     if (est === 'OFERTA_ELEGIDA') add('ofertaElegida', r);
@@ -208,10 +240,14 @@ const EST_SECC = [
     { k: 'pInsc', l: 'Inscripción pagada', d: 'Comprobante cargado' },
     { k: 'pOferta', l: 'Oferta pagada', d: 'Comprobante cargado' },
     { k: 'pTotal', l: 'Programa completo', d: 'Pago total con comprobante' },
-    { k: 'conSaldo', l: 'Participantes con saldo', d: 'Inscritos sin el pago total (sin retirados)' }
+    { k: 'conSaldo', l: 'Participantes con saldo', d: 'Inscritos sin el pago total (sin retirados)' },
+    { k: 'insSinOferta', l: 'Inscritos activos sin pago de oferta', d: 'Sin comprobante del pago de oferta (sin retirados ni inactivos)' }
   ] },
   { k: 'pla', t: 'Placement / Procesos', ic: '💼', color: '#7c3aed', items: [
     { k: 'placePend', l: 'Placement pendiente', d: 'Formulario completo, sin oferta elegida' },
+    { k: 'pagoSinOferta', l: 'Pagaron la oferta y no han elegido', d: 'Total = a + b', sub: ['sinOfeListo', 'sinOfePend'] },
+    { k: 'sinOfeListo', l: 'a) Formulario aprobado: pueden elegir', d: 'Pago de oferta confirmado' },
+    { k: 'sinOfePend', l: 'b) Formulario por completar o aprobar', d: 'Pago de oferta confirmado' },
     { k: 'ofertaElegida', l: 'Oferta elegida / En proceso', d: 'Esperando la entrevista' },
     { k: 'contratados', l: 'Contratados', d: 'Entrevista aprobada (sin retirados)' },
     { k: 'spoPend', l: 'Docs Sponsor pendientes', d: 'De los contratados' },
@@ -276,6 +312,8 @@ function estPintar_() {
     if (v === null) {
       num = '—';
       nota = EST.filtros.spo !== undefined ? 'No aplica con filtro de Sponsor (un lead no tiene sponsor)'
+        : (EST.filtros.asp !== undefined || EST.filtros.prc !== undefined) ? 'No aplica con Asesor de Procesos o Proceso (un lead aún no los tiene)'
+        : estRangoOn_() ? 'No aplica con rango de inscripción (un lead no está inscrito)'
         : (SEG.catalogo && SEG.catalogo.leads ? 'Sin leads' : 'Actualiza el servidor para ver los leads');
     } else num = it.k === 'conversion' ? String(v).replace('.', ',') + ' %' : estNum_(v);
     const cuerpoT = `<span class="est-k__n">${num}</span>
@@ -330,7 +368,7 @@ function estFinHtml_(C) {
 
 function estPintarPills_() {
   const cont = document.querySelector('#est-filters'); if (!cont) return;
-  const activos = Object.keys(EST.filtros).length;
+  const activos = Object.keys(EST.filtros).length + (estRangoOn_() ? 1 : 0);
   cont.innerHTML = EST_PILLS.map(f => {
     const val = EST.filtros[f.k], on = val !== undefined;
     return `<button class="fpill ${on ? 'is-on' : ''}" data-estp="${f.k}" style="--fp:${f.color}" aria-haspopup="dialog" title="${esc_(f.tit)}">
@@ -338,7 +376,14 @@ function estPintarPills_() {
       <span class="fpill__count">${estBase_(null).length}</span>
       <svg class="fpill__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>`;
-  }).join('') + (activos ? `<button class="fpill seg-limpiar" data-est-limpiar>✕ Limpiar filtros (${activos})</button>` : '');
+  }).join('') +
+    /* 17/11/2026 (Javier, punto 17) — Desde / Hasta por fecha real de inscripción. */
+    `<button class="fpill ${estRangoOn_() ? 'is-on' : ''}" data-est-rango style="--fp:#b45309" aria-haspopup="dialog" title="Fecha real de inscripción">
+      <span class="fpill__ic">🗓️</span><span class="fpill__label">${esc_(typeof segRangoTxt_ === 'function' ? segRangoTxt_(EST.rango) : 'Fecha de inscripción')}</span>
+      ${estRangoOn_() ? `<span class="fpill__count">${estBase_(null).length}</span>` : ''}
+      <svg class="fpill__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>` +
+    (activos ? `<button class="fpill seg-limpiar" data-est-limpiar>✕ Limpiar filtros (${activos})</button>` : '');
 }
 
 function estAbrirSheet_(k) {
@@ -370,13 +415,20 @@ function estVer_(k) {
   const ids = C.L[k] || []; if (!ids.length) return;
   let it = null; EST_SECC.some(s => (it = s.items.find(x => x.k === k)));
   const extra = EST_PILLS.filter(p => EST.filtros[p.k] !== undefined).map(p => EST.filtros[p.k]);
+  if (estRangoOn_() && typeof segRangoTxt_ === 'function') extra.push(segRangoTxt_(EST.rango));
   segAbrirFiltrado_({}, { l: (it ? it.l : k) + (extra.length ? ' · ' + extra.join(' · ') : ''), ids: ids });
 }
 
 document.addEventListener('click', e => {
   const p = e.target.closest('[data-estp]');
   if (p) { estAbrirSheet_(p.dataset.estp); return; }
-  if (e.target.closest('[data-est-limpiar]')) { EST.filtros = {}; estPintar_(); return; }
+  if (e.target.closest('[data-est-limpiar]')) { EST.filtros = {}; EST.rango = { desde: '', hasta: '' }; estPintar_(); return; }
+  if (e.target.closest('[data-est-rango]') && typeof segRangoSheet_ === 'function') {
+    segRangoSheet_({ sheet: '#est-fsheet', lista: '#est-fsheet-list', titulo: '#est-fsheet-title' }, EST.rango,
+      rg => estBase_('rango').filter(r => segFinsEnRango_(r, rg)).length,
+      rg => { EST.rango = rg; estPintar_(); });
+    return;
+  }
   if (e.target.closest('[data-est-fsheet-close]')) { estCerrarSheet_(); return; }
   const v = e.target.closest('[data-est-ver]');
   if (v) { estVer_(v.dataset.estVer); return; }
