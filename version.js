@@ -3,6 +3,14 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTES OPERATIVOS DE JAVIER · ENTREGA 3 (17/11/2026 · 3) — RECURSOS.
+ *   · Procesos → Recursos: cargar un PDF por recurso (máx. 10 MB), verlo,
+ *     descargarlo, reemplazarlo y quitarlo, con los mismos permisos de
+ *     los videos. Los participantes lo ven y lo descargan en su portal.
+ *   · (Backend) Formulario: «Professional Headshot», instrucción del video
+ *     con ejemplo y año académico de los certificados.
+ *   Archivos: js/recursos.js, css/recursos.css, version.js, sw.js (caché v77).
+ *
  * AJUSTES OPERATIVOS DE JAVIER · ENTREGA 2 (17/11/2026 · 2) — VISAS.
  *   · Filtros combinables: Resultado consular, DS-2019 (Sin solicitar /
  *     Solicitado / Recibido), Documentos completos (documentación
@@ -979,4 +987,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.11.17.02";
+var APP_VERSION = "2026.11.17.03";

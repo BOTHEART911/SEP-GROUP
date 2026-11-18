@@ -120,6 +120,9 @@ function rcsCardHtml_(r) {
       </div>
       <h3 class="rcs-titulo">${esc_(r.t)}</h3>
       ${r.d ? `<p class="rcs-desc">${esc_(r.d)}</p>` : ''}
+      ${r.p ? `<div class="rcs-pdf"><span class="rcs-pdf__n" title="${esc_(r.pn)}">📄 ${esc_(r.pn)}</span>
+        <button class="act-btn" type="button" data-rcs-pdf="${esc_(r.id)}">👁 Ver PDF</button>
+        <a class="act-btn" href="${rcsPdfDescarga_(r.p)}" target="_blank" rel="noopener">⬇️ Descargar</a></div>` : ''}
       <div class="rcs-pie">${esc_(r.por || '')}${r.fecha ? ' · ' + esc_(r.fecha) : ''}</div>
       <div class="com-card__actions rcs-acts">
         <button class="act-btn act-editar" type="button" data-rcs-editar="${esc_(r.id)}">✏️ Editar</button>
@@ -151,16 +154,40 @@ function rcsPintar_() {
 
 /* Un solo escuchador para toda la vista (delegación). */
 function rcsClick_(e) {
-  const t = e.target.closest('[data-rcs-filtro],[data-rcs-ver],[data-rcs-editar],[data-rcs-alternar],[data-rcs-eliminar]');
+  const t = e.target.closest('[data-rcs-filtro],[data-rcs-ver],[data-rcs-pdf],[data-rcs-editar],[data-rcs-alternar],[data-rcs-eliminar]');
   if (!t) return;
   if (t.dataset.rcsFiltro) { RCS.filtro = t.dataset.rcsFiltro; rcsPintar_(); return; }
-  const id = t.dataset.rcsVer || t.dataset.rcsEditar || t.dataset.rcsAlternar || t.dataset.rcsEliminar;
+  const id = t.dataset.rcsVer || t.dataset.rcsPdf || t.dataset.rcsEditar || t.dataset.rcsAlternar || t.dataset.rcsEliminar;
   const r = RCS.lista.find(x => x.id === id);
   if (!r) return;
   if (t.dataset.rcsVer) return rcsVerVideo_(r);
+  if (t.dataset.rcsPdf) return rcsVerPdf_(r);
   if (t.dataset.rcsEditar) return rcsEditar_(r);
   if (t.dataset.rcsAlternar) return rcsGuardar_(Object.assign({}, rcsCuerpo_(r), { activo: !r.a }), r.a ? 'Recurso oculto' : 'Recurso visible');
   if (t.dataset.rcsEliminar) return rcsEliminar_(r);
+}
+
+/* 17/11/2026 (Javier, punto 11) — PDF del recurso: visor y descarga
+   directos de Drive (el archivo es informativo y se comparte por enlace
+   de solo lectura; nunca pasa por Apps Script). */
+const RCS_PDF_MAX = 10 * 1024 * 1024;
+function rcsPdfVer_(id) { return 'https://drive.google.com/file/d/' + encodeURIComponent(id) + '/preview'; }
+function rcsPdfDescarga_(id) { return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id); }
+function rcsVerPdf_(r) {
+  if (!r.p) return;
+  Swal.fire({
+    title: esc_(r.pn || r.t), width: 900, showCloseButton: true, showConfirmButton: false,
+    html: `<div class="rcs-pdfvista"><iframe src="${rcsPdfVer_(r.p)}" title="${esc_(r.pn || r.t)}" allow="autoplay"></iframe></div>
+      <p class="rcs-pdfvista__pie"><a href="${rcsPdfDescarga_(r.p)}" target="_blank" rel="noopener">⬇️ Descargar el PDF</a></p>`
+  });
+}
+function rcsLeerB64_(file) {
+  return new Promise((ok, mal) => {
+    const fr = new FileReader();
+    fr.onload = () => ok(String(fr.result || '').replace(/^data:[^,]*,/, ''));
+    fr.onerror = () => mal(new Error('No se pudo leer el archivo.'));
+    fr.readAsDataURL(file);
+  });
 }
 
 /* El reproductor: youtube-nocookie, sin relacionados de otros canales. */
@@ -199,6 +226,11 @@ async function rcsEditar_(r) {
       <label for="rcs-f-video">Video de YouTube <small>(enlace; opcional)</small></label>
       <input id="rcs-f-video" class="swal2-input" placeholder="https://youtu.be/… o https://www.youtube.com/watch?v=…" value="${v.v ? 'https://youtu.be/' + esc_(v.v) : ''}">
       <div id="rcs-f-vista" class="rcs-f-vista"></div>
+      <label for="rcs-f-pdf">Documento PDF <small>(opcional; máx. 10 MB)</small></label>
+      ${v.p ? `<div class="rcs-f-pdfact">📄 <b>${esc_(v.pn)}</b>
+          <label class="rcs-f-check"><input id="rcs-f-quitarpdf" type="checkbox"> Quitar este PDF</label></div>` : ''}
+      <input id="rcs-f-pdf" class="rcs-f-file" type="file" accept=".pdf,application/pdf">
+      <small class="rcs-f-ayuda">${v.p ? 'Si eliges otro archivo, reemplaza al actual.' : 'Los participantes lo ven y lo descargan desde su portal.'}</small>
       <div class="rcs-f-fila">
         <div><label for="rcs-f-orden">Posición <small>(1 = primero; vacío = al final)</small></label>
           <input id="rcs-f-orden" class="swal2-input" type="number" min="1" max="999" inputmode="numeric" value="${v.o || ''}"></div>
@@ -219,18 +251,27 @@ async function rcsEditar_(r) {
       };
       inp.addEventListener('input', vista); vista();
     },
-    preConfirm: () => {
+    preConfirm: async () => {
       const titulo = rcsTxt_(document.getElementById('rcs-f-titulo').value);
       const video = rcsTxt_(document.getElementById('rcs-f-video').value);
       if (!titulo) { Swal.showValidationMessage('Escribe el título.'); return false; }
       if (rcsVideoId_(video) === null) { Swal.showValidationMessage('El video debe ser un enlace de YouTube.'); return false; }
-      return {
+      const out = {
         titulo: titulo,
         descripcion: rcsTxt_(document.getElementById('rcs-f-desc').value),
         video: video,
         orden: rcsTxt_(document.getElementById('rcs-f-orden').value),
         activo: !!document.getElementById('rcs-f-activo').checked
       };
+      /* 17/11/2026 — PDF nuevo (reemplaza) o quitar el actual. */
+      const f = (document.getElementById('rcs-f-pdf').files || [])[0];
+      if (f) {
+        if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { Swal.showValidationMessage('El documento debe ser PDF.'); return false; }
+        if (f.size > RCS_PDF_MAX) { Swal.showValidationMessage('El PDF pesa más de 10 MB.'); return false; }
+        try { out.pdf = { nombre: f.name, b64: await rcsLeerB64_(f) }; }
+        catch (e) { Swal.showValidationMessage(String(e.message || e)); return false; }
+      } else if (document.getElementById('rcs-f-quitarpdf')?.checked) out.quitarPdf = true;
+      return out;
     }
   });
   if (!res.isConfirmed) return;
@@ -243,7 +284,8 @@ async function rcsGuardar_(cuerpo, okTxt) {
   const t0 = Date.now();
   const quien = currentUser && currentUser.id;
   try {
-    const out = await apiPost('recursoGuardar', Object.assign({ usuarioId: quien }, cuerpo), { avion: { titulo: 'Guardando el recurso…' } });
+    const out = await apiPost('recursoGuardar', Object.assign({ usuarioId: quien }, cuerpo),
+      { avion: { titulo: cuerpo.pdf ? 'Subiendo el PDF…' : 'Guardando el recurso…' } });
     rcsMed_('recursoGuardar', t0);
     if (!currentUser || currentUser.id !== quien) return;
     const nuevo = out.recurso;
