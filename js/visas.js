@@ -189,8 +189,12 @@ const VIS_FX = [
   { k: 'res', ic: '🛂', color: '#16a34a', all: 'Resultado consular', tit: 'Resultado consular', v: visResLabel_ },
   { k: 'ds',  ic: '📨', color: '#7c3aed', all: 'DS-2019', tit: 'DS-2019',
     v: r => r.ds2019 ? 'Recibido' : (r.ds2019Sol ? 'Solicitado' : 'Sin solicitar'), ops: ['Sin solicitar', 'Solicitado', 'Recibido'] },
-  { k: 'doc', ic: '🗂️', color: '#0f766e', all: 'Documentos completos', tit: 'Documentación consular completa',
-    v: r => r.consular ? 'Documentos completos: Sí' : 'Documentos completos: No', ops: ['Documentos completos: Sí', 'Documentos completos: No'] },
+  /* 18/11/2026 (Javier) — dos indicadores por separado: Docs del Sponsor
+     (su casilla) y Documentación consular (completa solo con las 7). */
+  { k: 'spd', ic: '📑', color: '#0d9488', all: 'Documentos de Sponsor', tit: 'Documentos de Sponsor',
+    v: r => r.spon ? 'Docs de Sponsor: Sí' : 'Docs de Sponsor: No', ops: ['Docs de Sponsor: Sí', 'Docs de Sponsor: No'] },
+  { k: 'doc', ic: '🗂️', color: '#0f766e', all: 'Documentación consular', tit: 'Documentación consular (las 7 casillas)',
+    v: r => r.consular ? 'Doc. consular completa: Sí' : 'Doc. consular completa: No', ops: ['Doc. consular completa: Sí', 'Doc. consular completa: No'] },
   { k: 'car', ic: '📁', color: '#1e40af', all: 'Carpeta', tit: 'Carpeta',
     v: r => r.carpeta ? 'Carpeta entregada' : 'Carpeta no entregada', ops: ['Carpeta entregada', 'Carpeta no entregada'] },
   { k: 'pre', ic: '✈️', color: '#0369a1', all: 'Pre-Arrival', tit: 'Pre-Arrival',
@@ -449,7 +453,7 @@ async function visExcel_(btn) {
         { t: 'Docs Sponsor', v: r => si(r.spon) }, { t: 'DS-2019', v: r => r.ds2019 ? 'Recibido' : (r.ds2019Sol ? 'Solicitado' : 'Sin solicitar') },
         { t: 'N° SEVIS', v: r => r.sevisNum }, { t: 'Pago SEVIS', v: r => si(r.sevis) },
         { t: 'Asesoría Visa', v: r => si(r.ase) }, { t: 'Pasos del portal (de 6)', v: r => r.pasosV != null ? Number(r.pasosV) || 0 : '' },
-        { t: 'Documentos completos (consular)', v: r => si(r.consular) }, { t: 'Carpeta entregada', v: r => si(r.carpeta) },
+        { t: 'Documentación consular completa (7)', v: r => si(r.consular) }, { t: 'Carpeta entregada', v: r => si(r.carpeta) },
         { t: 'Resultado consular', v: visResLabel_ }, { t: 'Pre-Arrival', v: r => r.pre ? 'Completado' : 'Pendiente' },
         { t: 'Vuelo', v: r => r.vuelo ? (r.vuelo === 'APROBADO' ? 'Aprobado' : r.vuelo === 'EN_REVISION' ? 'En revisión' : r.vuelo === 'RECHAZADO' ? 'Rechazado' : r.vuelo) : ((r.vueloCarga) ? 'Cargado' : 'Pendiente') },
         { t: 'Rifa 72 h', v: r => r.rifa === 'SI' ? 'Sí' : (r.vueloCarga ? 'No' : '') }

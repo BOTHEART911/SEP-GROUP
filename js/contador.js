@@ -30,7 +30,7 @@
 
 const CONTA = {
   registros: [], catalogo: null, actual: null, sheetKey: null,
-  filtroAsesor: '__ALL__', filtroEtapa: '__ALL__', filtroPlan: '__ALL__', filtroAseP: '__ALL__',
+  filtroAsesor: '__ALL__', filtroEtapa: '__ALL__', filtroPlan: '__ALL__', filtroAseP: '__ALL__', filtroContr: '__ALL__',
   filtroTexto: '', cargado: false,
   zonaActiva: null,           // FASE 5 — última zona de archivo usada (para el pegado)
   /* FASE 4 · ENTREGA 5 (punto 2.2) — la vista principal muestra
@@ -47,7 +47,9 @@ const CONTA_FILTROS = [
   { key: 'etapa',  allLabel: 'Todas las etapas',   titulo: 'Filtrar por etapa',  ic: '🧭', color: '#0891b2' },
   { key: 'plan',   allLabel: 'Todos los planes',   titulo: 'Filtrar por plan',   ic: '🎯', color: '#263143' },
   /* 17/11/2026 (punto 19) — Asesor de Procesos, con «Sin asesor». */
-  { key: 'aseP',   allLabel: 'Todos los asesores de Procesos', titulo: 'Filtrar por Asesor de Procesos', ic: '🧭', color: '#7c3aed' }
+  { key: 'aseP',   allLabel: 'Todos los asesores de Procesos', titulo: 'Filtrar por Asesor de Procesos', ic: '🧭', color: '#7c3aed' },
+  /* 18/11/2026 (Javier) — por HITO cumplido, no por estado actual. */
+  { key: 'contr',  allLabel: 'Contratación: todos', titulo: 'Filtrar por hito de contratación', ic: '✅', color: '#15803d' }
 ];
 
 /* ============================================================
@@ -107,18 +109,26 @@ function contaAsesorDe_(r) { return String(r.asesor || '').trim() || CONTA_SIN_A
 function contaPlanDe_(r)   { return String(r.tipoPlan || '').trim() || CONTA_SIN_PLAN; }
 /* 17/11/2026 — el asesor de Procesos ya viaja en el listado ligero. */
 const CONTA_SIN_ASEP = 'Sin asesor';
+/* 18/11/2026 (Javier) — hito de contratación cumplido (oferta APROBADA),
+   aunque el estado actual vaya más adelante (Visas, etc.). */
+const CONTA_CONTR = { SI: 'Contratado', NO: 'Sin contratación' };
+function contaContrDe_(r) { return r.contr ? CONTA_CONTR.SI : CONTA_CONTR.NO; }
+function contaFechaCorta_(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] : String(iso || '');
+}
 function contaAsePDe_(r)   { return String(r.asesorProcesos || '').trim() || CONTA_SIN_ASEP; }
 
 function contaValFiltro_(k) {
   return k === 'asesor' ? CONTA.filtroAsesor : k === 'etapa' ? CONTA.filtroEtapa
-       : k === 'aseP' ? CONTA.filtroAseP : CONTA.filtroPlan;
+       : k === 'aseP' ? CONTA.filtroAseP : k === 'contr' ? CONTA.filtroContr : CONTA.filtroPlan;
 }
 /* Cambiar un nivel superior reinicia los de abajo (evita filtros huérfanos). */
 function contaSetFiltro_(k, v) {
-  if (k === 'asesor') { CONTA.filtroAsesor = v; CONTA.filtroEtapa = '__ALL__'; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__'; }
-  else if (k === 'etapa') { CONTA.filtroEtapa = v; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__'; }
-  else if (k === 'plan') { CONTA.filtroPlan = v; CONTA.filtroAseP = '__ALL__'; }
-  else CONTA.filtroAseP = v;
+  if (k === 'asesor') { CONTA.filtroAsesor = v; CONTA.filtroEtapa = '__ALL__'; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__'; CONTA.filtroContr = '__ALL__'; }
+  else if (k === 'etapa') { CONTA.filtroEtapa = v; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__'; CONTA.filtroContr = '__ALL__'; }
+  else if (k === 'plan') { CONTA.filtroPlan = v; CONTA.filtroAseP = '__ALL__'; CONTA.filtroContr = '__ALL__'; }
+  else if (k === 'aseP') { CONTA.filtroAseP = v; CONTA.filtroContr = '__ALL__'; }
+  else CONTA.filtroContr = v;
 }
 /* FASE 4 · ENTREGA 5 · 2.2 — la raíz de TODOS los filtros. Los
    retirados salen de la vista principal (ruido visual) y se ven
@@ -156,11 +166,17 @@ function contaBasePlan_() {
   if (CONTA.filtroPlan === '__ALL__') return b;
   return b.filter(r => contaPlanDe_(r) === CONTA.filtroPlan);
 }
-/* 17/11/2026 — última capa: Asesor de Procesos. */
+/* 17/11/2026 — Asesor de Procesos. */
 function contaBaseAseP_() {
   const b = contaBasePlan_();
   if (CONTA.filtroAseP === '__ALL__') return b;
   return b.filter(r => contaAsePDe_(r) === CONTA.filtroAseP);
+}
+/* 18/11/2026 — última capa: hito de contratación. */
+function contaBaseContr_() {
+  const b = contaBaseAseP_();
+  if (CONTA.filtroContr === '__ALL__') return b;
+  return b.filter(r => contaContrDe_(r) === CONTA.filtroContr);
 }
 function contaEtapaDef_(clave) {
   return (CONTA.catalogo?.etapas || []).find(e => e.clave === clave) ||
@@ -179,6 +195,10 @@ function contaOpciones_(key) {
     return (CONTA.catalogo?.etapas || []).filter(e => c[e.clave])
       .map(e => ({ valor: e.clave, label: e.label, count: c[e.clave], color: e.color }));
   }
+  if (key === 'contr') {
+    const b = contaBaseAseP_();
+    return [CONTA_CONTR.SI, CONTA_CONTR.NO].map(v => ({ valor: v, label: v, count: b.filter(r => contaContrDe_(r) === v).length, ic: v === CONTA_CONTR.SI ? '✅' : '⏳' }));
+  }
   if (key === 'aseP') {
     contaBasePlan_().forEach(r => { const k = contaAsePDe_(r); c[k] = (c[k] || 0) + 1; });
     /* «Sin asesor» siempre al final y siempre visible. */
@@ -193,12 +213,14 @@ function contaTotalFiltro_(k) {
   return k === 'asesor' ? contaTexto_().length
        : k === 'etapa'  ? contaBaseAsesor_().length
        : k === 'aseP'   ? contaBasePlan_().length
+       : k === 'contr'  ? contaBaseAseP_().length
        :                  contaBaseEtapa_().length;
 }
 function contaConteoPill_(k) {
   return k === 'asesor' ? contaBaseAsesor_().length
        : k === 'etapa'  ? contaBaseEtapa_().length
        : k === 'aseP'   ? contaBaseAseP_().length
+       : k === 'contr'  ? contaBaseContr_().length
        :                  contaBasePlan_().length;
 }
 
@@ -289,7 +311,7 @@ function renderContaResumen_() {
 
   cont.querySelector('[data-retirados]')?.addEventListener('click', () => {
     CONTA.verRetirados = !CONTA.verRetirados;
-    CONTA.filtroAsesor = '__ALL__'; CONTA.filtroEtapa = '__ALL__'; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__';
+    CONTA.filtroAsesor = '__ALL__'; CONTA.filtroEtapa = '__ALL__'; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__'; CONTA.filtroContr = '__ALL__';
     renderContaResumen_(); renderContaFiltros_(); renderContaCards_();
   });
 
@@ -356,7 +378,7 @@ function renderContaCards_() {
   /* FASE 5 — de la más reciente a la más antigua. El backend ya manda
      así la lista; esto es la red de seguridad del front.
      5.5-D — contaBasePlan_ ya trae el buscador; se pinta por tandas. */
-  const list = contaBaseAseP_().slice().sort((a, b) => b.n - a.n);
+  const list = contaBaseContr_().slice().sort((a, b) => b.n - a.n);
   vacio?.classList.toggle('hidden', list.length > 0);
   tandaPintar_(cont, list, r => contaCardHtml_(r), r => {
     const card = document.querySelector('#conta-card-' + r.n); if (!card) return;
@@ -458,7 +480,10 @@ function contaCardHtml_(r) {
       ${r.documento ? `<span>🆔 ${esc_(r.documento)}${r.edad !== '' ? ' · ' + r.edad + ' años' : ''}</span>` : ''}
       <span>📱 ${esc_(r.whatsapp)}</span>
       ${r.tipoPlan ? `<span>🎯 ${esc_(r.tipoPlan)}</span>` : ''}
-      ${r.sponsor ? `<span>🤝 ${esc_(r.sponsor)}</span>` : ''}
+      ${r.contr
+        ? `<span class="conta-contr" title="Hito de contratación cumplido: sponsor definitivo de la oferta contratada">✅ Contratado${r.sponsor ? ' · 🤝 ' + esc_(r.sponsor) : ''}</span>`
+        : (r.sponsor ? `<span>🤝 ${esc_(r.sponsor)}</span>` : '')}
+      ${r.fechaInscripcion ? `<span title="Fecha de inscripción">📅 Inscrito ${esc_(contaFechaCorta_(r.fechaInscripcion))}</span>` : ''}
       ${r.planPrograma ? `<span>📦 ${esc_(r.planPrograma)}</span>` : ''}
       ${procesoChipHtml_(r.proceso, r.retirado)}
       ${r.asesor ? `<span>👤 ${esc_(r.asesor)}</span>` : ''}

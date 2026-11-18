@@ -56,10 +56,14 @@ const EST_PILLS = [
   /* 17/11/2026 (Javier, punto 14) — Proceso: New y Repitente se suman. */
   { k: 'prc',  ic: '🔖', color: '#475569', all: 'Todos los procesos', tit: 'Proceso',
     v: r => segNorm_(r.pro), lead: null,
-    ops: ['Aplazado', 'New', 'Repitente', 'New y Repitente'],
-    ok: (r, val) => { const p = segNorm_(r.pro); return val === 'New y Repitente' ? (p === 'new' || p === 'repitente') : p === segNorm_(val); } }
+    ops: ['Aplazado', 'New', 'Repitente', 'New y Repitente'],   // el último suma también «sin proceso»
+    /* 18/11/2026 (Javier) — «New y Repitente» incluye a quien no tiene
+       Proceso diligenciado (vacío o «POR ASIGNAR»): sin el dato es uno de
+       los dos; lo importante es separarlos de los Aplazados. */
+    ok: (r, val) => { const p = segNorm_(r.pro); return val === 'New y Repitente' ? estNoAplazado_(p) : p === segNorm_(val); } }
 ];
 const EST_SIN_ASESOR = 'Sin asesor';
+function estNoAplazado_(p) { return p === 'new' || p === 'repitente' || p === '' || p === 'por asignar'; }
 function estPillOk_(p, r, val) { return p.ok ? p.ok(r, val) : p.v(r) === val; }
 function estRangoOn_() { return typeof segRangoOn_ === 'function' && segRangoOn_(EST.rango); }
 function estPill_(k) { return EST_PILLS.find(p => p.k === k); }

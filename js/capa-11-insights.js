@@ -391,7 +391,7 @@
   /* CONTADOR — tras asesor · etapa · plan y el buscador, como
      renderContaCards_. */
   function contador() {
-    var lista = leer(function () { return (typeof contaBaseAseP_ === "function") ? contaBaseAseP_() : contaBasePlan_(); }, null);
+    var lista = leer(function () { return (typeof contaBaseContr_ === "function") ? contaBaseContr_() : contaBasePlan_(); }, null);
     if (!lista) lista = leer(function () { return CONTA.registros; }, []) || [];
     var t = txt(leer(function () { return CONTA.filtroTexto; }, ''));
     if (!t) return lista.slice();

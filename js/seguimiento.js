@@ -148,6 +148,7 @@ async function segExcel_(btn) {
 }
 const SEG_TANDA = 24;   /* 5.5-A — tarjetas: tandas de 24 al hacer scroll */
 const SEG_SIN = '— Sin dato —';
+const SEG_NEW_REP = 'New y Repitente (incluye sin proceso)';
 
 function segTxt_(v) { return String(v == null ? '' : v).trim(); }
 function segQ_(s) { return document.querySelector(s); }
@@ -270,7 +271,10 @@ const SEG_PILLS = [
   { k: 'emp',  ic: '💼', color: '#1d4ed8', all: 'Empleador',           tit: 'Empleador',               v: r => segTxt_(r.emp) || SEG_SIN },
   { k: 'plan', ic: '🎯', color: '#b45309', all: 'Plan',   tit: 'Plan del programa',       v: r => segTxt_(r.plan) || SEG_SIN },
   { k: 'niv',  ic: '🗣️', color: '#0891b2', all: 'Nivel inglés',     tit: 'Nivel de Inglés',         v: r => segTxt_(r.niv) || 'Sin test' },
-  { k: 'pro',  ic: '🔖', color: '#475569', all: 'Proceso',             tit: 'Proceso',                 v: r => r.ret ? 'Retirado' : (segTxt_(r.pro) || SEG_SIN) },
+  { k: 'pro',  ic: '🔖', color: '#475569', all: 'Proceso',             tit: 'Proceso',                 v: r => r.ret ? 'Retirado' : (segTxt_(r.pro) || SEG_SIN),
+    /* 18/11/2026 (Javier) — opción que suma New, Repitente y quien no tiene
+       Proceso diligenciado (vacío o POR ASIGNAR); deja fuera a Aplazados y retirados. */
+    extra: [{ valor: SEG_NEW_REP, ok: r => { if (r.ret) return false; const p = segNorm_(segTxt_(r.pro)); return p === 'new' || p === 'repitente' || p === '' || p === 'por asignar'; } }] },
   { k: 'rifa', ic: '🎟️', color: '#c026d3', all: 'Rifa 72 h',           tit: 'Elegible para rifa',      v: segRifa_ }
 ];
 function segPill_(k) { return SEG_PILLS.find(p => p.k === k); }
@@ -292,7 +296,8 @@ function segBase_(salvo) {
     if (p.k === salvo) return;
     const val = SEG.filtros[p.k];
     if (val === undefined) return;
-    l = l.filter(r => p.v(r) === val);
+    const ex = (p.extra || []).find(x => x.valor === val);   // 18/11 — opción que suma varias
+    l = l.filter(r => ex ? ex.ok(r) : p.v(r) === val);
   });
   if (salvo !== 'rango' && segRangoOn_(SEG.rango)) l = l.filter(r => segFinsEnRango_(r, SEG.rango));   // 17/11
   return l;
@@ -300,8 +305,10 @@ function segBase_(salvo) {
 function segVisibles_() { return segBase_(null); }   // 5.5-D — el buscador ya está en la base
 function segOpciones_(k) {
   const p = segPill_(k), c = {};
-  segBase_(k).forEach(r => { const v = p.v(r); c[v] = (c[v] || 0) + 1; });
-  return Object.keys(c).sort((a, b) => a.localeCompare(b)).map(v => ({ valor: v, count: c[v] }));
+  const b = segBase_(k);
+  b.forEach(r => { const v = p.v(r); c[v] = (c[v] || 0) + 1; });
+  return Object.keys(c).sort((a, b) => a.localeCompare(b)).map(v => ({ valor: v, count: c[v] }))
+    .concat((p.extra || []).map(x => ({ valor: x.valor, count: b.filter(x.ok).length })));
 }
 
 /* Entrega C (Estadísticas): abrir Seguimiento ya filtrado. `esp` =

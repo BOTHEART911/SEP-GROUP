@@ -3,6 +3,18 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * CONFIRMACIONES DE JAVIER (18/11/2026 · 1).
+ *   · Contador: pastilla de contratación por HITO cumplido (incluye a quien
+ *     ya va en Visas); tarjeta con «✅ Contratado · 🤝 sponsor definitivo» y
+ *     la fecha de inscripción.
+ *   · Visas: dos filtros separados — Documentos de Sponsor y Documentación
+ *     consular (las 7 casillas).
+ *   · Estadísticas y Seguimiento: «New y Repitente» incluye a quien no
+ *     tiene Proceso diligenciado; los Aplazados quedan aparte.
+ *   Archivos: js/contador.js, js/capa-11-insights.js, js/visas.js,
+ *   js/estadisticas.js, js/seguimiento.js, css/procesos.css, version.js,
+ *   sw.js (caché v79).
+ *
  * AJUSTES OPERATIVOS DE JAVIER · ENTREGA 4 (17/11/2026 · 4) — SEGUIMIENTO Y ESTADÍSTICAS.
  *   · Seguimiento: rango de fecha real de inscripción (Desde/Hasta, incluye
  *     ambas) y «Exportar datos» (.xlsx, solo Superusuario y Desarrollador)
@@ -999,4 +1011,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.11.17.04";
+var APP_VERSION = "2026.11.18.01";
