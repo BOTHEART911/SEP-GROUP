@@ -49,6 +49,8 @@ const NIVE = {
   filtroInvitacion: '__ALL__',
   /* FASE 3.3 · tanda B (20/08/2026) — pago de la oferta de empleo. */
   filtroOferta: '__ALL__',
+  /* 17/11/2026 (Javier, puntos 5 y 18) — etapa de la oferta. */
+  filtroEtapa: '__ALL__',
   filtroTexto: '', cargado: false,
   /* FASE 4 · ENTREGA 5 — punto 2.3 (los retirados salen de la vista
      principal), 3.2 (filtro por Asesor de Procesos, solo Superadmin)
@@ -69,8 +71,29 @@ const NIVE_FILTROS = [
   /* FASE 3.3 · tanda B (20/08/2026) — cuarta pastilla: quién pagó ya la
      oferta de empleo. El dato viene de la vista Contador (check "Pago
      oferta OK" + su comprobante), no de esta hoja. */
-  { key: 'oferta', allLabel: 'Todos los pagos', titulo: 'Filtrar por pago de la oferta', ic: '💵', color: '#0f766e' }
+  { key: 'oferta', allLabel: 'Todos los pagos', titulo: 'Filtrar por pago de la oferta', ic: '💵', color: '#0f766e' },
+  /* 17/11/2026 (Javier, puntos 5 y 18) — quién falta por aplicar al
+     Sponsor y quién ya está Contratado. Mismos datos de siempre: la
+     selección activa (OFERTAS_SELECCION) y el estado del participante. */
+  { key: 'etapa', allLabel: 'Todas las etapas de oferta', titulo: 'Filtrar por etapa de la oferta', ic: '💼', color: '#1d4ed8' }
 ];
+
+/* 17/11/2026 — valores de la pastilla de etapa. Pendiente aplicación =
+   ya eligió oferta en SEP y no está marcada «Aplicada al Sponsor» (es
+   justo a quien el botón le aplica). Contratado = estado actual. */
+const NIVE_ETAPA = {
+  PEND_APL:   { valor: 'PEND_APL',   label: 'Pendiente aplicación', ic: '📤', color: '#d97706' },
+  CONTRATADO: { valor: 'CONTRATADO', label: 'Contratado',           ic: '🤝', color: '#15803d' }
+};
+function nivePendAplicacion_(r) {
+  const s = r && r.seleccion;
+  return !!(s && s.selId && s.estado === 'SELECCIONADA' && !s.aplicada && !r.retirado);
+}
+function niveEtapaDe_(r) {
+  if (nivePendAplicacion_(r)) return 'PEND_APL';
+  if (r && r.est === 'CONTRATADO') return 'CONTRATADO';
+  return '';
+}
 
 /* FASE 4 · ENTREGA 5 · 3.2 — la quinta pastilla, solo para quien ve a
    todos. Un usuario de PROCESOS no la necesita: el servidor ya le
@@ -214,6 +237,7 @@ function niveValFiltro_(k) {
   if (k === 'estado') return NIVE.filtroEstado;
   if (k === 'nivel')  return NIVE.filtroNivel;
   if (k === 'oferta') return NIVE.filtroOferta;   // FASE 3.3 · tanda B
+  if (k === 'etapa')  return NIVE.filtroEtapa;    // 17/11/2026
   return NIVE.filtroInvitacion;   // AJUSTE 3
 }
 function niveSetFiltro_(k, v) {
@@ -224,15 +248,17 @@ function niveSetFiltro_(k, v) {
     /* Va antes que todas: al cambiar de asesor se reinician las
        cuatro pastillas de la derecha. */
     NIVE.filtroAsesorProc = v; NIVE.filtroEstado = '__ALL__'; NIVE.filtroNivel = '__ALL__';
-    NIVE.filtroInvitacion = '__ALL__'; NIVE.filtroOferta = '__ALL__';
+    NIVE.filtroInvitacion = '__ALL__'; NIVE.filtroOferta = '__ALL__'; NIVE.filtroEtapa = '__ALL__';
   } else if (k === 'estado') {
     NIVE.filtroEstado = v; NIVE.filtroNivel = '__ALL__';
-    NIVE.filtroInvitacion = '__ALL__'; NIVE.filtroOferta = '__ALL__';
+    NIVE.filtroInvitacion = '__ALL__'; NIVE.filtroOferta = '__ALL__'; NIVE.filtroEtapa = '__ALL__';
   } else if (k === 'nivel') {
-    NIVE.filtroNivel = v; NIVE.filtroInvitacion = '__ALL__'; NIVE.filtroOferta = '__ALL__';
+    NIVE.filtroNivel = v; NIVE.filtroInvitacion = '__ALL__'; NIVE.filtroOferta = '__ALL__'; NIVE.filtroEtapa = '__ALL__';
   } else if (k === 'invitacion') {
-    NIVE.filtroInvitacion = v; NIVE.filtroOferta = '__ALL__';
-  } else NIVE.filtroOferta = v;
+    NIVE.filtroInvitacion = v; NIVE.filtroOferta = '__ALL__'; NIVE.filtroEtapa = '__ALL__';
+  } else if (k === 'oferta') {
+    NIVE.filtroOferta = v; NIVE.filtroEtapa = '__ALL__';
+  } else NIVE.filtroEtapa = v;
 }
 function niveBaseEstado_() {
   const base = niveVisibles_();   // ENTREGA 5 — retirados · asesor · indicador
@@ -258,6 +284,12 @@ function niveBaseOferta_() {
   if (NIVE.filtroOferta === '__ALL__') return b;
   return b.filter(r => niveOfeDe_(r) === NIVE.filtroOferta);
 }
+/* 17/11/2026 — última capa: etapa de la oferta. */
+function niveBaseEtapa_() {
+  const b = niveBaseOferta_();
+  if (NIVE.filtroEtapa === '__ALL__') return b;
+  return b.filter(r => niveEtapaDe_(r) === NIVE.filtroEtapa);
+}
 function niveEstadoDef_(clave) {
   return (NIVE.catalogo?.estados || []).find(e => e.clave === clave) ||
          { clave: clave, label: clave, color: '#6b7280', ic: '•' };
@@ -279,6 +311,13 @@ function niveOpciones_(key) {
     niveBaseInvitacion_().forEach(r => { const k = niveOfeDe_(r); c[k] = (c[k] || 0) + 1; });
     return ['SI', 'NO'].map(k => ({
       valor: k, label: NIVE_OFE[k].label, count: c[k] || 0, ic: NIVE_OFE[k].ic
+    }));
+  }
+  if (key === 'etapa') {
+    /* 17/11/2026 — las dos siempre a la vista, aunque vayan en cero. */
+    niveBaseOferta_().forEach(r => { const k = niveEtapaDe_(r); if (k) c[k] = (c[k] || 0) + 1; });
+    return ['PEND_APL', 'CONTRATADO'].map(k => ({
+      valor: k, label: NIVE_ETAPA[k].label, count: c[k] || 0, ic: NIVE_ETAPA[k].ic
     }));
   }
   if (key === 'asesorProc') {
@@ -311,6 +350,7 @@ function niveTotalFiltro_(k) {
   if (k === 'estado') return niveVisibles_().length;
   if (k === 'nivel')  return niveBaseEstado_().length;
   if (k === 'oferta') return niveBaseInvitacion_().length;   // FASE 3.3 · tanda B
+  if (k === 'etapa')  return niveBaseOferta_().length;       // 17/11/2026
   return niveBaseNivel_().length;                       // AJUSTE 3
 }
 function niveConteoPill_(k) {
@@ -318,6 +358,7 @@ function niveConteoPill_(k) {
   if (k === 'estado') return niveBaseEstado_().length;
   if (k === 'nivel')  return niveBaseNivel_().length;
   if (k === 'oferta') return niveBaseOferta_().length;       // FASE 3.3 · tanda B
+  if (k === 'etapa')  return niveBaseEtapa_().length;        // 17/11/2026
   return niveBaseInvitacion_().length;                  // AJUSTE 3
 }
 
@@ -341,6 +382,10 @@ function nivePillHtml_(f) {
       ic = `<span class="fpill__ic">${d.ic}</span>`;
     } else if (f.key === 'oferta') {                     // FASE 3.3 · tanda B
       const d = NIVE_OFE[val] || NIVE_OFE.NO;
+      label = d.label; color = d.color;
+      ic = `<span class="fpill__ic">${d.ic}</span>`;
+    } else if (f.key === 'etapa') {                      // 17/11/2026
+      const d = NIVE_ETAPA[val] || NIVE_ETAPA.PEND_APL;
       label = d.label; color = d.color;
       ic = `<span class="fpill__ic">${d.ic}</span>`;
     } else label = val;
@@ -455,7 +500,7 @@ function renderNiveIndicadores_() {
     /* Cambiar de lista reinicia las pastillas: si no, se quedaría un
        filtro puesto sobre un grupo que ya no existe. */
     NIVE.filtroAsesorProc = '__ALL__'; NIVE.filtroEstado = '__ALL__';
-    NIVE.filtroNivel = '__ALL__'; NIVE.filtroInvitacion = '__ALL__'; NIVE.filtroOferta = '__ALL__';
+    NIVE.filtroNivel = '__ALL__'; NIVE.filtroInvitacion = '__ALL__'; NIVE.filtroOferta = '__ALL__'; NIVE.filtroEtapa = '__ALL__';
     renderNiveResumen_(); renderNiveFiltros_(); renderNiveCards_();
   }));
 }
@@ -482,9 +527,9 @@ function niveFoto_(r) {
 function renderNiveCards_() {
   const cont = document.querySelector('#nive-cards'), vacio = document.querySelector('#nive-empty');
   if (!cont) return;
-  /* 5.5-D — niveBaseOferta_ ya trae el buscador; se pinta por tandas
-     (el índice i es el de la lista completa). */
-  const list = niveBaseOferta_().slice().sort((a, b) => b.n - a.n);
+  /* 5.5-D — la cascada ya trae el buscador; se pinta por tandas
+     (el índice i es el de la lista completa). 17/11: última capa = etapa. */
+  const list = niveBaseEtapa_().slice().sort((a, b) => b.n - a.n);
   vacio?.classList.toggle('hidden', list.length > 0);
   tandaPintar_(cont, list, (r, i) => niveCardHtml_(r, i), (r, i) => {
     const card = document.querySelector('#nive-card-i' + i); if (!card) return;
@@ -499,6 +544,8 @@ function renderNiveCards_() {
     card.querySelector('[data-act="invitacion"]')?.addEventListener('click', () => niveInvitacion_(r));
     /* FASE 4.1 · punto 6 */
     card.querySelector('[data-act="curso"]')?.addEventListener('click', () => niveCurso_(r));
+    /* 17/11/2026 (Javier, punto 18) */
+    card.querySelector('[data-act="aplicada"]')?.addEventListener('click', e => niveAplicada_(r, e.currentTarget));
     card.querySelector('[data-act="eliminar"]')?.addEventListener('click', () => niveEliminar_(r));
     /* FASE 4 · ENTREGA 5 */
     card.querySelector('[data-act="retirar"]')?.addEventListener('click', () => niveRetirar_(r, true));
@@ -712,6 +759,8 @@ function niveCardHtml_(r, i) {
         title="${r.curso
           ? 'Quitar la confirmación del curso de inglés: volverá a no poder seleccionar ofertas.'
           : 'Confirmar que está haciendo el curso de inglés obligatorio. Sin esto puede VER las ofertas pero no seleccionarlas.'}">🗣️ ${r.curso ? 'Curso confirmado' : 'Confirmar curso'}</button>` : ''}
+      ${nivePendAplicacion_(r) ? `<button class="act-btn act-btn--apl" data-act="aplicada"
+        title="Marca que SEP ya aplicó a ${esc_(r.nombres)} con ${esc_(r.seleccion.sponsor || 'el Sponsor')}. Es el mismo botón de Ofertas de empleo → participantes.">📤 Aplicada al sponsor</button>` : ''}
       ${nivePuedeReasignar_() ? '<button class="act-btn" data-act="asesor">🧭 Asesor</button>' : ''}
       ${nivePuedeRetirar_()
           ? (r.retirado
@@ -746,6 +795,15 @@ function niveProcHtml_(r) {
     if (def) partes.push(`<span class="nive-res__ind" style="--k:${def.color}">${def.ic} ${esc_(def.label)}</span>`);
     if (r.seleccion && r.seleccion.empleador) {
       partes.push(`<span class="nive-res__ofe">💼 ${esc_(r.seleccion.empleador)}</span>`);
+    }
+    /* 17/11/2026 (Javier, punto 7) — de la oferta elegida: lugar de
+       trabajo (Ciudad, Estado) y posición. Lo vacío no se pinta. */
+    if (r.seleccion) {
+      const lugar = [r.seleccion.ciudad, r.seleccion.estadoUsa].filter(Boolean).join(', ');
+      if (lugar) partes.push(`<span class="nive-res__ofe" title="Lugar de trabajo">📍 ${esc_(lugar)}</span>`);
+      if (r.seleccion.posicion) partes.push(`<span class="nive-res__ofe" title="Posición de trabajo">🧑‍🍳 ${esc_(r.seleccion.posicion)}</span>`);
+      if (r.seleccion.aplicada) partes.push(`<span class="nive-res__ofe nive-res__apl" title="Aplicada al Sponsor el ${esc_(r.seleccion.aplicada)}">✅ Aplicado al Sponsor</span>`);
+      else if (nivePendAplicacion_(r)) partes.push(`<span class="nive-res__ofe nive-res__pend">⏳ Pendiente aplicación</span>`);
     }
   }
   return partes.join('');
@@ -845,6 +903,42 @@ async function niveInvitacion_(r) {
       timer: 1100, showConfirmButton: false });
   } catch (e) {
     Swal.fire({ icon: 'error', title: 'No se pudo cambiar la invitación', text: String(e.message || e) });
+  }
+}
+
+/* ============================================================
+   17/11/2026 (Javier, punto 18) — «APLICADA AL SPONSOR» DESDE AQUÍ
+   ============================================================
+   La MISMA ruta del botón de Ofertas de empleo → participantes
+   (marcarAplicadaSponsor): mismo estado, misma fecha, mismo historial.
+   Escudo desde el primer toque; la fila se parcha en memoria y sale
+   sola del filtro «Pendiente aplicación». Si el modal de Ofertas está
+   abierto con esa oferta, se parcha también. */
+let niveAplGuardando_ = false;
+async function niveAplicada_(r, btn) {
+  if (niveAplGuardando_ || !nivePendAplicacion_(r)) return;
+  niveAplGuardando_ = true;
+  if (btn) btn.disabled = true;
+  try {
+    const ok = await Swal.fire({
+      icon: 'question', title: 'Aplicación con el Sponsor',
+      text: 'Marca que SEP ya aplicó a ' + r.nombres + ' ' + r.apellidos + ' con ' + (r.seleccion.sponsor || 'el Sponsor') + '.',
+      input: 'text', inputLabel: 'Nota (opcional)',
+      showCancelButton: true, confirmButtonText: 'Marcar como aplicada', cancelButtonText: 'Cancelar'
+    });
+    if (!ok.isConfirmed) return;
+    const d = await apiPost('marcarAplicadaSponsor', { usuarioId: currentUser.id, id: r.seleccion.selId, nota: ok.value || '' });
+    const sel = d && d.seleccion;
+    r.seleccion.estado = 'APLICADA';
+    r.seleccion.aplicada = (sel && sel.aplicadaFecha) || new Date().toLocaleString('es-CO');
+    try { if (typeof ofePartParchar_ === 'function' && sel && OFE.part && OFE.part.ofertaId === r.seleccion.ofertaId) ofePartParchar_(sel); } catch (e) { /* no-op */ }
+    renderNiveFiltros_(); renderNiveCards_();
+    Swal.fire({ icon: 'success', title: 'Aplicación registrada', timer: 1300, showConfirmButton: false });
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: String(e.message || e) });
+  } finally {
+    niveAplGuardando_ = false;
+    if (btn && btn.isConnected) btn.disabled = false;
   }
 }
 

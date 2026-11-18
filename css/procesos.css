@@ -206,3 +206,17 @@ html[data-tema="oscuro"] .ndoc-lock { color: #86efac; }
 
 /* 5.3-B — documento enfocado al abrir desde el Panel de Visas. */
 .ndoc.ndoc--foco { box-shadow: 0 0 0 2px var(--accent, #f5b301); border-radius: 12px; }
+
+/* 17/11/2026 (Javier, puntos 7 y 18) — Participantes: estado de la
+   aplicación al Sponsor y el botón para marcarla. */
+.nive-res__ofe.nive-res__apl  { background: #dcfce7; color: #166534; }
+.nive-res__ofe.nive-res__pend { background: #fef3c7; color: #92400e; }
+.act-btn--apl {
+  background: #fff7ed !important; color: #9a3412 !important;
+  border-color: #fdba74 !important; font-weight: 700;
+}
+.act-btn--apl:hover { background: #ffedd5 !important; }
+.act-btn--apl:disabled { opacity: .55; cursor: progress; }
+html[data-tema="oscuro"] .nive-res__ofe.nive-res__apl  { background: rgba(34, 197, 94, .18); color: #86efac; }
+html[data-tema="oscuro"] .nive-res__ofe.nive-res__pend { background: rgba(245, 158, 11, .18); color: #fcd34d; }
+html[data-tema="oscuro"] .act-btn--apl { background: rgba(249, 115, 22, .16) !important; color: #fdba74 !important; border-color: rgba(249, 115, 22, .4) !important; }

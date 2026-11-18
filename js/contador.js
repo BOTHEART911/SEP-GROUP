@@ -30,7 +30,7 @@
 
 const CONTA = {
   registros: [], catalogo: null, actual: null, sheetKey: null,
-  filtroAsesor: '__ALL__', filtroEtapa: '__ALL__', filtroPlan: '__ALL__',
+  filtroAsesor: '__ALL__', filtroEtapa: '__ALL__', filtroPlan: '__ALL__', filtroAseP: '__ALL__',
   filtroTexto: '', cargado: false,
   zonaActiva: null,           // FASE 5 — última zona de archivo usada (para el pegado)
   /* FASE 4 · ENTREGA 5 (punto 2.2) — la vista principal muestra
@@ -45,7 +45,9 @@ const CONTA_SIN_PLAN   = '— Sin plan —';
 const CONTA_FILTROS = [
   { key: 'asesor', allLabel: 'Todos los asesores', titulo: 'Filtrar por asesor', ic: '👤', color: '#263143' },
   { key: 'etapa',  allLabel: 'Todas las etapas',   titulo: 'Filtrar por etapa',  ic: '🧭', color: '#0891b2' },
-  { key: 'plan',   allLabel: 'Todos los planes',   titulo: 'Filtrar por plan',   ic: '🎯', color: '#263143' }
+  { key: 'plan',   allLabel: 'Todos los planes',   titulo: 'Filtrar por plan',   ic: '🎯', color: '#263143' },
+  /* 17/11/2026 (punto 19) — Asesor de Procesos, con «Sin asesor». */
+  { key: 'aseP',   allLabel: 'Todos los asesores de Procesos', titulo: 'Filtrar por Asesor de Procesos', ic: '🧭', color: '#7c3aed' }
 ];
 
 /* ============================================================
@@ -103,15 +105,20 @@ async function recargarContador_(silencioso) {
    ============================================================ */
 function contaAsesorDe_(r) { return String(r.asesor || '').trim() || CONTA_SIN_ASESOR; }
 function contaPlanDe_(r)   { return String(r.tipoPlan || '').trim() || CONTA_SIN_PLAN; }
+/* 17/11/2026 — el asesor de Procesos ya viaja en el listado ligero. */
+const CONTA_SIN_ASEP = 'Sin asesor';
+function contaAsePDe_(r)   { return String(r.asesorProcesos || '').trim() || CONTA_SIN_ASEP; }
 
 function contaValFiltro_(k) {
-  return k === 'asesor' ? CONTA.filtroAsesor : k === 'etapa' ? CONTA.filtroEtapa : CONTA.filtroPlan;
+  return k === 'asesor' ? CONTA.filtroAsesor : k === 'etapa' ? CONTA.filtroEtapa
+       : k === 'aseP' ? CONTA.filtroAseP : CONTA.filtroPlan;
 }
 /* Cambiar un nivel superior reinicia los de abajo (evita filtros huérfanos). */
 function contaSetFiltro_(k, v) {
-  if (k === 'asesor') { CONTA.filtroAsesor = v; CONTA.filtroEtapa = '__ALL__'; CONTA.filtroPlan = '__ALL__'; }
-  else if (k === 'etapa') { CONTA.filtroEtapa = v; CONTA.filtroPlan = '__ALL__'; }
-  else CONTA.filtroPlan = v;
+  if (k === 'asesor') { CONTA.filtroAsesor = v; CONTA.filtroEtapa = '__ALL__'; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__'; }
+  else if (k === 'etapa') { CONTA.filtroEtapa = v; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__'; }
+  else if (k === 'plan') { CONTA.filtroPlan = v; CONTA.filtroAseP = '__ALL__'; }
+  else CONTA.filtroAseP = v;
 }
 /* FASE 4 · ENTREGA 5 · 2.2 — la raíz de TODOS los filtros. Los
    retirados salen de la vista principal (ruido visual) y se ven
@@ -149,6 +156,12 @@ function contaBasePlan_() {
   if (CONTA.filtroPlan === '__ALL__') return b;
   return b.filter(r => contaPlanDe_(r) === CONTA.filtroPlan);
 }
+/* 17/11/2026 — última capa: Asesor de Procesos. */
+function contaBaseAseP_() {
+  const b = contaBasePlan_();
+  if (CONTA.filtroAseP === '__ALL__') return b;
+  return b.filter(r => contaAsePDe_(r) === CONTA.filtroAseP);
+}
 function contaEtapaDef_(clave) {
   return (CONTA.catalogo?.etapas || []).find(e => e.clave === clave) ||
          { clave: clave, label: clave, color: '#6b7280', ic: '•' };
@@ -166,6 +179,12 @@ function contaOpciones_(key) {
     return (CONTA.catalogo?.etapas || []).filter(e => c[e.clave])
       .map(e => ({ valor: e.clave, label: e.label, count: c[e.clave], color: e.color }));
   }
+  if (key === 'aseP') {
+    contaBasePlan_().forEach(r => { const k = contaAsePDe_(r); c[k] = (c[k] || 0) + 1; });
+    /* «Sin asesor» siempre al final y siempre visible. */
+    const ks = Object.keys(c).filter(k => k !== CONTA_SIN_ASEP).sort((a, b) => a.localeCompare(b));
+    return ks.concat([CONTA_SIN_ASEP]).map(k => ({ valor: k, label: k, count: c[k] || 0, ic: '🧭' }));
+  }
   contaBaseEtapa_().forEach(r => { const k = contaPlanDe_(r); c[k] = (c[k] || 0) + 1; });
   return Object.keys(c).sort((a, b) => a.localeCompare(b))
     .map(k => ({ valor: k, label: k, count: c[k], ic: '🎯' }));
@@ -173,11 +192,13 @@ function contaOpciones_(key) {
 function contaTotalFiltro_(k) {
   return k === 'asesor' ? contaTexto_().length
        : k === 'etapa'  ? contaBaseAsesor_().length
+       : k === 'aseP'   ? contaBasePlan_().length
        :                  contaBaseEtapa_().length;
 }
 function contaConteoPill_(k) {
   return k === 'asesor' ? contaBaseAsesor_().length
        : k === 'etapa'  ? contaBaseEtapa_().length
+       : k === 'aseP'   ? contaBaseAseP_().length
        :                  contaBasePlan_().length;
 }
 
@@ -268,7 +289,7 @@ function renderContaResumen_() {
 
   cont.querySelector('[data-retirados]')?.addEventListener('click', () => {
     CONTA.verRetirados = !CONTA.verRetirados;
-    CONTA.filtroAsesor = '__ALL__'; CONTA.filtroEtapa = '__ALL__'; CONTA.filtroPlan = '__ALL__';
+    CONTA.filtroAsesor = '__ALL__'; CONTA.filtroEtapa = '__ALL__'; CONTA.filtroPlan = '__ALL__'; CONTA.filtroAseP = '__ALL__';
     renderContaResumen_(); renderContaFiltros_(); renderContaCards_();
   });
 
@@ -335,7 +356,7 @@ function renderContaCards_() {
   /* FASE 5 — de la más reciente a la más antigua. El backend ya manda
      así la lista; esto es la red de seguridad del front.
      5.5-D — contaBasePlan_ ya trae el buscador; se pinta por tandas. */
-  const list = contaBasePlan_().slice().sort((a, b) => b.n - a.n);
+  const list = contaBaseAseP_().slice().sort((a, b) => b.n - a.n);
   vacio?.classList.toggle('hidden', list.length > 0);
   tandaPintar_(cont, list, r => contaCardHtml_(r), r => {
     const card = document.querySelector('#conta-card-' + r.n); if (!card) return;

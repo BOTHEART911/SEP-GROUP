@@ -3,6 +3,19 @@
  * SEP GROUP — VERSIÓN
  * SEP Colombia Group SAS
  * ------------------------------------------------------------
+ * AJUSTES OPERATIVOS DE JAVIER · ENTREGA 1 (17/11/2026 · 1).
+ *   · Participantes: pastilla «Etapa de la oferta» (Pendiente aplicación /
+ *     Contratado); botón «📤 Aplicada al sponsor» en la tarjeta de quien ya
+ *     eligió oferta y no está aplicado (la misma acción de Ofertas de
+ *     empleo; sale sola del filtro y queda igual en Ofertas); lugar de
+ *     trabajo (ciudad, estado) y posición de la oferta elegida.
+ *   · Contador: pastilla «Asesor de Procesos» (con «Sin asesor»),
+ *     combinable con asesor, etapa y plan.
+ *   · Seguimiento y Estadísticas: el sponsor es el DEFINITIVO (con la
+ *     contratación); una oferta elegida sin contratar ya no lo pone.
+ *   Archivos: js/nivel.js, js/contador.js, js/capa-11-insights.js,
+ *   css/procesos.css, version.js, sw.js (caché v75).
+ *
  * AJUSTE 22/10/2026 · 2 (Javier) — Panel de Visas, bloque Sistema de Visa:
  *   correo del Sistema de Visa visible y editable (lo registra el
  *   participante en su portal junto con la clave, que sigue oculta).
@@ -955,4 +968,4 @@
  * los dispositivos. También alimenta el texto "Versión X" de las vistas.
  * ============================================================
  */
-var APP_VERSION = "2026.10.22.02";
+var APP_VERSION = "2026.11.17.01";
